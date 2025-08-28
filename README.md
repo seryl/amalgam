@@ -21,10 +21,10 @@ Amalgam bridges the gap between existing schemas (K8s CRDs, OpenAPI) and Nickel'
 ## ✨ Features
 
 - 📦 **Import Kubernetes CRDs** - Convert CRDs to strongly-typed [Nickel](https://nickel-lang.org) configurations
-- 🔍 **Smart Import Resolution** - Automatically resolves K8s type references with proper imports
-- 📁 **Package Generation** - Creates organized package structures from multiple CRDs
-- 🔌 **Extensible Architecture** - Plugin-based resolver system for adding new type mappings
-- 🐙 **GitHub Integration** - Fetch CRDs directly from GitHub repositories
+- 🔍 **Smart Import Resolution** - Automatically resolves cross-package type references with proper imports
+- 📁 **Package Generation** - Creates organized package structures from multiple schemas
+- 🔌 **Generic Architecture** - Universal resolver that works with any schema source
+- 🐙 **GitHub Integration** - Fetch schemas directly from GitHub repositories
 
 ## 📥 Installation
 
@@ -112,22 +112,23 @@ The tool intelligently detects and resolves Kubernetes type references:
 - **Generates Import**: `let k8s_io_v1 = import "../../k8s_io/v1/objectmeta.ncl" in`
 - **Resolves Reference**: `k8s_io_v1.ObjectMeta`
 
-### Extensible Resolver System
+### Generic Resolver System
 
-Add custom type resolvers using the plugin architecture:
+The resolver system uses a simple, generic pattern-matching approach that works for any schema source:
 
 ```rust
-pub trait ReferenceResolver: Send + Sync {
-    fn can_resolve(&self, reference: &str) -> bool;
-    fn resolve(&self, reference: &str, imports: &[Import], context: &ResolutionContext) -> Option<Resolution>;
-    fn name(&self) -> &str;
+pub struct TypeResolver {
+    cache: HashMap<String, Resolution>,
+    type_registry: HashMap<String, String>,
 }
 ```
 
-Built-in resolvers:
-- `KubernetesResolver` - Handles K8s API types
-- `LocalTypeResolver` - Resolves local type references
-- Easy to add custom resolvers for other type systems
+Key features:
+- **Universal Pattern Matching** - Works with any schema format (Kubernetes, OpenAPI, Protobuf, etc.)
+- **Smart Import Detection** - Automatically identifies when imports are needed based on namespace patterns
+- **Type Registry** - Maintains a registry of all known types for accurate resolution
+- **Cache-based Performance** - Caches resolutions to avoid repeated lookups
+- **No Special-casing** - Generic implementation that doesn't favor any particular schema source
 
 ## 💻 CLI Commands
 
@@ -170,8 +171,8 @@ Built-in resolvers:
 ├─────────────────────────────────────────────────────────────┤
 │                       Code Generation                       │
 │   ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐    │
-│   │  Nickel  │  │    Go    │  │   CUE    │  │   WASM   │    │
-│   │Generator │  │Generator │  │Generator │  │  Module  │    │
+│   │  Nickel  │  │    Go    │  │   CUE    │  │   JSON   │    │
+│   │Generator │  │Generator │  │Generator │  │ Exporter │    │
 │   └──────────┘  └──────────┘  └──────────┘  └──────────┘    │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -181,13 +182,16 @@ Built-in resolvers:
 ```
 amalgam/
 ├── Cargo.toml                 # Workspace definition
+├── flake.nix                  # Nix development environment
 ├── crates/
 │   ├── amalgam-core/          # Core IR and type system
 │   ├── amalgam-parser/        # Schema parsers (CRD, OpenAPI)
-│   ├── amalgam-codegen/       # Code generators with resolver system
+│   ├── amalgam-codegen/       # Code generators with generic resolver
+│   ├── amalgam-daemon/        # Runtime daemon for watching changes
 │   └── amalgam-cli/           # Command-line interface
 ├── examples/                  # Example configurations
-└── tests/                     # Integration tests
+├── tests/                     # Integration tests
+└── docs/                      # Architecture documentation
 ```
 
 ## 💡 Use Cases
