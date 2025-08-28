@@ -1,11 +1,7 @@
 # 🔧 Amalgam
 
 [![Crates.io](https://img.shields.io/crates/v/amalgam.svg)](https://crates.io/crates/amalgam)
-[![Documentation](https://docs.rs/amalgam/badge.svg)](https://docs.rs/amalgam)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
-[![Build Status](https://img.shields.io/github/actions/workflow/status/seryl/amalgam/ci.yml?branch=main)](https://github.com/seryl/amalgam/actions)
-[![codecov](https://codecov.io/gh/seryl/amalgam/branch/main/graph/badge.svg)](https://codecov.io/gh/seryl/amalgam)
-[![Dependencies](https://deps.rs/repo/github/seryl/amalgam/status.svg)](https://deps.rs/repo/github/seryl/amalgam)
 
 **Generate type-safe [Nickel](https://nickel-lang.org) configurations from any schema source**
 
