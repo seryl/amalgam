@@ -180,7 +180,7 @@
                 echo -e "\n''${YELLOW}Dry-run for $crate_name...''${NC}"
 
                 prepare_for_publish "$crate_path"
-                (cd "$crate_path" && ${rustWithComponents}/bin/cargo publish --dry-run)
+                (cd "$crate_path" && ${rustWithComponents}/bin/cargo publish --dry-run --allow-dirty)
                 restore_cargo_toml "$crate_path"
               done
               ;;
@@ -223,7 +223,7 @@
                 echo -e "\n''${GREEN}Publishing $crate_name...''${NC}"
                 prepare_for_publish "$crate_path"
 
-                if (cd "$crate_path" && ${rustWithComponents}/bin/cargo publish); then
+                if (cd "$crate_path" && ${rustWithComponents}/bin/cargo publish --allow-dirty); then
                   restore_cargo_toml "$crate_path"
                   echo -e "''${GREEN}✓ $crate_name published!''${NC}"
 
