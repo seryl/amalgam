@@ -1,0 +1,35 @@
+[package]
+name = "amalgam-wasm"
+version = "0.2.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "WebAssembly bindings for amalgam configuration generator"
+homepage = "https://github.com/seryl/amalgam"
+repository = "https://github.com/seryl/amalgam"
+documentation = "https://docs.rs/amalgam-wasm"
+readme = "README.md"
+keywords = ["wasm", "nickel", "configuration", "webassembly", "bindgen"]
+categories = ["wasm", "config", "development-tools"]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+amalgam-core = { version = "0.2.0", path = "../amalgam-core" }
+amalgam-parser = { version = "0.2.0", path = "../amalgam-parser" }
+amalgam-codegen = { version = "0.2.0", path = "../amalgam-codegen" }
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+serde.workspace = true
+serde_json.workspace = true
+serde-wasm-bindgen = "0.6"
+js-sys = "0.3"
+web-sys = { version = "0.3", features = ["console"] }
+console_error_panic_hook = "0.1"
+nickel-lang-core = { version = "1.8", default-features = false }
+
+[dev-dependencies]
+wasm-bindgen-test = "0.3"
+
+[features]
+default = ["console_error_panic_hook"]

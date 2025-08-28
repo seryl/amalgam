@@ -328,6 +328,30 @@
           esac
         '';
 
+        # WASM builder script
+        build-wasm = pkgs.python311Packages.buildPythonApplication {
+          pname = "build-wasm";
+          version = "0.1.0";
+          format = "other";
+          
+          src = ./scripts;
+          
+          propagatedBuildInputs = with pkgs.python311Packages; [
+            click
+            rich
+            toml
+          ];
+          
+          installPhase = ''
+            mkdir -p $out/bin
+            cp $src/build_wasm.py $out/bin/build-wasm
+            chmod +x $out/bin/build-wasm
+            
+            # Add proper shebang
+            sed -i '1s|.*|#!${pkgs.python311}/bin/python3|' $out/bin/build-wasm
+          '';
+        };
+
         # Quick test runner
         test-all = pkgs.writeShellScriptBin "test-all" ''
           set -euo pipefail
@@ -405,6 +429,7 @@
             publish
             dev-mode
             test-all
+            build-wasm
           ] ++ (with pkgs; [
             # Build dependencies
             openssl
@@ -429,10 +454,7 @@
             wasmtime  # WASM runtime for testing
 
             # Python for complex scripts
-            python3
-            python311Packages.rich
-            python311Packages.click
-            python311Packages.toml
+            python311
             
             # General dev tools
             tokei      # code statistics
@@ -478,6 +500,11 @@
             echo "  cargo clippy      - Run linter"
             echo "  cargo fmt         - Format code"
             echo "  cargo insta       - Manage snapshot tests"
+            echo ""
+            echo "WASM Commands:"
+            echo "  build-wasm        - Build WASM module"
+            echo "  build-wasm --all-targets  - Build for all targets"
+            echo "  build-wasm --optimize     - Build with optimization"
             echo ""
             echo "Publishing Workflow:"
             echo "  1. test-all                      # Ensure all tests pass"
