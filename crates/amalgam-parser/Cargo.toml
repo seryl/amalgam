@@ -7,7 +7,7 @@ description = "Schema parsers for CRD, OpenAPI, and Go types for amalgam"
 homepage = "https://github.com/seryl/amalgam"
 repository = "https://github.com/seryl/amalgam"
 documentation = "https://docs.rs/amalgam-parser"
-readme = false
+readme = "README.md"
 keywords = ["parser", "kubernetes", "openapi", "crd", "golang"]
 categories = ["parser-implementations", "development-tools"]
 

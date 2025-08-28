@@ -1,7 +1,7 @@
 //! Go AST parsing for precise type extraction
 
-use crate::{ParserError, imports::TypeReference};
-use amalgam_core::types::{Type, Field};
+use crate::{imports::TypeReference, ParserError};
+use amalgam_core::types::{Field, Type};
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use reqwest;
 use serde::{Deserialize, Serialize};
@@ -58,11 +58,15 @@ impl GoASTParser {
             multi_progress: Arc::new(MultiProgress::new()),
         }
     }
-    
+
     /// Fetch and parse Go source files from a repository
-    pub async fn fetch_and_parse_repository(&mut self, repo_url: &str, paths: &[&str]) -> Result<(), ParserError> {
+    pub async fn fetch_and_parse_repository(
+        &mut self,
+        repo_url: &str,
+        paths: &[&str],
+    ) -> Result<(), ParserError> {
         let is_tty = atty::is(atty::Stream::Stdout);
-        
+
         let main_spinner = if is_tty {
             let pb = self.multi_progress.add(ProgressBar::new_spinner());
             pb.set_style(
@@ -78,52 +82,59 @@ impl GoASTParser {
             println!("Parsing Go repository: {}", repo_url);
             None
         };
-        
+
         for path in paths {
             if let Some(ref pb) = main_spinner {
                 pb.set_message(format!("Fetching Go files from {}", path));
             }
-            
+
             let go_files = self.fetch_go_files(repo_url, path).await?;
-            
+
             if let Some(ref pb) = main_spinner {
                 pb.set_message(format!("Parsing {} Go files", go_files.len()));
             }
-            
+
             self.parse_go_files(&go_files).await?;
         }
-        
+
         if let Some(pb) = main_spinner {
             pb.finish_with_message(format!("✓ Parsed {} types", self.type_cache.len()));
         } else {
             println!("Parsed {} types", self.type_cache.len());
         }
-        
+
         Ok(())
     }
-    
+
     /// Fetch Go files from a specific path in a repository
-    async fn fetch_go_files(&self, repo_url: &str, path: &str) -> Result<Vec<GoSourceFile>, ParserError> {
+    async fn fetch_go_files(
+        &self,
+        repo_url: &str,
+        path: &str,
+    ) -> Result<Vec<GoSourceFile>, ParserError> {
         // Convert GitHub URL to API format
         let api_url = self.github_url_to_api(repo_url, path)?;
-        
-        let response = self.client.get(&api_url)
+
+        let response = self
+            .client
+            .get(&api_url)
             .header("User-Agent", "amalgam")
             .send()
             .await
             .map_err(|e| ParserError::Network(e.to_string()))?;
-        
+
         if !response.status().is_success() {
             return Err(ParserError::Network(format!(
                 "Failed to fetch Go files: {}",
                 response.status()
             )));
         }
-        
-        let files: Vec<GitHubFile> = response.json()
+
+        let files: Vec<GitHubFile> = response
+            .json()
             .await
             .map_err(|e| ParserError::Parse(e.to_string()))?;
-        
+
         let mut go_files = Vec::new();
         for file in files {
             if file.name.ends_with(".go") && file.file_type == "file" {
@@ -135,53 +146,60 @@ impl GoASTParser {
                 });
             }
         }
-        
+
         Ok(go_files)
     }
-    
+
     fn github_url_to_api(&self, repo_url: &str, path: &str) -> Result<String, ParserError> {
         // Convert https://github.com/kubernetes/api/tree/master/core/v1
         // to https://api.github.com/repos/kubernetes/api/contents/core/v1
-        
+
         if let Some(github_part) = repo_url.strip_prefix("https://github.com/") {
             let parts: Vec<&str> = github_part.split("/tree/").collect();
             if parts.len() == 2 {
                 let repo = parts[0];
                 let branch_and_path = parts[1];
                 let path_parts: Vec<&str> = branch_and_path.splitn(2, '/').collect();
-                
+
                 let base_path = if path_parts.len() > 1 {
                     format!("{}/{}", path_parts[1], path)
                 } else {
                     path.to_string()
                 };
-                
-                return Ok(format!("https://api.github.com/repos/{}/contents/{}", 
-                    repo, base_path));
+
+                return Ok(format!(
+                    "https://api.github.com/repos/{}/contents/{}",
+                    repo, base_path
+                ));
             }
         }
-        
-        Err(ParserError::Parse(format!("Invalid GitHub URL: {}", repo_url)))
+
+        Err(ParserError::Parse(format!(
+            "Invalid GitHub URL: {}",
+            repo_url
+        )))
     }
-    
+
     async fn fetch_file_content(&self, url: &str) -> Result<String, ParserError> {
-        let response = self.client.get(url)
+        let response = self
+            .client
+            .get(url)
             .header("User-Agent", "amalgam")
             .send()
             .await
             .map_err(|e| ParserError::Network(e.to_string()))?;
-        
-        response.text()
+
+        response
+            .text()
             .await
             .map_err(|e| ParserError::Parse(e.to_string()))
     }
-    
+
     /// Parse Go source files using a Go script
     async fn parse_go_files(&mut self, files: &[GoSourceFile]) -> Result<(), ParserError> {
         // Create a temporary directory with the Go files
-        let temp_dir = tempfile::tempdir()
-            .map_err(|e| ParserError::Io(e))?;
-        
+        let temp_dir = tempfile::tempdir().map_err(|e| ParserError::Io(e))?;
+
         // Write files to temp directory
         for file in files {
             let file_path = temp_dir.path().join(&file.name);
@@ -189,14 +207,14 @@ impl GoASTParser {
                 .await
                 .map_err(|e| ParserError::Io(e))?;
         }
-        
+
         // Create a Go parser script
         let parser_script = self.create_go_parser_script()?;
         let script_path = temp_dir.path().join("parser.go");
         tokio::fs::write(&script_path, parser_script)
             .await
             .map_err(|e| ParserError::Io(e))?;
-        
+
         // Run the Go parser (still synchronous since it's a subprocess)
         let output = tokio::task::spawn_blocking({
             let dir = temp_dir.path().to_path_buf();
@@ -210,28 +228,28 @@ impl GoASTParser {
         .await
         .map_err(|e| ParserError::Parse(format!("Failed to spawn go parser: {}", e)))?
         .map_err(|e| ParserError::Parse(format!("Failed to run go parser: {}", e)))?;
-        
+
         if !output.status.success() {
             return Err(ParserError::Parse(format!(
                 "Go parser failed: {}",
                 String::from_utf8_lossy(&output.stderr)
             )));
         }
-        
+
         // Parse the JSON output
         let json_output = String::from_utf8_lossy(&output.stdout);
         let type_infos: Vec<GoTypeInfo> = serde_json::from_str(&json_output)
             .map_err(|e| ParserError::Parse(format!("Failed to parse JSON: {}", e)))?;
-        
+
         // Cache the type information
         for type_info in type_infos {
             let qualified_name = format!("{}.{}", type_info.package_path, type_info.name);
             self.type_cache.insert(qualified_name, type_info);
         }
-        
+
         Ok(())
     }
-    
+
     /// Create a Go script that uses go/ast to extract type information
     fn create_go_parser_script(&self) -> Result<String, ParserError> {
         Ok(r#"
@@ -404,50 +422,51 @@ func isPointerType(expr ast.Expr) bool {
 }
 "#.to_string())
     }
-    
+
     /// Get type information for a fully qualified Go type
     pub fn get_type_info(&self, qualified_name: &str) -> Option<&GoTypeInfo> {
         self.type_cache.get(qualified_name)
     }
-    
+
     /// Convert a Go type to Nickel type using precise AST information
     pub fn go_type_to_nickel(&self, go_type_info: &GoTypeInfo) -> Result<Type, ParserError> {
         let mut fields = HashMap::new();
-        
+
         for field in &go_type_info.fields {
-            let field_name = field.json_name.as_ref()
-                .unwrap_or(&field.name)
-                .to_string();
-            
+            let field_name = field.json_name.as_ref().unwrap_or(&field.name).to_string();
+
             let field_type = self.go_type_string_to_nickel(&field.go_type)?;
-            
+
             // Apply pointer and optional semantics
             let final_type = if field.is_pointer || field.is_optional {
                 Type::Optional(Box::new(field_type))
             } else {
                 field_type
             };
-            
-            fields.insert(field_name, Field {
-                ty: final_type,
-                required: !field.is_optional && !field.is_pointer,
-                description: field.documentation.clone(),
-                default: None,
-            });
+
+            fields.insert(
+                field_name,
+                Field {
+                    ty: final_type,
+                    required: !field.is_optional && !field.is_pointer,
+                    description: field.documentation.clone(),
+                    default: None,
+                },
+            );
         }
-        
-        Ok(Type::Record { 
-            fields, 
-            open: false // Go structs are closed by default
+
+        Ok(Type::Record {
+            fields,
+            open: false, // Go structs are closed by default
         })
     }
-    
+
     /// Convert a Go type string to Nickel type
     fn go_type_string_to_nickel(&self, go_type: &str) -> Result<Type, ParserError> {
         match go_type {
             "string" => Ok(Type::String),
-            "int" | "int8" | "int16" | "int32" | "int64" |
-            "uint" | "uint8" | "uint16" | "uint32" | "uint64" => Ok(Type::Integer),
+            "int" | "int8" | "int16" | "int32" | "int64" | "uint" | "uint8" | "uint16"
+            | "uint32" | "uint64" => Ok(Type::Integer),
             "float32" | "float64" => Ok(Type::Number),
             "bool" => Ok(Type::Bool),
             "interface{}" => Ok(Type::Any),
@@ -473,30 +492,30 @@ func isPointerType(expr ast.Expr) bool {
             s => Ok(Type::Reference(s.to_string())),
         }
     }
-    
+
     /// Parse specific Kubernetes types
-    pub async fn parse_k8s_core_types(&mut self) -> Result<HashMap<String, GoTypeInfo>, ParserError> {
+    pub async fn parse_k8s_core_types(
+        &mut self,
+    ) -> Result<HashMap<String, GoTypeInfo>, ParserError> {
         // Parse core Kubernetes types from k8s.io/api and k8s.io/apimachinery
         let repos_and_paths = vec![
-            ("https://github.com/kubernetes/api/tree/master", vec![
-                "core/v1",
-                "apps/v1", 
-                "networking/v1",
-            ]),
-            ("https://github.com/kubernetes/apimachinery/tree/master", vec![
-                "pkg/apis/meta/v1",
-                "pkg/util/intstr",
-                "pkg/api/resource",
-            ]),
+            (
+                "https://github.com/kubernetes/api/tree/master",
+                vec!["core/v1", "apps/v1", "networking/v1"],
+            ),
+            (
+                "https://github.com/kubernetes/apimachinery/tree/master",
+                vec!["pkg/apis/meta/v1", "pkg/util/intstr", "pkg/api/resource"],
+            ),
         ];
-        
+
         for (repo, paths) in repos_and_paths {
             self.fetch_and_parse_repository(repo, &paths).await?;
         }
-        
+
         Ok(self.type_cache.clone())
     }
-    
+
     /// Clear progress bars
     pub fn finish(&self) {
         self.multi_progress.clear().ok();
@@ -522,7 +541,7 @@ struct GoSourceFile {
 /// Known Kubernetes type mappings based on Go AST analysis
 pub fn create_k8s_type_registry() -> HashMap<String, TypeReference> {
     let mut registry = HashMap::new();
-    
+
     // Core v1 types
     let core_types = vec![
         ("ObjectMeta", "k8s.io", "v1"),
@@ -538,26 +557,26 @@ pub fn create_k8s_type_registry() -> HashMap<String, TypeReference> {
         ("ConfigMapKeySelector", "k8s.io", "v1"),
         ("SecretKeySelector", "k8s.io", "v1"),
     ];
-    
+
     for (kind, group, version) in core_types {
         let go_name = format!("k8s.io/api/core/{}.{}", version, kind);
         let type_ref = TypeReference::new(group.to_string(), version.to_string(), kind.to_string());
         registry.insert(go_name, type_ref);
     }
-    
+
     // Meta v1 types
     let meta_types = vec![
         ("ObjectMeta", "k8s.io", "v1"),
-        ("TypeMeta", "k8s.io", "v1"), 
+        ("TypeMeta", "k8s.io", "v1"),
         ("ListMeta", "k8s.io", "v1"),
         ("LabelSelector", "k8s.io", "v1"),
     ];
-    
+
     for (kind, group, version) in meta_types {
         let go_name = format!("k8s.io/apimachinery/pkg/apis/meta/{}.{}", version, kind);
         let type_ref = TypeReference::new(group.to_string(), version.to_string(), kind.to_string());
         registry.insert(go_name, type_ref);
     }
-    
+
     registry
 }

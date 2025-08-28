@@ -1,0 +1,68 @@
+[build]
+# Use more cores for faster builds
+jobs = 8
+
+# Platform-specific linker settings
+# [target.x86_64-unknown-linux-gnu]
+# linker = "clang"
+# rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+
+[target.x86_64-apple-darwin]
+rustflags = []
+
+[target.aarch64-apple-darwin]
+rustflags = []
+
+# Alias commands for convenience
+[alias]
+b = "build"
+c = "check"
+t = "test"
+r = "run"
+rr = "run --release"
+br = "build --release"
+
+# Local development - check all crates
+check-all = "check --workspace --all-targets"
+test-all = "test --workspace"
+build-all = "build --workspace"
+clippy-all = "clippy --workspace --all-targets -- -D warnings"
+fmt-check = "fmt --all -- --check"
+
+# Publishing helpers
+publish-dry = "publish --dry-run"
+package-check = "package --list"
+
+[env]
+# Better backtraces
+RUST_BACKTRACE = "1"
+
+[term]
+verbose = false
+color = 'auto'
+
+[net]
+retry = 2
+
+# Registry configuration
+[registries.crates-io]
+protocol = "sparse"
+
+[profile.dev]
+# Faster builds with less optimization
+opt-level = 0
+debug = 2
+incremental = true
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+
+[profile.bench]
+inherits = "release"
+
+[profile.test]
+inherits = "dev"
+# Include debug info for better test output
+debug = 2

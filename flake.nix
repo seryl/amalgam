@@ -38,118 +38,310 @@
         # Crane lib configured with our toolchain
         craneLib = (crane.mkLib pkgs).overrideToolchain rustWithComponents;
 
-        # Publishing scripts
-        publish-dry-run = pkgs.writeShellScriptBin "publish-dry-run" ''
-          echo "🔍 Running publish dry-run for all crates..."
-          echo ""
-          echo "Note: This checks each crate individually."
-          echo "Dependencies must be published in order when actually publishing."
-          echo ""
-          
-          # Check each crate can be packaged
-          for crate in amalgam-core amalgam-codegen amalgam-parser amalgam-daemon; do
-            echo "Checking $crate can be packaged..."
-            (cd crates/$crate && ${rustWithComponents}/bin/cargo package --list > /dev/null) || exit 1
-            echo "✅ $crate is ready"
-          done
-          
-          echo "Checking amalgam (CLI) can be packaged..."
-          (cd crates/amalgam-cli && ${rustWithComponents}/bin/cargo package --list > /dev/null) || exit 1
-          echo "✅ amalgam is ready"
-          
-          echo ""
-          echo "All crates can be packaged! When publishing:"
-          echo "1. First publish amalgam-core (no deps)"
-          echo "2. Then amalgam-codegen (depends on core)"
-          echo "3. Then amalgam-parser (depends on core & codegen)"  
-          echo "4. Then amalgam-daemon (depends on all above)"
-          echo "5. Finally amalgam CLI (depends on all above)"
-        '';
+        # Smart publishing tool that handles everything
+        publish = pkgs.writeShellScriptBin "publish" ''
+          set -euo pipefail
 
-        publish-all = pkgs.writeShellScriptBin "publish-all" ''
-          publish_crate() {
-            local crate_path=$1
-            local crate_name=$2
+          # Color output
+          RED='\033[0;31m'
+          GREEN='\033[0;32m'
+          YELLOW='\033[1;33m'
+          NC='\033[0m' # No Color
+
+          # Parse arguments
+          MODE="''${1:-check}"
+          VERSION=""
+          SKIP_CHECKS="false"
+          
+          while [[ $# -gt 0 ]]; do
+            case $1 in
+              --version)
+                VERSION="$2"
+                shift 2
+                ;;
+              --skip-checks)
+                SKIP_CHECKS="true"
+                shift
+                ;;
+              check|dry-run|publish)
+                MODE="$1"
+                shift
+                ;;
+              *)
+                shift
+                ;;
+            esac
+          done
+
+          # Function to check if a crate is already published
+          check_published() {
+            local crate=$1
+            local version=$2
+            ${rustWithComponents}/bin/cargo search "$crate" --limit 1 | grep -q "^$crate = \"$version\""
+          }
+
+          # Function to update dependencies for publishing
+          prepare_for_publish() {
+            local dir=$1
             
-            echo "📦 Publishing $crate_name..."
-            (cd "$crate_path" && ${rustWithComponents}/bin/cargo publish --dry-run && ${rustWithComponents}/bin/cargo publish)
+            # Create a backup
+            cp "$dir/Cargo.toml" "$dir/Cargo.toml.bak"
             
-            if [ $? -eq 0 ]; then
-              echo "⏳ Waiting 30s for crates.io to index $crate_name..."
-              sleep 30
-              echo "✅ $crate_name published!"
-            else
-              echo "❌ Failed to publish $crate_name"
-              return 1
+            # Replace path dependencies with version-only dependencies
+            ${pkgs.gnused}/bin/sed -i 's/amalgam-core = {[^}]*path[^}]*}/amalgam-core = "'"$CURRENT_VERSION"'"/g' "$dir/Cargo.toml"
+            ${pkgs.gnused}/bin/sed -i 's/amalgam-codegen = {[^}]*path[^}]*}/amalgam-codegen = "'"$CURRENT_VERSION"'"/g' "$dir/Cargo.toml"
+            ${pkgs.gnused}/bin/sed -i 's/amalgam-parser = {[^}]*path[^}]*}/amalgam-parser = "'"$CURRENT_VERSION"'"/g' "$dir/Cargo.toml"
+            ${pkgs.gnused}/bin/sed -i 's/amalgam-daemon = {[^}]*path[^}]*}/amalgam-daemon = "'"$CURRENT_VERSION"'"/g' "$dir/Cargo.toml"
+          }
+
+          # Function to restore original Cargo.toml
+          restore_cargo_toml() {
+            local dir=$1
+            if [ -f "$dir/Cargo.toml.bak" ]; then
+              mv "$dir/Cargo.toml.bak" "$dir/Cargo.toml"
             fi
           }
 
-          echo "🚀 Publishing all amalgam crates to crates.io..."
-          echo ""
-          echo "⚠️  Make sure you're logged in: cargo login <token>"
-          echo ""
-          read -p "Continue with publishing? (y/N) " -n 1 -r
-          echo
-          if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            echo "Publishing cancelled"
-            exit 1
+          # Get current version
+          CURRENT_VERSION=$(${pkgs.toml2json}/bin/toml2json < Cargo.toml | ${pkgs.jq}/bin/jq -r '.workspace.package.version')
+          echo -e "''${GREEN}Current version: $CURRENT_VERSION''${NC}"
+
+          # Handle version bumping
+          if [ -n "$VERSION" ] && [ "$VERSION" != "$CURRENT_VERSION" ]; then
+            echo -e "''${YELLOW}Bumping version from $CURRENT_VERSION to $VERSION...''${NC}"
+            
+            # Update all version strings
+            find . -name "Cargo.toml" -type f | while read -r toml; do
+              ${pkgs.gnused}/bin/sed -i "s/version = \"$CURRENT_VERSION\"/version = \"$VERSION\"/g" "$toml"
+            done
+            
+            # Update Cargo.lock
+            ${rustWithComponents}/bin/cargo update
+            
+            CURRENT_VERSION=$VERSION
+            echo -e "''${GREEN}Version bumped to $VERSION''${NC}"
+            echo -e "''${YELLOW}Don't forget to commit these changes!''${NC}"
           fi
-          
-          # Publish in dependency order
-          publish_crate "crates/amalgam-core" "amalgam-core" || exit 1
-          publish_crate "crates/amalgam-codegen" "amalgam-codegen" || exit 1
-          publish_crate "crates/amalgam-parser" "amalgam-parser" || exit 1
-          publish_crate "crates/amalgam-daemon" "amalgam-daemon" || exit 1
-          publish_crate "crates/amalgam-cli" "amalgam" || exit 1
-          
-          echo ""
-          echo "🎉 All crates published successfully!"
+
+          # Define crates in dependency order
+          CRATES=(
+            "amalgam-core:crates/amalgam-core"
+            "amalgam-codegen:crates/amalgam-codegen"
+            "amalgam-parser:crates/amalgam-parser"
+            "amalgam-daemon:crates/amalgam-daemon"
+            "amalgam:crates/amalgam-cli"
+          )
+
+          case $MODE in
+            check)
+              echo -e "\n''${GREEN}Checking publish readiness...''${NC}\n"
+              
+              # Run tests unless skipped
+              if [ "$SKIP_CHECKS" != "true" ]; then
+                echo "Running tests..."
+                ${rustWithComponents}/bin/cargo test --workspace || exit 1
+                echo "Running clippy..."
+                ${rustWithComponents}/bin/cargo clippy --workspace --all-targets || exit 1
+                echo "Checking format..."
+                ${rustWithComponents}/bin/cargo fmt --check || exit 1
+              fi
+              
+              # Check each crate
+              for crate_info in "''${CRATES[@]}"; do
+                IFS=':' read -r crate_name crate_path <<< "$crate_info"
+                echo -e "\n''${YELLOW}Checking $crate_name...''${NC}"
+                
+                if check_published "$crate_name" "$CURRENT_VERSION"; then
+                  echo -e "''${YELLOW}⚠ $crate_name v$CURRENT_VERSION is already published''${NC}"
+                else
+                  echo -e "''${GREEN}✓ $crate_name v$CURRENT_VERSION is not yet published''${NC}"
+                fi
+                
+                # Try packaging
+                prepare_for_publish "$crate_path"
+                (cd "$crate_path" && ${rustWithComponents}/bin/cargo package --list > /dev/null 2>&1)
+                if [ $? -eq 0 ]; then
+                  echo -e "''${GREEN}✓ $crate_name can be packaged''${NC}"
+                else
+                  echo -e "''${RED}✗ $crate_name cannot be packaged''${NC}"
+                fi
+                restore_cargo_toml "$crate_path"
+              done
+              ;;
+              
+            dry-run)
+              echo -e "\n''${YELLOW}Running publish dry-run...''${NC}\n"
+              
+              for crate_info in "''${CRATES[@]}"; do
+                IFS=':' read -r crate_name crate_path <<< "$crate_info"
+                echo -e "\n''${YELLOW}Dry-run for $crate_name...''${NC}"
+                
+                prepare_for_publish "$crate_path"
+                (cd "$crate_path" && ${rustWithComponents}/bin/cargo publish --dry-run)
+                restore_cargo_toml "$crate_path"
+              done
+              ;;
+              
+            publish)
+              echo -e "\n''${RED}⚠ PUBLISHING TO CRATES.IO''${NC}\n"
+              
+              # Check if logged in
+              if ! ${rustWithComponents}/bin/cargo login --list 2>/dev/null | grep -q "token"; then
+                echo -e "''${RED}Error: Not logged in to crates.io''${NC}"
+                echo "Run: cargo login <your-api-token>"
+                exit 1
+              fi
+              
+              # Confirm
+              echo -e "''${YELLOW}This will publish the following crates to crates.io:''${NC}"
+              for crate_info in "''${CRATES[@]}"; do
+                IFS=':' read -r crate_name crate_path <<< "$crate_info"
+                echo "  - $crate_name v$CURRENT_VERSION"
+              done
+              echo ""
+              read -p "Continue? (y/N) " -n 1 -r
+              echo
+              if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                echo "Cancelled"
+                exit 1
+              fi
+              
+              # Publish each crate
+              for crate_info in "''${CRATES[@]}"; do
+                IFS=':' read -r crate_name crate_path <<< "$crate_info"
+                
+                if check_published "$crate_name" "$CURRENT_VERSION"; then
+                  echo -e "''${YELLOW}Skipping $crate_name (already published)''${NC}"
+                  continue
+                fi
+                
+                echo -e "\n''${GREEN}Publishing $crate_name...''${NC}"
+                prepare_for_publish "$crate_path"
+                
+                if (cd "$crate_path" && ${rustWithComponents}/bin/cargo publish); then
+                  restore_cargo_toml "$crate_path"
+                  echo -e "''${GREEN}✓ $crate_name published!''${NC}"
+                  
+                  # Wait for crates.io to index
+                  if [ "$crate_name" != "amalgam" ]; then
+                    echo "Waiting 30s for crates.io to index..."
+                    sleep 30
+                  fi
+                else
+                  restore_cargo_toml "$crate_path"
+                  echo -e "''${RED}Failed to publish $crate_name''${NC}"
+                  exit 1
+                fi
+              done
+              
+              echo -e "\n''${GREEN}🎉 All crates published successfully!''${NC}"
+              echo -e "''${YELLOW}Don't forget to:''${NC}"
+              echo "  - git tag v$CURRENT_VERSION"
+              echo "  - git push --tags"
+              ;;
+              
+            *)
+              echo "Usage: publish [check|dry-run|publish] [--version X.Y.Z] [--skip-checks]"
+              echo ""
+              echo "Commands:"
+              echo "  check    - Check if crates are ready to publish (default)"
+              echo "  dry-run  - Run cargo publish --dry-run for all crates"
+              echo "  publish  - Actually publish to crates.io"
+              echo ""
+              echo "Options:"
+              echo "  --version X.Y.Z  - Bump version before publishing"
+              echo "  --skip-checks    - Skip tests/clippy/fmt in check mode"
+              exit 1
+              ;;
+          esac
         '';
 
-        publish-check = pkgs.writeShellScriptBin "publish-check" ''
-          echo "🔍 Checking if amalgam-core can be published (full dry-run)..."
-          echo ""
-          cd crates/amalgam-core
-          if ${rustWithComponents}/bin/cargo publish --dry-run; then
-            echo ""
-            echo "✅ amalgam-core passes all publishing checks!"
-            echo ""
-            echo "Note: Other crates can't be fully checked until amalgam-core is published"
-            echo "since they depend on it being available on crates.io"
-          else
-            echo ""
-            echo "❌ amalgam-core is not ready for publishing"
-            exit 1
-          fi
+        # Dev mode switcher
+        dev-mode = pkgs.writeShellScriptBin "dev-mode" ''
+          set -euo pipefail
+          
+          MODE="''${1:-status}"
+          
+          case $MODE in
+            local|on)
+              echo "Switching to local development mode..."
+              
+              # Update all Cargo.toml files to use path dependencies
+              ${pkgs.gnused}/bin/sed -i 's/amalgam-core = "[^"]*"/amalgam-core = { version = "0.1.0", path = "..\/amalgam-core" }/g' crates/*/Cargo.toml
+              ${pkgs.gnused}/bin/sed -i 's/amalgam-codegen = "[^"]*"/amalgam-codegen = { version = "0.1.0", path = "..\/amalgam-codegen" }/g' crates/*/Cargo.toml
+              ${pkgs.gnused}/bin/sed -i 's/amalgam-parser = "[^"]*"/amalgam-parser = { version = "0.1.0", path = "..\/amalgam-parser" }/g' crates/*/Cargo.toml
+              ${pkgs.gnused}/bin/sed -i 's/amalgam-daemon = "[^"]*"/amalgam-daemon = { version = "0.1.0", path = "..\/amalgam-daemon" }/g' crates/*/Cargo.toml
+              
+              # Fix the core crate (it shouldn't reference itself)
+              ${pkgs.gnused}/bin/sed -i '/amalgam-core = {.*path/d' crates/amalgam-core/Cargo.toml
+              
+              ${rustWithComponents}/bin/cargo update
+              echo "✓ Switched to local development mode (using path dependencies)"
+              ;;
+              
+            remote|off)
+              echo "Switching to remote/publish mode..."
+              
+              VERSION=$(${pkgs.toml2json}/bin/toml2json < Cargo.toml | ${pkgs.jq}/bin/jq -r '.workspace.package.version')
+              
+              # Update all Cargo.toml files to use version-only dependencies
+              ${pkgs.gnused}/bin/sed -i 's/amalgam-core = {[^}]*path[^}]*}/amalgam-core = "'"$VERSION"'"/g' crates/*/Cargo.toml
+              ${pkgs.gnused}/bin/sed -i 's/amalgam-codegen = {[^}]*path[^}]*}/amalgam-codegen = "'"$VERSION"'"/g' crates/*/Cargo.toml
+              ${pkgs.gnused}/bin/sed -i 's/amalgam-parser = {[^}]*path[^}]*}/amalgam-parser = "'"$VERSION"'"/g' crates/*/Cargo.toml
+              ${pkgs.gnused}/bin/sed -i 's/amalgam-daemon = {[^}]*path[^}]*}/amalgam-daemon = "'"$VERSION"'"/g' crates/*/Cargo.toml
+              
+              echo "✓ Switched to remote mode (using crates.io dependencies)"
+              echo "Note: This mode requires all dependencies to be published to crates.io"
+              ;;
+              
+            status)
+              echo "Checking dependency mode..."
+              if grep -q "path = " crates/amalgam-parser/Cargo.toml; then
+                echo "Currently in: LOCAL development mode (using path dependencies)"
+              else
+                echo "Currently in: REMOTE mode (using crates.io dependencies)"
+              fi
+              ;;
+              
+            *)
+              echo "Usage: dev-mode [local|remote|status]"
+              echo ""
+              echo "Modes:"
+              echo "  local/on   - Use local path dependencies (for development)"
+              echo "  remote/off - Use crates.io dependencies (for publishing)"
+              echo "  status     - Show current mode (default)"
+              exit 1
+              ;;
+          esac
         '';
 
-        bump-version = pkgs.writeShellScriptBin "bump-version" ''
-          new_version=$1
-          if [ -z "$new_version" ]; then
-            echo "Usage: bump-version <new-version>"
-            echo "Example: bump-version 0.1.1"
-            exit 1
-          fi
+        # Quick test runner
+        test-all = pkgs.writeShellScriptBin "test-all" ''
+          set -euo pipefail
           
-          echo "📝 Bumping version to $new_version..."
+          echo "Running complete test suite..."
+          echo ""
           
-          # Update all Cargo.toml files
-          for toml in crates/*/Cargo.toml; do
-            ${pkgs.gnused}/bin/sed -i "s/^version = \"[^\"]*\"/version = \"$new_version\"/" "$toml"
-            ${pkgs.gnused}/bin/sed -i "s/amalgam-core = { version = \"[^\"]*\"/amalgam-core = { version = \"$new_version\"/" "$toml"
-            ${pkgs.gnused}/bin/sed -i "s/amalgam-codegen = { version = \"[^\"]*\"/amalgam-codegen = { version = \"$new_version\"/" "$toml"
-            ${pkgs.gnused}/bin/sed -i "s/amalgam-parser = { version = \"[^\"]*\"/amalgam-parser = { version = \"$new_version\"/" "$toml"
-            ${pkgs.gnused}/bin/sed -i "s/amalgam-daemon = { version = \"[^\"]*\"/amalgam-daemon = { version = \"$new_version\"/" "$toml"
-          done
+          # Ensure we're in local dev mode
+          dev-mode local > /dev/null
           
-          # Update workspace version
-          ${pkgs.gnused}/bin/sed -i "s/^version = \"[^\"]*\"/version = \"$new_version\"/" Cargo.toml
+          echo "1. Running cargo check..."
+          ${rustWithComponents}/bin/cargo check --workspace --all-targets
           
-          echo "✅ Version bumped to $new_version"
-          echo "📝 Don't forget to:"
-          echo "  1. Update Cargo.lock: cargo update"
-          echo "  2. Commit changes: git commit -am 'chore: bump version to $new_version'"
-          echo "  3. Tag release: git tag v$new_version"
+          echo ""
+          echo "2. Running tests..."
+          ${rustWithComponents}/bin/cargo test --workspace
+          
+          echo ""
+          echo "3. Running clippy..."
+          ${rustWithComponents}/bin/cargo clippy --workspace --all-targets -- --deny warnings
+          
+          echo ""
+          echo "4. Checking formatting..."
+          ${rustWithComponents}/bin/cargo fmt --check
+          
+          echo ""
+          echo "✓ All checks passed!"
         '';
 
         # Build dependencies only
@@ -196,11 +388,10 @@
             # Rust toolchain from fenix
             rustWithComponents
 
-            # Publishing commands (defined above)
-            publish-dry-run
-            publish-check
-            publish-all
-            bump-version
+            # Smart commands
+            publish
+            dev-mode
+            test-all
           ] ++ (with pkgs; [
             # Build dependencies
             openssl
@@ -230,6 +421,7 @@
             # For working with schemas
             jq
             yq
+            toml2json
 
             # For Kubernetes integration
             kubectl
@@ -238,25 +430,45 @@
           ]) ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [];
 
           shellHook = ''
-            echo "🦀 Rust toolchain: $(rustc --version)"
-            echo "📦 Cargo version: $(cargo --version)"
+            echo "🦀 Amalgam Development Environment"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             echo ""
-            echo "Available commands:"
-            echo "  cargo build        - Build the project"
-            echo "  cargo test         - Run tests"
-            echo "  cargo check        - Check compilation"
-            echo "  cargo clippy       - Run linter"
-            echo "  cargo fmt          - Format code"
-            echo "  cargo watch        - Watch for changes"
-            echo "  cargo audit        - Check for vulnerabilities"
+            
+            # Check current mode
+            if grep -q "path = " crates/amalgam-parser/Cargo.toml 2>/dev/null; then
+              echo "Mode: LOCAL (using workspace path dependencies)"
+            else
+              echo "Mode: REMOTE (using crates.io dependencies)"
+            fi
+            
+            VERSION=$(${pkgs.toml2json}/bin/toml2json < Cargo.toml 2>/dev/null | ${pkgs.jq}/bin/jq -r '.workspace.package.version' || echo "unknown")
+            echo "Version: $VERSION"
             echo ""
-            echo "Publishing commands:"
-            echo "  publish-dry-run    - Check if all crates can be packaged"
-            echo "  publish-check      - Full publish test for amalgam-core" 
-            echo "  publish-all        - Publish all crates to crates.io (in order)"
-            echo "  bump-version X.Y.Z - Bump version in all Cargo.toml files"
+            echo "Quick Commands:"
+            echo "  dev-mode local    - Switch to local development (path deps)"
+            echo "  dev-mode remote   - Switch to publish mode (crates.io deps)"
+            echo "  test-all          - Run all tests, clippy, and fmt"
+            echo "  publish check     - Check if ready to publish"
+            echo "  publish dry-run   - Test publishing process"
+            echo "  publish publish   - Actually publish to crates.io"
             echo ""
-            echo "amalgam development environment ready!"
+            echo "Development Commands:"
+            echo "  cargo build       - Build the project"
+            echo "  cargo test        - Run tests"
+            echo "  cargo watch       - Watch for changes"
+            echo "  cargo clippy      - Run linter"
+            echo "  cargo fmt         - Format code"
+            echo ""
+            echo "Publishing Workflow:"
+            echo "  1. test-all                      # Ensure all tests pass"
+            echo "  2. publish check                 # Check readiness"
+            echo "  3. publish --version X.Y.Z check # Bump version and check"
+            echo "  4. publish publish               # Publish to crates.io"
+            echo "  5. git tag vX.Y.Z && git push --tags"
+            echo ""
+            
+            # Ensure we're in local dev mode by default
+            dev-mode local 2>/dev/null || true
           '';
 
           # Environment variables

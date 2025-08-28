@@ -1,6 +1,5 @@
 ---
 source: crates/amalgam-parser/tests/snapshot_test.rs
-assertion_line: 130
 expression: "format!(\"{:#?}\", ir)"
 ---
 IR {
@@ -13,6 +12,14 @@ IR {
                     name: "Simple",
                     ty: Record {
                         fields: {
+                            "metadata": Field {
+                                ty: Reference(
+                                    "io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta",
+                                ),
+                                required: false,
+                                description: None,
+                                default: None,
+                            },
                             "spec": Field {
                                 ty: Record {
                                     fields: {
@@ -25,14 +32,6 @@ IR {
                                     },
                                     open: false,
                                 },
-                                required: false,
-                                description: None,
-                                default: None,
-                            },
-                            "metadata": Field {
-                                ty: Reference(
-                                    "io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta",
-                                ),
                                 required: false,
                                 description: None,
                                 default: None,

@@ -7,7 +7,7 @@ description = "Type-safe configuration generator for Nickel from various schema 
 homepage = "https://github.com/seryl/amalgam"
 repository = "https://github.com/seryl/amalgam"
 documentation = "https://docs.rs/amalgam"
-readme = "../../README.md"
+readme = "README.md"
 keywords = ["nickel", "kubernetes", "crd", "openapi", "configuration"]
 categories = ["command-line-utilities", "development-tools", "config"]
 

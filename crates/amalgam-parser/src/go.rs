@@ -1,7 +1,10 @@
 //! Go source code parser
 
 use crate::{Parser, ParserError};
-use amalgam_core::{ir::{IR, IRBuilder}, types::{Type, Field}};
+use amalgam_core::{
+    ir::{IRBuilder, IR},
+    types::{Field, Type},
+};
 use std::collections::HashMap;
 
 /// Simplified Go AST representation
@@ -20,13 +23,20 @@ pub struct GoTypeDecl {
 
 #[derive(Debug)]
 pub enum GoType {
-    Struct { fields: Vec<GoField> },
-    Interface { methods: Vec<GoMethod> },
+    Struct {
+        fields: Vec<GoField>,
+    },
+    Interface {
+        methods: Vec<GoMethod>,
+    },
     Alias(Box<GoType>),
     Basic(String),
     Array(Box<GoType>),
     Slice(Box<GoType>),
-    Map { key: Box<GoType>, value: Box<GoType> },
+    Map {
+        key: Box<GoType>,
+        value: Box<GoType>,
+    },
     Pointer(Box<GoType>),
 }
 
@@ -48,21 +58,21 @@ pub struct GoParser;
 
 impl Parser for GoParser {
     type Input = GoFile;
-    
+
     fn parse(&self, input: Self::Input) -> Result<IR, ParserError> {
         let mut builder = IRBuilder::new().module(&input.package);
-        
+
         // Add imports
         for import in input.imports {
             builder = builder.add_import(import);
         }
-        
+
         // Convert types
         for type_decl in input.types {
             let ty = self.go_type_to_type(&type_decl.ty)?;
             builder = builder.add_type(type_decl.name, ty);
         }
-        
+
         Ok(builder.build())
     }
 }
@@ -71,13 +81,13 @@ impl GoParser {
     pub fn new() -> Self {
         Self
     }
-    
+
     fn go_type_to_type(&self, go_type: &GoType) -> Result<Type, ParserError> {
         match go_type {
             GoType::Basic(name) => match name.as_str() {
                 "string" => Ok(Type::String),
-                "int" | "int8" | "int16" | "int32" | "int64" |
-                "uint" | "uint8" | "uint16" | "uint32" | "uint64" => Ok(Type::Integer),
+                "int" | "int8" | "int16" | "int32" | "int64" | "uint" | "uint8" | "uint16"
+                | "uint32" | "uint64" => Ok(Type::Integer),
                 "float32" | "float64" => Ok(Type::Number),
                 "bool" => Ok(Type::Bool),
                 "byte" => Ok(Type::Integer), // byte is alias for uint8
@@ -90,14 +100,17 @@ impl GoParser {
                 for field in fields {
                     let field_type = self.go_type_to_type(&field.ty)?;
                     let (name, required) = self.parse_field_tag(&field.name, &field.tag);
-                    record_fields.insert(name, Field {
-                        ty: field_type,
-                        required,
-                        description: None,
-                        default: None,
-                    });
+                    record_fields.insert(
+                        name,
+                        Field {
+                            ty: field_type,
+                            required,
+                            description: None,
+                            default: None,
+                        },
+                    );
                 }
-                Ok(Type::Record { 
+                Ok(Type::Record {
                     fields: record_fields,
                     open: false,
                 })
@@ -128,7 +141,7 @@ impl GoParser {
             }
         }
     }
-    
+
     fn parse_field_tag(&self, field_name: &str, tag: &Option<String>) -> (String, bool) {
         if let Some(tag_str) = tag {
             // Parse JSON tag if present
@@ -144,7 +157,7 @@ impl GoParser {
         }
         (field_name.to_string(), true)
     }
-    
+
     fn extract_json_tag(&self, tag: &str) -> Option<String> {
         // Simple JSON tag extraction - in real implementation would use proper parsing
         if let Some(start) = tag.find("json:\"") {

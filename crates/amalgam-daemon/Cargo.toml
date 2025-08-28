@@ -7,7 +7,7 @@ description = "Runtime daemon for watching and regenerating types for amalgam"
 homepage = "https://github.com/seryl/amalgam"
 repository = "https://github.com/seryl/amalgam"
 documentation = "https://docs.rs/amalgam-daemon"
-readme = false
+readme = "README.md"
 keywords = ["daemon", "watch", "kubernetes", "crd", "configuration"]
 categories = ["development-tools", "config"]
 

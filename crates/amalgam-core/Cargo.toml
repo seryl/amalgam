@@ -7,7 +7,7 @@ description = "Core IR and type system for amalgam configuration generator"
 homepage = "https://github.com/seryl/amalgam"
 repository = "https://github.com/seryl/amalgam"
 documentation = "https://docs.rs/amalgam-core"
-readme = false
+readme = "README.md"
 keywords = ["configuration", "nickel", "kubernetes", "types", "codegen"]
 categories = ["config", "development-tools"]
 

@@ -286,33 +286,54 @@ impl Codegen for NickelCodegen {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use amalgam_core::ir::{Module, Metadata};
+    use std::collections::HashMap;
+
+    fn create_test_module() -> Module {
+        Module {
+            name: "test".to_string(),
+            imports: Vec::new(),
+            types: Vec::new(),
+            constants: Vec::new(),
+            metadata: Metadata {
+                source_language: None,
+                source_file: None,
+                version: None,
+                generated_at: None,
+                custom: HashMap::new(),
+            },
+        }
+    }
 
     #[test]
     fn test_simple_type_generation() {
-        let codegen = NickelCodegen::new();
+        let mut codegen = NickelCodegen::new();
+        let module = create_test_module();
 
-        assert_eq!(codegen.type_to_nickel(&Type::String, 0).unwrap(), "String");
-        assert_eq!(codegen.type_to_nickel(&Type::Number, 0).unwrap(), "Number");
-        assert_eq!(codegen.type_to_nickel(&Type::Bool, 0).unwrap(), "Bool");
-        assert_eq!(codegen.type_to_nickel(&Type::Any, 0).unwrap(), "Dyn");
+        assert_eq!(codegen.type_to_nickel(&Type::String, &module, 0).unwrap(), "String");
+        assert_eq!(codegen.type_to_nickel(&Type::Number, &module, 0).unwrap(), "Number");
+        assert_eq!(codegen.type_to_nickel(&Type::Bool, &module, 0).unwrap(), "Bool");
+        assert_eq!(codegen.type_to_nickel(&Type::Any, &module, 0).unwrap(), "Dyn");
     }
 
     #[test]
     fn test_array_generation() {
-        let codegen = NickelCodegen::new();
+        let mut codegen = NickelCodegen::new();
+        let module = create_test_module();
         let array_type = Type::Array(Box::new(Type::String));
         assert_eq!(
-            codegen.type_to_nickel(&array_type, 0).unwrap(),
+            codegen.type_to_nickel(&array_type, &module, 0).unwrap(),
             "Array String"
         );
     }
 
     #[test]
     fn test_optional_generation() {
-        let codegen = NickelCodegen::new();
+        let mut codegen = NickelCodegen::new();
+        let module = create_test_module();
         let optional_type = Type::Optional(Box::new(Type::String));
         assert_eq!(
-            codegen.type_to_nickel(&optional_type, 0).unwrap(),
+            codegen.type_to_nickel(&optional_type, &module, 0).unwrap(),
             "String | Null"
         );
     }

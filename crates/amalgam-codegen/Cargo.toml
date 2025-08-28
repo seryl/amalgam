@@ -7,7 +7,7 @@ description = "Code generators for Nickel and Go for amalgam"
 homepage = "https://github.com/seryl/amalgam"
 repository = "https://github.com/seryl/amalgam"
 documentation = "https://docs.rs/amalgam-codegen"
-readme = false
+readme = "README.md"
 keywords = ["codegen", "nickel", "golang", "generator", "configuration"]
 categories = ["development-tools::build-utils", "config"]
 
