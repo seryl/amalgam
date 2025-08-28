@@ -3,6 +3,13 @@ name = "amalgam-core"
 version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0"
+description = "Core IR and type system for amalgam configuration generator"
+homepage = "https://github.com/seryl/amalgam"
+repository = "https://github.com/seryl/amalgam"
+documentation = "https://docs.rs/amalgam-core"
+readme = false
+keywords = ["configuration", "nickel", "kubernetes", "types", "codegen"]
+categories = ["config", "development-tools"]
 
 [dependencies]
 serde.workspace = true

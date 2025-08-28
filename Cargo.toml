@@ -8,6 +8,13 @@ members = [
     "crates/amalgam-cli",
 ]
 
+[workspace.metadata.release]
+shared-version = true
+consolidate-commits = true
+pre-release-commit-message = "release: version {{version}}"
+tag-prefix = "v"
+tag-name = "{{prefix}}{{version}}"
+
 [workspace.package]
 version = "0.1.0"
 edition = "2021"

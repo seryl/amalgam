@@ -3,11 +3,18 @@ name = "amalgam-daemon"
 version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0"
+description = "Runtime daemon for watching and regenerating types for amalgam"
+homepage = "https://github.com/seryl/amalgam"
+repository = "https://github.com/seryl/amalgam"
+documentation = "https://docs.rs/amalgam-daemon"
+readme = false
+keywords = ["daemon", "watch", "kubernetes", "crd", "configuration"]
+categories = ["development-tools", "config"]
 
 [dependencies]
-amalgam-core = { path = "../amalgam-core" }
-amalgam-parser = { path = "../amalgam-parser" }
-amalgam-codegen = { path = "../amalgam-codegen" }
+amalgam-core = { version = "0.1.0", path = "../amalgam-core" }
+amalgam-parser = { version = "0.1.0", path = "../amalgam-parser" }
+amalgam-codegen = { version = "0.1.0", path = "../amalgam-codegen" }
 tokio.workspace = true
 kube = { workspace = true, optional = true }
 anyhow.workspace = true
