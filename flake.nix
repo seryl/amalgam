@@ -422,14 +422,19 @@
             cargo-criterion  # benchmarking
             cargo-insta      # snapshot testing
 
-            # For WASM builds (future)
+            # For WASM builds
             wasm-pack
             wasm-bindgen-cli
+            binaryen  # WASM optimizer (includes wasm-opt)
+            wasmtime  # WASM runtime for testing
 
+            # Python for complex scripts
+            python3
+            python311Packages.rich
+            python311Packages.click
+            python311Packages.toml
+            
             # General dev tools
-            just
-            bacon
-            hyperfine  # benchmarking
             tokei      # code statistics
 
             # For working with schemas

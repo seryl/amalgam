@@ -1,5 +1,12 @@
 # 🔧 Amalgam
 
+[![Crates.io](https://img.shields.io/crates/v/amalgam.svg)](https://crates.io/crates/amalgam)
+[![Documentation](https://docs.rs/amalgam/badge.svg)](https://docs.rs/amalgam)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/seryl/amalgam/ci.yml?branch=main)](https://github.com/seryl/amalgam/actions)
+[![codecov](https://codecov.io/gh/seryl/amalgam/branch/main/graph/badge.svg)](https://codecov.io/gh/seryl/amalgam)
+[![Dependencies](https://deps.rs/repo/github/seryl/amalgam/status.svg)](https://deps.rs/repo/github/seryl/amalgam)
+
 **Generate type-safe [Nickel](https://nickel-lang.org) configurations from any schema source**
 
 Amalgam transforms Kubernetes CRDs, OpenAPI schemas, and other type definitions into strongly-typed Nickel configuration language, enabling type-safe infrastructure as code with automatic validation and completion.
@@ -261,8 +268,45 @@ cargo test
 # Run specific test suite
 cargo test --package amalgam-parser
 
-# Update snapshots
-cargo test -- --ignored
+# Run with coverage (requires cargo-tarpaulin)
+cargo tarpaulin --out Html --output-dir coverage
+
+# Run benchmarks (requires cargo-criterion)
+cargo criterion
+
+# Update snapshot tests (requires cargo-insta)
+cargo insta review
+
+# Run tests with all features
+cargo test --all-features
+
+# Run doctests only
+cargo test --doc
+
+# Run a specific test
+cargo test test_kubernetes_resolver
+```
+
+### Code Quality
+
+```bash
+# Format code
+cargo fmt
+
+# Run linter
+cargo clippy -- -D warnings
+
+# Check for security vulnerabilities
+cargo audit
+
+# Check for outdated dependencies
+cargo outdated
+
+# Generate documentation
+cargo doc --no-deps --open
+
+# Check licenses
+cargo license
 ```
 
 ## 🤝 Contributing
