@@ -1,7 +1,7 @@
 //! Unified type system using algebraic data types
 
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 /// Core type representation - algebraic data types
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -24,7 +24,7 @@ pub enum Type {
 
     /// Product type (struct/record)
     Record {
-        fields: HashMap<String, Field>,
+        fields: BTreeMap<String, Field>,
         open: bool, // Whether additional fields are allowed
     },
 
@@ -34,7 +34,7 @@ pub enum Type {
     /// Tagged union (discriminated)
     TaggedUnion {
         tag_field: String,
-        variants: HashMap<String, Type>,
+        variants: BTreeMap<String, Type>,
     },
 
     /// Reference to another type
@@ -57,13 +57,13 @@ pub struct Field {
 
 /// Type system operations
 pub struct TypeSystem {
-    types: HashMap<String, Type>,
+    types: BTreeMap<String, Type>,
 }
 
 impl TypeSystem {
     pub fn new() -> Self {
         Self {
-            types: HashMap::new(),
+            types: BTreeMap::new(),
         }
     }
 

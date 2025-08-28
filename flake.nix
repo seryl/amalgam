@@ -48,12 +48,17 @@
           # Parse arguments
           MODE="''${1:-check}"
           VERSION=""
+          BUMP_TYPE=""
           SKIP_CHECKS="false"
 
           while [[ $# -gt 0 ]]; do
             case $1 in
               --version)
                 VERSION="$2"
+                shift 2
+                ;;
+              --bump)
+                BUMP_TYPE="$2"
                 shift 2
                 ;;
               --skip-checks)
@@ -110,20 +115,40 @@
           CURRENT_VERSION=$(${pkgs.toml2json}/bin/toml2json < Cargo.toml | ${pkgs.jq}/bin/jq -r '.workspace.package.version')
           echo -e "''${GREEN}Current version: $CURRENT_VERSION''${NC}"
 
+          # Handle semantic version bumping
+          if [ -n "$BUMP_TYPE" ] && [ -z "$VERSION" ]; then
+            IFS='.' read -r major minor patch <<< "$CURRENT_VERSION"
+            case $BUMP_TYPE in
+              major)
+                VERSION="$((major + 1)).0.0"
+                ;;
+              minor)
+                VERSION="$major.$((minor + 1)).0"
+                ;;
+              patch)
+                VERSION="$major.$minor.$((patch + 1))"
+                ;;
+              *)
+                echo -e "''${RED}Invalid bump type: $BUMP_TYPE (use major, minor, or patch)''${NC}"
+                exit 1
+                ;;
+            esac
+            echo -e "''${YELLOW}Auto-bumping $BUMP_TYPE version''${NC}"
+          fi
+
           # Handle version bumping
           if [ -n "$VERSION" ] && [ "$VERSION" != "$CURRENT_VERSION" ]; then
             echo -e "''${YELLOW}Bumping version from $CURRENT_VERSION to $VERSION...''${NC}"
 
-            # Update all version strings
-            find . -name "Cargo.toml" -type f | while read -r toml; do
-              ${pkgs.gnused}/bin/sed -i "s/version = \"$CURRENT_VERSION\"/version = \"$VERSION\"/g" "$toml"
-            done
+            # Only update the workspace version - all members inherit it
+            ${pkgs.gnused}/bin/sed -i "s/^version = \"$CURRENT_VERSION\"/version = \"$VERSION\"/" Cargo.toml
 
             # Update Cargo.lock
             ${rustWithComponents}/bin/cargo update
 
             CURRENT_VERSION=$VERSION
             echo -e "''${GREEN}Version bumped to $VERSION''${NC}"
+            echo -e "''${YELLOW}Note: All workspace members inherit this version automatically''${NC}"
             echo -e "''${YELLOW}Don't forget to commit these changes!''${NC}"
           fi
 
@@ -247,7 +272,7 @@
               ;;
 
             *)
-              echo "Usage: publish [check|dry-run|publish] [--version X.Y.Z] [--skip-checks]"
+              echo "Usage: publish [check|dry-run|publish] [OPTIONS]"
               echo ""
               echo "Commands:"
               echo "  check    - Check if crates are ready to publish (default)"
@@ -255,8 +280,16 @@
               echo "  publish  - Actually publish to crates.io"
               echo ""
               echo "Options:"
-              echo "  --version X.Y.Z  - Bump version before publishing"
-              echo "  --skip-checks    - Skip tests/clippy/fmt in check mode"
+              echo "  --version X.Y.Z      - Set exact version"
+              echo "  --bump TYPE          - Bump version (major|minor|patch)"
+              echo "  --skip-checks        - Skip tests/clippy/fmt in check mode"
+              echo ""
+              echo "Examples:"
+              echo "  publish --bump patch check  # Bump patch version and check"
+              echo "  publish --bump minor publish # Bump minor version and publish"
+              echo "  publish --version 1.0.0      # Set version to 1.0.0"
+              echo ""
+              echo "Note: All workspace members inherit the version from Cargo.toml"
               exit 1
               ;;
           esac
@@ -482,9 +515,14 @@
             echo "Publishing Workflow:"
             echo "  1. test-all                      # Ensure all tests pass"
             echo "  2. publish check                 # Check readiness"
-            echo "  3. publish --version X.Y.Z check # Bump version and check"
+            echo "  3. publish --bump patch check   # Bump patch version and check"
             echo "  4. publish publish               # Publish to crates.io"
             echo "  5. git tag vX.Y.Z && git push --tags"
+            echo ""
+            echo "Version Management:"
+            echo "  publish --bump major   # Bump major version (X.0.0)"
+            echo "  publish --bump minor   # Bump minor version (x.Y.0)"
+            echo "  publish --bump patch   # Bump patch version (x.y.Z)"
             echo ""
 
             # Ensure we're in local dev mode by default

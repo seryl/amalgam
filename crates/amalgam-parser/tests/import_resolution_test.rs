@@ -15,7 +15,7 @@ use amalgam_core::{
 };
 use amalgam_parser::{crd::CRDParser, package::PackageGenerator, Parser};
 use fixtures::Fixtures;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 #[test]
 fn test_k8s_type_reference_detection() {
@@ -119,7 +119,7 @@ fn test_reference_resolution_to_alias() {
     // Create a module with k8s type reference and import
     let mut ir = IR::new();
 
-    let mut fields = HashMap::new();
+    let mut fields = BTreeMap::new();
     fields.insert(
         "metadata".to_string(),
         Field {
@@ -144,7 +144,7 @@ fn test_reference_resolution_to_alias() {
                 open: false,
             },
             documentation: None,
-            annotations: HashMap::new(),
+            annotations: BTreeMap::new(),
         }],
         constants: vec![],
         metadata: Default::default(),
@@ -234,7 +234,7 @@ fn test_case_insensitive_type_matching() {
     // The resolver should handle case differences between reference and file names
     let mut ir = IR::new();
 
-    let mut fields = HashMap::new();
+    let mut fields = BTreeMap::new();
     fields.insert(
         "metadata".to_string(),
         Field {
@@ -260,7 +260,7 @@ fn test_case_insensitive_type_matching() {
                 open: false,
             },
             documentation: None,
-            annotations: HashMap::new(),
+            annotations: BTreeMap::new(),
         }],
         constants: vec![],
         metadata: Default::default(),

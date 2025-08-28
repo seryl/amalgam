@@ -211,7 +211,7 @@ struct ImportInfo {
 mod tests {
     use super::*;
     use amalgam_core::ir::Metadata;
-    use std::collections::HashMap;
+    use std::collections::BTreeMap;
 
     fn create_test_module(name: &str, imports: Vec<Import>) -> Module {
         Module {
@@ -224,7 +224,7 @@ mod tests {
                 source_file: None,
                 version: None,
                 generated_at: None,
-                custom: HashMap::new(),
+                custom: BTreeMap::new(),
             },
         }
     }
@@ -276,7 +276,7 @@ mod tests {
             name: "MyType".to_string(),
             ty: amalgam_core::types::Type::String,
             documentation: None,
-            annotations: HashMap::new(),
+            annotations: BTreeMap::new(),
         });
 
         let resolved = resolver.resolve("MyType", &module, &ResolutionContext::default());

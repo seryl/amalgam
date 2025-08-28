@@ -8,12 +8,18 @@ use amalgam_core::{
 use indicatif::{ProgressBar, ProgressStyle};
 use reqwest;
 use serde_json::Value;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::time::Duration;
 
 /// Fetches and generates k8s.io core types
 pub struct K8sTypesFetcher {
     client: reqwest::Client,
+}
+
+impl Default for K8sTypesFetcher {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl K8sTypesFetcher {
@@ -150,10 +156,8 @@ impl K8sTypesFetcher {
             )));
         }
 
-        let group = if parts[3] == "core" {
-            "k8s.io".to_string()
-        } else if parts[2] == "apimachinery" {
-            "k8s.io".to_string() // apimachinery types are also under k8s.io
+        let group = if parts[3] == "core" || parts[2] == "apimachinery" {
+            "k8s.io".to_string() // core and apimachinery types are under k8s.io
         } else {
             format!("{}.k8s.io", parts[3])
         };
@@ -178,10 +182,11 @@ impl K8sTypesFetcher {
                 .get("description")
                 .and_then(|d| d.as_str())
                 .map(String::from),
-            annotations: HashMap::new(),
+            annotations: BTreeMap::new(),
         })
     }
 
+    #[allow(clippy::only_used_in_recursion)]
     fn json_schema_to_type(&self, schema: &Value) -> Result<Type, ParserError> {
         let schema_type = schema.get("type").and_then(|v| v.as_str());
 
@@ -199,7 +204,7 @@ impl K8sTypesFetcher {
                 Ok(Type::Array(Box::new(items)))
             }
             Some("object") => {
-                let mut fields = HashMap::new();
+                let mut fields = BTreeMap::new();
 
                 if let Some(Value::Object(props)) = schema.get("properties") {
                     let required = schema
@@ -283,7 +288,7 @@ pub fn generate_k8s_package() -> Module {
         name: "ObjectMeta".to_string(),
         ty: Type::Record {
             fields: {
-                let mut fields = HashMap::new();
+                let mut fields = BTreeMap::new();
                 fields.insert(
                     "name".to_string(),
                     Field {
@@ -364,7 +369,7 @@ pub fn generate_k8s_package() -> Module {
         documentation: Some(
             "ObjectMeta is metadata that all persisted resources must have".to_string(),
         ),
-        annotations: HashMap::new(),
+        annotations: BTreeMap::new(),
     };
 
     module.types.push(object_meta);

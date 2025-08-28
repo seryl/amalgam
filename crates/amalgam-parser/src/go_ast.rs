@@ -5,7 +5,7 @@ use amalgam_core::types::{Field, Type};
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use reqwest;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::process::Command;
 use std::sync::Arc;
 use std::time::Duration;
@@ -44,6 +44,12 @@ pub enum GoTypeKind {
     Interface,
     Alias,
     Basic,
+}
+
+impl Default for GoASTParser {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl GoASTParser {
@@ -198,14 +204,14 @@ impl GoASTParser {
     /// Parse Go source files using a Go script
     async fn parse_go_files(&mut self, files: &[GoSourceFile]) -> Result<(), ParserError> {
         // Create a temporary directory with the Go files
-        let temp_dir = tempfile::tempdir().map_err(|e| ParserError::Io(e))?;
+        let temp_dir = tempfile::tempdir().map_err(ParserError::Io)?;
 
         // Write files to temp directory
         for file in files {
             let file_path = temp_dir.path().join(&file.name);
             tokio::fs::write(&file_path, &file.content)
                 .await
-                .map_err(|e| ParserError::Io(e))?;
+                .map_err(ParserError::Io)?;
         }
 
         // Create a Go parser script
@@ -213,14 +219,14 @@ impl GoASTParser {
         let script_path = temp_dir.path().join("parser.go");
         tokio::fs::write(&script_path, parser_script)
             .await
-            .map_err(|e| ParserError::Io(e))?;
+            .map_err(ParserError::Io)?;
 
         // Run the Go parser (still synchronous since it's a subprocess)
         let output = tokio::task::spawn_blocking({
             let dir = temp_dir.path().to_path_buf();
             move || {
                 Command::new("go")
-                    .args(&["run", "parser.go"])
+                    .args(["run", "parser.go"])
                     .current_dir(dir)
                     .output()
             }
@@ -430,7 +436,7 @@ func isPointerType(expr ast.Expr) bool {
 
     /// Convert a Go type to Nickel type using precise AST information
     pub fn go_type_to_nickel(&self, go_type_info: &GoTypeInfo) -> Result<Type, ParserError> {
-        let mut fields = HashMap::new();
+        let mut fields = BTreeMap::new();
 
         for field in &go_type_info.fields {
             let field_name = field.json_name.as_ref().unwrap_or(&field.name).to_string();
@@ -462,6 +468,7 @@ func isPointerType(expr ast.Expr) bool {
     }
 
     /// Convert a Go type string to Nickel type
+    #[allow(clippy::only_used_in_recursion)]
     fn go_type_string_to_nickel(&self, go_type: &str) -> Result<Type, ParserError> {
         match go_type {
             "string" => Ok(Type::String),

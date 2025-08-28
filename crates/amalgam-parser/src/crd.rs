@@ -6,7 +6,7 @@ use amalgam_core::{
     types::Type,
 };
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 /// Kubernetes CustomResourceDefinition (simplified)
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -259,10 +259,10 @@ impl CRDParser {
     }
 
     /// Convert Go type string to Nickel Type
+    #[allow(clippy::only_used_in_recursion)]
     fn go_type_string_to_nickel_type(&self, go_type: &str) -> Result<Type, ParserError> {
-        if go_type.starts_with("[]") {
+        if let Some(elem_type) = go_type.strip_prefix("[]") {
             // Array type
-            let elem_type = &go_type[2..];
             let elem = self.go_type_string_to_nickel_type(elem_type)?;
             Ok(Type::Array(Box::new(elem)))
         } else if go_type.starts_with("map[") {
@@ -286,6 +286,7 @@ impl CRDParser {
         }
     }
 
+    #[allow(clippy::only_used_in_recursion)]
     fn json_schema_to_type(&self, schema: &serde_json::Value) -> Result<Type, ParserError> {
         use serde_json::Value;
 
@@ -306,7 +307,7 @@ impl CRDParser {
                 Ok(Type::Array(Box::new(items)))
             }
             Some("object") => {
-                let mut fields = HashMap::new();
+                let mut fields = BTreeMap::new();
                 if let Some(Value::Object(props)) = schema.get("properties") {
                     let required = schema
                         .get("required")

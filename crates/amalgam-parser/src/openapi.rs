@@ -6,7 +6,7 @@ use amalgam_core::{
     types::{Field, Type},
 };
 use openapiv3::{OpenAPI, Schema, SchemaKind, Type as OpenAPIType};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 pub struct OpenAPIParser;
 
@@ -35,6 +35,7 @@ impl OpenAPIParser {
         Self
     }
 
+    #[allow(clippy::only_used_in_recursion)]
     fn schema_to_type(&self, schema: &Schema) -> Result<Type, ParserError> {
         match &schema.schema_kind {
             SchemaKind::Type(OpenAPIType::String(_)) => Ok(Type::String),
@@ -52,7 +53,7 @@ impl OpenAPIParser {
                 Ok(Type::Array(Box::new(item_type)))
             }
             SchemaKind::Type(OpenAPIType::Object(object_type)) => {
-                let mut fields = HashMap::new();
+                let mut fields = BTreeMap::new();
                 for (field_name, field_schema_ref) in &object_type.properties {
                     if let openapiv3::ReferenceOr::Item(field_schema) = field_schema_ref {
                         let field_type = self.schema_to_type(field_schema)?;

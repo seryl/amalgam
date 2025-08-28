@@ -2,7 +2,7 @@
 
 use amalgam_codegen::resolver::{ResolutionContext, TypeResolver};
 use amalgam_core::ir::{Import, Metadata, Module};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 /// Create a test module with k8s imports
 fn create_test_module_with_k8s_imports() -> Module {
@@ -27,7 +27,7 @@ fn create_test_module_with_k8s_imports() -> Module {
             source_file: None,
             version: None,
             generated_at: None,
-            custom: HashMap::new(),
+            custom: BTreeMap::new(),
         },
     }
 }
@@ -68,7 +68,7 @@ fn test_crossplane_type_resolution() {
             source_file: None,
             version: None,
             generated_at: None,
-            custom: HashMap::new(),
+            custom: BTreeMap::new(),
         },
     };
     let context = ResolutionContext::default();
@@ -95,7 +95,7 @@ fn test_unknown_type_resolution() {
             source_file: None,
             version: None,
             generated_at: None,
-            custom: HashMap::new(),
+            custom: BTreeMap::new(),
         },
     };
     let context = ResolutionContext::default();

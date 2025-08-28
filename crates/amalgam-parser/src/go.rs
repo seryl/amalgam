@@ -5,7 +5,7 @@ use amalgam_core::{
     ir::{IRBuilder, IR},
     types::{Field, Type},
 };
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 /// Simplified Go AST representation
 #[derive(Debug)]
@@ -96,7 +96,7 @@ impl GoParser {
                 _ => Ok(Type::Reference(name.clone())),
             },
             GoType::Struct { fields } => {
-                let mut record_fields = HashMap::new();
+                let mut record_fields = BTreeMap::new();
                 for field in fields {
                     let field_type = self.go_type_to_type(&field.ty)?;
                     let (name, required) = self.parse_field_tag(&field.name, &field.tag);

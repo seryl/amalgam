@@ -2,7 +2,7 @@
 
 use crate::types::Type;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 /// Intermediate representation of a schema/module
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -31,7 +31,7 @@ pub struct TypeDefinition {
     pub name: String,
     pub ty: Type,
     pub documentation: Option<String>,
-    pub annotations: HashMap<String, serde_json::Value>,
+    pub annotations: BTreeMap<String, serde_json::Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -48,7 +48,7 @@ pub struct Metadata {
     pub source_file: Option<String>,
     pub version: Option<String>,
     pub generated_at: Option<String>,
-    pub custom: HashMap<String, serde_json::Value>,
+    pub custom: BTreeMap<String, serde_json::Value>,
 }
 
 impl IR {
@@ -115,7 +115,7 @@ impl IRBuilder {
                 name: name.into(),
                 ty,
                 documentation: None,
-                annotations: HashMap::new(),
+                annotations: BTreeMap::new(),
             });
         }
         self

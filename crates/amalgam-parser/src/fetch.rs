@@ -51,7 +51,7 @@ impl CRDFetcher {
         } else if url.ends_with(".yaml") || url.ends_with(".yml") {
             // Direct YAML file
             if let Some(ref pb) = main_spinner {
-                pb.set_message(format!("Downloading YAML file..."));
+                pb.set_message("Downloading YAML file...".to_string());
             } else {
                 println!("Downloading YAML file from {}", url);
             }
@@ -215,9 +215,7 @@ impl CRDFetcher {
             let download_url = item.download_url.clone();
             let main_progress = main_progress.clone();
             let multi_progress = multi_progress.clone();
-            let is_tty = is_tty;
             let active_downloads = active_downloads.clone();
-            let total_files = total_files;
 
             async move {
                 let _permit = semaphore.acquire().await.unwrap();

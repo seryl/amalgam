@@ -43,6 +43,12 @@ pub struct DependencyGraph {
     dependents: HashMap<TypeNode, HashSet<TypeNode>>,
 }
 
+impl Default for DependencyGraph {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DependencyGraph {
     pub fn new() -> Self {
         Self {

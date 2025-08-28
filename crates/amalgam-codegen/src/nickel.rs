@@ -292,7 +292,7 @@ impl Codegen for NickelCodegen {
 mod tests {
     use super::*;
     use amalgam_core::ir::{Metadata, Module};
-    use std::collections::HashMap;
+    use std::collections::BTreeMap;
 
     fn create_test_module() -> Module {
         Module {
@@ -305,7 +305,7 @@ mod tests {
                 source_file: None,
                 version: None,
                 generated_at: None,
-                custom: HashMap::new(),
+                custom: BTreeMap::new(),
             },
         }
     }

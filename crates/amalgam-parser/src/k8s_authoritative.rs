@@ -6,7 +6,7 @@ use crate::{
     ParserError,
 };
 use amalgam_core::{ir::TypeDefinition, types::Type};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 /// Authoritative source for Kubernetes type definitions
 pub struct K8sAuthoritativeTypes {
@@ -14,6 +14,12 @@ pub struct K8sAuthoritativeTypes {
     go_types: HashMap<String, GoTypeInfo>,
     /// Mapping from Go qualified names to TypeReferences
     type_mapping: HashMap<String, TypeReference>,
+}
+
+impl Default for K8sAuthoritativeTypes {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl K8sAuthoritativeTypes {
@@ -121,7 +127,7 @@ impl K8sAuthoritativeTypes {
             name: go_type.name.clone(),
             ty: nickel_type,
             documentation: go_type.documentation.clone(),
-            annotations: HashMap::new(),
+            annotations: BTreeMap::new(),
         })
     }
 
@@ -213,6 +219,12 @@ impl K8sAuthoritativeTypes {
 /// Pre-built registry of common Kubernetes type patterns
 pub struct K8sTypePatterns {
     patterns: HashMap<String, String>,
+}
+
+impl Default for K8sTypePatterns {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl K8sTypePatterns {

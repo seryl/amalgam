@@ -114,9 +114,9 @@ impl NamespacedPackage {
     ) {
         self.types
             .entry(group)
-            .or_insert_with(HashMap::new)
+            .or_default()
             .entry(version)
-            .or_insert_with(HashMap::new)
+            .or_default()
             .insert(kind, type_def);
     }
 
@@ -133,7 +133,7 @@ impl NamespacedPackage {
         groups.sort();
 
         for group in groups {
-            let safe_group = group.replace('.', "_").replace('-', "_");
+            let safe_group = group.replace(['.', '-'], "_");
             content.push_str(&format!(
                 "  {} = import \"./{}/mod.ncl\",\n",
                 safe_group, group
@@ -289,8 +289,7 @@ impl NamespacedPackage {
 
 #[allow(dead_code)]
 fn sanitize_name(name: &str) -> String {
-    name.replace('-', "_")
-        .replace('.', "_")
+    name.replace(['-', '.'], "_")
         .to_lowercase()
         .chars()
         .map(|c| {

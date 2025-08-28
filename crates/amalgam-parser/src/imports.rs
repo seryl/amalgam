@@ -103,7 +103,7 @@ impl TypeReference {
     pub fn module_alias(&self) -> String {
         format!(
             "{}_{}",
-            self.group.replace('.', "_").replace('-', "_"),
+            self.group.replace(['.', '-'], "_"),
             self.version.replace('-', "_")
         )
     }
@@ -115,6 +115,12 @@ pub struct ImportResolver {
     references: HashSet<TypeReference>,
     /// Known types that are already defined locally
     local_types: HashSet<String>,
+}
+
+impl Default for ImportResolver {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ImportResolver {

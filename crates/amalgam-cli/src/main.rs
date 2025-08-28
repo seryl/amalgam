@@ -184,7 +184,7 @@ async fn handle_import(source: ImportSource) -> Result<()> {
             // Determine package name
             let package_name = package.unwrap_or_else(|| {
                 url.split('/')
-                    .last()
+                    .next_back()
                     .unwrap_or("generated")
                     .trim_end_matches(".yaml")
                     .trim_end_matches(".yml")
@@ -266,7 +266,7 @@ async fn handle_import(source: ImportSource) -> Result<()> {
             let content = fs::read_to_string(&file)
                 .with_context(|| format!("Failed to read CRD file: {:?}", file))?;
 
-            let crd: CRD = if file.extension().map_or(false, |ext| ext == "json") {
+            let crd: CRD = if file.extension().is_some_and(|ext| ext == "json") {
                 serde_json::from_str(&content)?
             } else {
                 serde_yaml::from_str(&content)?
@@ -345,7 +345,7 @@ async fn handle_import(source: ImportSource) -> Result<()> {
             let content = fs::read_to_string(&file)
                 .with_context(|| format!("Failed to read OpenAPI file: {:?}", file))?;
 
-            let spec: openapiv3::OpenAPI = if file.extension().map_or(false, |ext| ext == "json") {
+            let spec: openapiv3::OpenAPI = if file.extension().is_some_and(|ext| ext == "json") {
                 serde_json::from_str(&content)?
             } else {
                 serde_yaml::from_str(&content)?
@@ -457,7 +457,7 @@ fn handle_convert(input: PathBuf, from: &str, output: PathBuf, to: &str) -> Resu
     // Parse input to IR
     let ir = match from {
         "crd" => {
-            let crd: CRD = if input.extension().map_or(false, |ext| ext == "json") {
+            let crd: CRD = if input.extension().is_some_and(|ext| ext == "json") {
                 serde_json::from_str(&content)?
             } else {
                 serde_yaml::from_str(&content)?
@@ -465,7 +465,7 @@ fn handle_convert(input: PathBuf, from: &str, output: PathBuf, to: &str) -> Resu
             CRDParser::new().parse(crd)?
         }
         "openapi" => {
-            let spec: openapiv3::OpenAPI = if input.extension().map_or(false, |ext| ext == "json") {
+            let spec: openapiv3::OpenAPI = if input.extension().is_some_and(|ext| ext == "json") {
                 serde_json::from_str(&content)?
             } else {
                 serde_yaml::from_str(&content)?
