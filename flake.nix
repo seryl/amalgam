@@ -42,14 +42,28 @@
         publish-dry-run = pkgs.writeShellScriptBin "publish-dry-run" ''
           echo "🔍 Running publish dry-run for all crates..."
           echo ""
-          for crate in amalgam-core amalgam-codegen amalgam-parser amalgam-daemon; do
-            echo "Checking $crate..."
-            (cd crates/$crate && ${rustWithComponents}/bin/cargo publish --dry-run) || exit 1
-          done
-          echo "Checking amalgam (CLI)..."
-          (cd crates/amalgam-cli && ${rustWithComponents}/bin/cargo publish --dry-run) || exit 1
+          echo "Note: This checks each crate individually."
+          echo "Dependencies must be published in order when actually publishing."
           echo ""
-          echo "✅ All crates ready for publishing!"
+          
+          # Check each crate can be packaged
+          for crate in amalgam-core amalgam-codegen amalgam-parser amalgam-daemon; do
+            echo "Checking $crate can be packaged..."
+            (cd crates/$crate && ${rustWithComponents}/bin/cargo package --list > /dev/null) || exit 1
+            echo "✅ $crate is ready"
+          done
+          
+          echo "Checking amalgam (CLI) can be packaged..."
+          (cd crates/amalgam-cli && ${rustWithComponents}/bin/cargo package --list > /dev/null) || exit 1
+          echo "✅ amalgam is ready"
+          
+          echo ""
+          echo "All crates can be packaged! When publishing:"
+          echo "1. First publish amalgam-core (no deps)"
+          echo "2. Then amalgam-codegen (depends on core)"
+          echo "3. Then amalgam-parser (depends on core & codegen)"  
+          echo "4. Then amalgam-daemon (depends on all above)"
+          echo "5. Finally amalgam CLI (depends on all above)"
         '';
 
         publish-all = pkgs.writeShellScriptBin "publish-all" ''
@@ -90,6 +104,23 @@
           
           echo ""
           echo "🎉 All crates published successfully!"
+        '';
+
+        publish-check = pkgs.writeShellScriptBin "publish-check" ''
+          echo "🔍 Checking if amalgam-core can be published (full dry-run)..."
+          echo ""
+          cd crates/amalgam-core
+          if ${rustWithComponents}/bin/cargo publish --dry-run; then
+            echo ""
+            echo "✅ amalgam-core passes all publishing checks!"
+            echo ""
+            echo "Note: Other crates can't be fully checked until amalgam-core is published"
+            echo "since they depend on it being available on crates.io"
+          else
+            echo ""
+            echo "❌ amalgam-core is not ready for publishing"
+            exit 1
+          fi
         '';
 
         bump-version = pkgs.writeShellScriptBin "bump-version" ''
@@ -167,6 +198,7 @@
 
             # Publishing commands (defined above)
             publish-dry-run
+            publish-check
             publish-all
             bump-version
           ] ++ (with pkgs; [
@@ -219,7 +251,8 @@
             echo "  cargo audit        - Check for vulnerabilities"
             echo ""
             echo "Publishing commands:"
-            echo "  publish-dry-run    - Test if all crates are ready to publish"
+            echo "  publish-dry-run    - Check if all crates can be packaged"
+            echo "  publish-check      - Full publish test for amalgam-core" 
             echo "  publish-all        - Publish all crates to crates.io (in order)"
             echo "  bump-version X.Y.Z - Bump version in all Cargo.toml files"
             echo ""
