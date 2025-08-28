@@ -185,10 +185,12 @@
             publish)
               echo -e "\n''${RED}⚠ PUBLISHING TO CRATES.IO''${NC}\n"
               
-              # Check if logged in
-              if ! ${rustWithComponents}/bin/cargo login --list 2>/dev/null | grep -q "token"; then
+              # Check if logged in by looking for credentials file
+              if [ ! -f "$HOME/.cargo/credentials.toml" ] && [ ! -f "$HOME/.cargo/credentials" ]; then
                 echo -e "''${RED}Error: Not logged in to crates.io''${NC}"
                 echo "Run: cargo login <your-api-token>"
+                echo ""
+                echo "Get your token from: https://crates.io/settings/tokens"
                 exit 1
               fi
               
