@@ -1,6 +1,6 @@
 [package]
 name = "amalgam"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 license = "Apache-2.0"
 description = "Type-safe configuration generator for Nickel from various schema sources"
@@ -16,9 +16,9 @@ name = "amalgam"
 path = "src/main.rs"
 
 [dependencies]
-amalgam-core = { version = "0.1.0", path = "../amalgam-core" }
-amalgam-parser = { version = "0.1.0", path = "../amalgam-parser" }
-amalgam-codegen = { version = "0.1.0", path = "../amalgam-codegen" }
+amalgam-core = { version = "0.2.0", path = "../amalgam-core" }
+amalgam-parser = { version = "0.2.0", path = "../amalgam-parser" }
+amalgam-codegen = { version = "0.2.0", path = "../amalgam-codegen" }
 clap.workspace = true
 tokio.workspace = true
 anyhow.workspace = true

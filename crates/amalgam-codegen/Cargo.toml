@@ -1,6 +1,6 @@
 [package]
 name = "amalgam-codegen"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 license = "Apache-2.0"
 description = "Code generators for Nickel and Go for amalgam"
@@ -12,7 +12,7 @@ keywords = ["codegen", "nickel", "golang", "generator", "configuration"]
 categories = ["development-tools::build-utils", "config"]
 
 [dependencies]
-amalgam-core = { version = "0.1.0", path = "../amalgam-core" }
+amalgam-core = { version = "0.2.0", path = "../amalgam-core" }
 quote.workspace = true
 proc-macro2.workspace = true
 serde_json.workspace = true
