@@ -50,7 +50,7 @@ name = "amalgam"
 version = "0.2.0"
 dependencies = [
  "amalgam-codegen",
- "amalgam-core",
+ "amalgam-core 0.2.0",
  "amalgam-parser",
  "anyhow",
  "chrono",
@@ -69,7 +69,7 @@ dependencies = [
 name = "amalgam-codegen"
 version = "0.2.0"
 dependencies = [
- "amalgam-core",
+ "amalgam-core 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "anyhow",
  "proc-macro2",
  "proptest",
@@ -91,11 +91,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "amalgam-core"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e958f85073fe17ceeb18f728e6dffe0fc4173bd509c6f4126ca39e2c5a4fc7aa"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror 1.0.69",
+ "tracing",
+]
+
+[[package]]
 name = "amalgam-daemon"
 version = "0.2.0"
 dependencies = [
  "amalgam-codegen",
- "amalgam-core",
+ "amalgam-core 0.2.0",
  "amalgam-parser",
  "anyhow",
  "kube",
@@ -109,7 +121,7 @@ name = "amalgam-parser"
 version = "0.2.0"
 dependencies = [
  "amalgam-codegen",
- "amalgam-core",
+ "amalgam-core 0.2.0",
  "anyhow",
  "atty",
  "futures",
