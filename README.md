@@ -45,7 +45,7 @@ cargo install --path crates/amalgam-cli
 # Import from a local file
 amalgam import crd --file my-crd.yaml --output my-crd.ncl
 
-# Import from a URL  
+# Import from a URL
 amalgam import url --url https://raw.githubusercontent.com/example/repo/main/crd.yaml --output output/
 ```
 
@@ -149,15 +149,15 @@ Built-in resolvers:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                        amalgam CLI                           │
+│                        amalgam CLI                          │
 ├─────────────────────────────────────────────────────────────┤
-│                    Schema Pipeline                           │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐   │
-│  │   CRD    │  │ OpenAPI  │  │    Go    │  │ Protobuf │   │
-│  │  Parser  │  │  Parser  │  │   AST    │  │  Parser  │   │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────┘   │
+│                        Schema Pipeline                      │
+│   ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐    │
+│   │   CRD    │  │ OpenAPI  │  │    Go    │  │ Protobuf │    │
+│   │  Parser  │  │  Parser  │  │   AST    │  │  Parser  │    │
+│   └──────────┘  └──────────┘  └──────────┘  └──────────┘    │
 ├─────────────────────────────────────────────────────────────┤
-│              Intermediate Representation (IR)                │
+│               Intermediate Representation (IR)              │
 │  ┌──────────────────────────────────────────────────────┐   │
 │  │         Unified Type System (Algebraic Types)        │   │
 │  │    - Sum Types (Enums/Unions)                        │   │
@@ -165,11 +165,11 @@ Built-in resolvers:
 │  │    - Contracts & Refinement Types                    │   │
 │  └──────────────────────────────────────────────────────┘   │
 ├─────────────────────────────────────────────────────────────┤
-│                   Code Generation                            │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐   │
-│  │  Nickel  │  │    Go    │  │   CUE    │  │   WASM   │   │
-│  │Generator │  │Generator │  │Generator │  │  Module  │   │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────┘   │
+│                       Code Generation                       │
+│   ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐    │
+│   │  Nickel  │  │    Go    │  │   CUE    │  │   WASM   │    │
+│   │Generator │  │Generator │  │Generator │  │  Module  │    │
+│   └──────────┘  └──────────┘  └──────────┘  └──────────┘    │
 └─────────────────────────────────────────────────────────────┘
 ```
 
