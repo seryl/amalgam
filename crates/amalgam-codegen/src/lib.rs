@@ -1,8 +1,8 @@
 //! Code generators for various target languages
 
-pub mod nickel;
-pub mod go;
 pub mod error;
+pub mod go;
+pub mod nickel;
 pub mod resolver;
 
 use amalgam_core::IR;

@@ -409,6 +409,7 @@
             cargo-license
             cargo-tarpaulin  # code coverage
             cargo-criterion  # benchmarking
+            cargo-insta      # snapshot testing
 
             # For WASM builds (future)
             wasm-pack
@@ -460,6 +461,7 @@
             echo "  cargo watch       - Watch for changes"
             echo "  cargo clippy      - Run linter"
             echo "  cargo fmt         - Format code"
+            echo "  cargo insta       - Manage snapshot tests"
             echo ""
             echo "Publishing Workflow:"
             echo "  1. test-all                      # Ensure all tests pass"

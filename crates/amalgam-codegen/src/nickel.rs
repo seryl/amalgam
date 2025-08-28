@@ -1,7 +1,7 @@
 //! Nickel code generator with improved formatting
 
+use crate::resolver::{ResolutionContext, TypeResolver};
 use crate::{Codegen, CodegenError};
-use crate::resolver::{TypeResolver, ResolutionContext};
 use amalgam_core::{
     types::{Field, Type},
     IR,
@@ -15,7 +15,7 @@ pub struct NickelCodegen {
 
 impl NickelCodegen {
     pub fn new() -> Self {
-        Self { 
+        Self {
             indent_size: 2,
             resolver: TypeResolver::new(),
         }
@@ -37,7 +37,12 @@ impl NickelCodegen {
         }
     }
 
-    fn type_to_nickel(&mut self, ty: &Type, module: &amalgam_core::ir::Module, indent_level: usize) -> Result<String, CodegenError> {
+    fn type_to_nickel(
+        &mut self,
+        ty: &Type,
+        module: &amalgam_core::ir::Module,
+        indent_level: usize,
+    ) -> Result<String, CodegenError> {
         match ty {
             Type::String => Ok("String".to_string()),
             Type::Number => Ok("Number".to_string()),
@@ -110,12 +115,12 @@ impl NickelCodegen {
             Type::Reference(name) => {
                 // Use the resolver to get the proper reference
                 let context = ResolutionContext {
-                    current_group: None,  // Could extract from module.name if needed
+                    current_group: None, // Could extract from module.name if needed
                     current_version: None,
                     current_kind: None,
                 };
                 Ok(self.resolver.resolve(name, module, &context))
-            },
+            }
 
             Type::Contract { base, predicate } => {
                 let base_type = self.type_to_nickel(base, module, indent_level)?;
@@ -286,7 +291,7 @@ impl Codegen for NickelCodegen {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use amalgam_core::ir::{Module, Metadata};
+    use amalgam_core::ir::{Metadata, Module};
     use std::collections::HashMap;
 
     fn create_test_module() -> Module {
@@ -310,10 +315,22 @@ mod tests {
         let mut codegen = NickelCodegen::new();
         let module = create_test_module();
 
-        assert_eq!(codegen.type_to_nickel(&Type::String, &module, 0).unwrap(), "String");
-        assert_eq!(codegen.type_to_nickel(&Type::Number, &module, 0).unwrap(), "Number");
-        assert_eq!(codegen.type_to_nickel(&Type::Bool, &module, 0).unwrap(), "Bool");
-        assert_eq!(codegen.type_to_nickel(&Type::Any, &module, 0).unwrap(), "Dyn");
+        assert_eq!(
+            codegen.type_to_nickel(&Type::String, &module, 0).unwrap(),
+            "String"
+        );
+        assert_eq!(
+            codegen.type_to_nickel(&Type::Number, &module, 0).unwrap(),
+            "Number"
+        );
+        assert_eq!(
+            codegen.type_to_nickel(&Type::Bool, &module, 0).unwrap(),
+            "Bool"
+        );
+        assert_eq!(
+            codegen.type_to_nickel(&Type::Any, &module, 0).unwrap(),
+            "Dyn"
+        );
     }
 
     #[test]

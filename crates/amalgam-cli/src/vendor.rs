@@ -1,50 +1,50 @@
 //! Vendor package management
 
-use anyhow::Result;
-use clap::Subcommand;
-use std::path::{Path, PathBuf};
-use std::fs;
 use amalgam_parser::fetch::CRDFetcher;
 use amalgam_parser::package::PackageGenerator;
+use anyhow::Result;
+use clap::Subcommand;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::fs;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Subcommand)]
 pub enum VendorCommand {
     /// Install dependencies from nickel.toml
     Install,
-    
+
     /// Add a new dependency to vendor/
     Add {
         /// Package specification (e.g., "crossplane.io@1.14.0")
         package: String,
-        
+
         /// Source URL for the package
         #[arg(long)]
         source: Option<String>,
     },
-    
+
     /// Fetch and vendor types from a URL
     Fetch {
         /// URL to fetch CRDs from
         #[arg(long)]
         url: String,
-        
+
         /// Package name
         #[arg(long)]
         name: Option<String>,
-        
+
         /// Package version
         #[arg(long)]
         version: Option<String>,
     },
-    
+
     /// List vendored packages
     List,
-    
+
     /// Update all vendored packages
     Update,
-    
+
     /// Clean vendor directory
     Clean,
 }
@@ -128,7 +128,7 @@ impl VendorManager {
             vendor_dir,
         }
     }
-    
+
     /// Execute a vendor command
     pub async fn execute(&self, command: VendorCommand) -> Result<()> {
         match command {
@@ -142,7 +142,7 @@ impl VendorManager {
             VendorCommand::Clean => self.clean(),
         }
     }
-    
+
     /// Install dependencies from nickel.toml
     async fn install(&self) -> Result<()> {
         let manifest_path = self.project_root.join("nickel.toml");
@@ -150,19 +150,19 @@ impl VendorManager {
             eprintln!("No nickel.toml found. Run 'amalgam init' first.");
             return Ok(());
         }
-        
+
         let manifest = self.read_project_manifest()?;
-        
+
         println!("Installing dependencies...");
         for (name, spec) in &manifest.dependencies {
             println!("  Installing {}...", name);
             self.install_dependency(name, spec).await?;
         }
-        
+
         println!("Done.");
         Ok(())
     }
-    
+
     /// Add a new dependency
     async fn add(&self, package: &str, source: Option<&str>) -> Result<()> {
         // Parse package specification (name@version)
@@ -171,28 +171,30 @@ impl VendorManager {
         } else {
             (package, None)
         };
-        
+
         println!("Adding {} to vendor/", name);
-        
+
         // Determine source
         let source_url = source.unwrap_or_else(|| {
             // Default sources for known packages
             match name {
-                "crossplane.io" => "https://github.com/crossplane/crossplane/tree/master/cluster/crds",
+                "crossplane.io" => {
+                    "https://github.com/crossplane/crossplane/tree/master/cluster/crds"
+                }
                 "k8s.io" => "https://github.com/kubernetes/kubernetes/tree/master/api/openapi-spec",
                 _ => panic!("Unknown package '{}'. Please specify --source", name),
             }
         });
-        
+
         self.fetch_and_vendor(name, source_url, version).await?;
-        
+
         // Update nickel.toml
         self.update_project_manifest(name, version.unwrap_or("latest"))?;
-        
+
         println!("Added {} to vendor/", name);
         Ok(())
     }
-    
+
     /// Fetch and vendor types from a URL
     async fn fetch(&self, url: &str, name: Option<&str>, version: Option<&str>) -> Result<()> {
         let package_name = name.unwrap_or_else(|| {
@@ -205,31 +207,33 @@ impl VendorManager {
                 "custom"
             }
         });
-        
+
         self.fetch_and_vendor(package_name, url, version).await?;
         Ok(())
     }
-    
+
     /// List vendored packages
     fn list(&self) -> Result<()> {
         if !self.vendor_dir.exists() {
             println!("No vendor directory found.");
             return Ok(());
         }
-        
+
         println!("Vendored packages:");
         for entry in fs::read_dir(&self.vendor_dir)? {
             let entry = entry?;
             if entry.file_type()?.is_dir() {
                 let package_name = entry.file_name();
                 let manifest_path = entry.path().join("manifest.ncl");
-                
+
                 if manifest_path.exists() {
                     // Read manifest for version info
                     let manifest_content = fs::read_to_string(&manifest_path)?;
                     // Simple extraction (proper parsing would use Nickel parser)
-                    if let Some(version_line) = manifest_content.lines()
-                        .find(|line| line.contains("version =")) {
+                    if let Some(version_line) = manifest_content
+                        .lines()
+                        .find(|line| line.contains("version ="))
+                    {
                         if let Some(version) = version_line.split('"').nth(1) {
                             println!("  {} @ {}", package_name.to_string_lossy(), version);
                             continue;
@@ -241,21 +245,21 @@ impl VendorManager {
         }
         Ok(())
     }
-    
+
     /// Update all vendored packages
     async fn update(&self) -> Result<()> {
         println!("Updating vendored packages...");
-        
+
         let manifest = self.read_project_manifest()?;
         for (name, spec) in &manifest.dependencies {
             println!("  Updating {}...", name);
             self.install_dependency(name, spec).await?;
         }
-        
+
         println!("Done.");
         Ok(())
     }
-    
+
     /// Clean vendor directory
     fn clean(&self) -> Result<()> {
         if self.vendor_dir.exists() {
@@ -267,48 +271,56 @@ impl VendorManager {
         }
         Ok(())
     }
-    
+
     /// Helper: Fetch and vendor a package
     async fn fetch_and_vendor(&self, name: &str, url: &str, version: Option<&str>) -> Result<()> {
         // Create vendor directory if it doesn't exist
         fs::create_dir_all(&self.vendor_dir)?;
-        
+
         let package_dir = self.vendor_dir.join(name);
-        
+
         // Fetch CRDs
         let fetcher = CRDFetcher::new()?;
         let crds = fetcher.fetch_from_url(url).await?;
         fetcher.finish(); // Clear progress bars
-        
+
         println!("Found {} CRDs", crds.len());
-        
+
         // Generate package
         let mut generator = PackageGenerator::new(name.to_string(), package_dir.clone());
         generator.add_crds(crds);
         let package = generator.generate_package()?;
-        
+
         // Write package files
         self.write_package_files(&package_dir, &package)?;
-        
+
         // Create manifest
         self.create_package_manifest(name, version.unwrap_or("latest"), url)?;
-        
+
         Ok(())
     }
-    
+
     /// Helper: Install a dependency
     async fn install_dependency(&self, name: &str, spec: &DependencySpec) -> Result<()> {
         match spec {
             DependencySpec::Version(version) => {
                 // Use default source for known packages
                 let source = match name {
-                    "crossplane.io" => "https://github.com/crossplane/crossplane/tree/master/cluster/crds",
-                    "k8s.io" => "https://github.com/kubernetes/kubernetes/tree/master/api/openapi-spec",
+                    "crossplane.io" => {
+                        "https://github.com/crossplane/crossplane/tree/master/cluster/crds"
+                    }
+                    "k8s.io" => {
+                        "https://github.com/kubernetes/kubernetes/tree/master/api/openapi-spec"
+                    }
                     _ => return Err(anyhow::anyhow!("Unknown package '{}'", name)),
                 };
                 self.fetch_and_vendor(name, source, Some(version)).await
             }
-            DependencySpec::Detailed { version, source, path } => {
+            DependencySpec::Detailed {
+                version,
+                source,
+                path,
+            } => {
                 if let Some(path) = path {
                     // Local dependency
                     self.link_local_dependency(name, path)
@@ -320,73 +332,78 @@ impl VendorManager {
             }
         }
     }
-    
+
     /// Helper: Link a local dependency
     fn link_local_dependency(&self, name: &str, path: &str) -> Result<()> {
         let source_path = self.project_root.join(path);
         let target_path = self.vendor_dir.join(name);
-        
+
         if !source_path.exists() {
             return Err(anyhow::anyhow!("Local path {} does not exist", path));
         }
-        
+
         // Create symlink or copy
         #[cfg(unix)]
         {
             use std::os::unix::fs::symlink;
             symlink(&source_path, &target_path)?;
         }
-        
+
         #[cfg(not(unix))]
         {
             // On Windows or other platforms, copy the directory
             copy_dir_all(&source_path, &target_path)?;
         }
-        
+
         Ok(())
     }
-    
+
     /// Helper: Write package files
-    fn write_package_files(&self, package_dir: &Path, package: &amalgam_parser::package::NamespacedPackage) -> Result<()> {
+    fn write_package_files(
+        &self,
+        package_dir: &Path,
+        package: &amalgam_parser::package::NamespacedPackage,
+    ) -> Result<()> {
         // Create package directory
         fs::create_dir_all(package_dir)?;
-        
+
         // Write main module file
         let mod_content = package.generate_main_module();
         fs::write(package_dir.join("mod.ncl"), mod_content)?;
-        
+
         // Write group/version/kind structure
         for group in package.groups() {
             let group_dir = package_dir.join(&group);
             fs::create_dir_all(&group_dir)?;
-            
+
             // Write group module
             if let Some(group_mod) = package.generate_group_module(&group) {
                 fs::write(group_dir.join("mod.ncl"), group_mod)?;
             }
-            
+
             // Create version directories
             for version in package.versions(&group) {
                 let version_dir = group_dir.join(&version);
                 fs::create_dir_all(&version_dir)?;
-                
+
                 // Write version module
                 if let Some(version_mod) = package.generate_version_module(&group, &version) {
                     fs::write(version_dir.join("mod.ncl"), version_mod)?;
                 }
-                
+
                 // Write individual kind files
                 for kind in package.kinds(&group, &version) {
-                    if let Some(kind_content) = package.generate_kind_file(&group, &version, &kind) {
+                    if let Some(kind_content) = package.generate_kind_file(&group, &version, &kind)
+                    {
                         fs::write(version_dir.join(format!("{}.ncl", kind)), kind_content)?;
                     }
                 }
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// Helper: Create package manifest
     fn create_package_manifest(&self, name: &str, version: &str, source: &str) -> Result<()> {
         let manifest = PackageManifest {
@@ -408,7 +425,7 @@ impl VendorManager {
                 dependencies: vec![],
             },
         };
-        
+
         let manifest_path = self.vendor_dir.join(name).join("manifest.ncl");
         let manifest_content = format!(
             r#"# Package manifest for {}
@@ -433,18 +450,22 @@ impl VendorManager {
             name,
             manifest.package.name,
             manifest.package.version,
-            manifest.package.description.as_ref().unwrap_or(&String::new()),
+            manifest
+                .package
+                .description
+                .as_ref()
+                .unwrap_or(&String::new()),
             manifest.package.source.source_type,
             manifest.package.source.url,
             manifest.package.generated.tool,
             manifest.package.generated.version,
             manifest.package.generated.timestamp,
         );
-        
+
         fs::write(manifest_path, manifest_content)?;
         Ok(())
     }
-    
+
     /// Helper: Read project manifest
     fn read_project_manifest(&self) -> Result<ProjectManifest> {
         let manifest_path = self.project_root.join("nickel.toml");
@@ -452,11 +473,11 @@ impl VendorManager {
         let manifest: ProjectManifest = toml::from_str(&content)?;
         Ok(manifest)
     }
-    
+
     /// Helper: Update project manifest
     fn update_project_manifest(&self, name: &str, version: &str) -> Result<()> {
         let manifest_path = self.project_root.join("nickel.toml");
-        
+
         let mut manifest = if manifest_path.exists() {
             self.read_project_manifest()?
         } else {
@@ -469,17 +490,17 @@ impl VendorManager {
                 dependencies: HashMap::new(),
             }
         };
-        
+
         // Add or update dependency
         manifest.dependencies.insert(
             name.to_string(),
             DependencySpec::Version(version.to_string()),
         );
-        
+
         // Write back
         let content = toml::to_string_pretty(&manifest)?;
         fs::write(manifest_path, content)?;
-        
+
         Ok(())
     }
 }

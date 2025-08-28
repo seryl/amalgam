@@ -6,11 +6,7 @@
 mod fixtures;
 
 use amalgam_codegen::{nickel::NickelCodegen, Codegen};
-use amalgam_parser::{
-    crd::CRDParser,
-    package::{NamespacedPackage, PackageGenerator},
-    Parser,
-};
+use amalgam_parser::{crd::CRDParser, package::PackageGenerator, Parser};
 use fixtures::Fixtures;
 use insta::assert_snapshot;
 
