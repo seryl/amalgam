@@ -1,6 +1,6 @@
 [package]
 name = "amalgam-parser"
-version = "0.2.0"
+version.workspace = true
 edition = "2021"
 license = "Apache-2.0"
 description = "Schema parsers for CRD, OpenAPI, and Go types for amalgam"
@@ -12,8 +12,8 @@ keywords = ["parser", "kubernetes", "openapi", "crd", "golang"]
 categories = ["parser-implementations", "development-tools"]
 
 [dependencies]
-amalgam-core = { version = "0.2.0", path = "../amalgam-core" }
-amalgam-codegen = { version = "0.2.0", path = "../amalgam-codegen" }
+amalgam-core = { version = "0.3.0", path = "../amalgam-core" }
+amalgam-codegen = { version = "0.3.0", path = "../amalgam-codegen" }
 serde.workspace = true
 serde_json.workspace = true
 serde_yaml.workspace = true
