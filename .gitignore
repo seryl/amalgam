@@ -1,0 +1,37 @@
+# Build artifacts
+/target/
+**/*.rs.bk
+*.pdb
+
+# Cargo
+Cargo.lock
+
+# IDE
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local environment
+.envrc
+.env
+
+# Nix
+result
+result-*
+
+# Coverage
+*.profraw
+*.profdata
+/coverage/
+
+# Benchmarks
+/target/criterion/
+
+# WASM
+/pkg/
+/wasm-pack.log

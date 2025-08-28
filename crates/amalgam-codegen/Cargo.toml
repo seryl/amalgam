@@ -1,0 +1,17 @@
+[package]
+name = "amalgam-codegen"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+
+[dependencies]
+amalgam-core = { path = "../amalgam-core" }
+quote.workspace = true
+proc-macro2.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true

@@ -1,0 +1,51 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/amalgam-core",
+    "crates/amalgam-parser",
+    "crates/amalgam-codegen",
+    "crates/amalgam-daemon",
+    "crates/amalgam-cli",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/seryl/amalgam"
+
+[workspace.dependencies]
+# Core parsing and AST manipulation
+syn = "2.0"
+quote = "1.0"
+proc-macro2 = "1.0"
+
+# Schema handling
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+openapiv3 = "2.0"
+
+# Kubernetes integration
+kube = { version = "0.95", features = ["runtime", "derive"] }
+k8s-openapi = { version = "0.23", features = ["latest"] }
+
+# Nickel integration - commented out as it doesn't exist yet
+# nickel-lang-core = "1.9"
+
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# Error handling
+thiserror = "1.0"
+anyhow = "1.0"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = "0.3"
+
+# CLI
+clap = { version = "4.0", features = ["derive"] }
+
+# Testing
+proptest = "1.0"

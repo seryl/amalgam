@@ -1,0 +1,25 @@
+[package]
+name = "amalgam-cli"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+
+[[bin]]
+name = "amalgam"
+path = "src/main.rs"
+
+[dependencies]
+amalgam-core = { path = "../amalgam-core" }
+amalgam-parser = { path = "../amalgam-parser" }
+amalgam-codegen = { path = "../amalgam-codegen" }
+clap.workspace = true
+tokio.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+serde_json.workspace = true
+serde_yaml.workspace = true
+openapiv3.workspace = true
+toml = "0.8"
+chrono = "0.4"
+serde.workspace = true

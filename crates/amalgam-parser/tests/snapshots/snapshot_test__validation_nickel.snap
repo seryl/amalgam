@@ -1,0 +1,17 @@
+---
+source: crates/amalgam-parser/tests/snapshot_test.rs
+assertion_line: 104
+expression: generated
+---
+# Module: Validated.v1.test.io
+
+{
+  Validated = {
+    metadata | optional | io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta,
+    spec | {
+      image | String,
+      port | optional | Number | default = 8080,
+      replicas | Number,
+    },
+  },
+}

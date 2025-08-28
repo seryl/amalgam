@@ -1,0 +1,57 @@
+---
+source: crates/amalgam-parser/tests/snapshot_test.rs
+assertion_line: 130
+expression: "format!(\"{:#?}\", ir)"
+---
+IR {
+    modules: [
+        Module {
+            name: "Simple.v1.test.io",
+            imports: [],
+            types: [
+                TypeDefinition {
+                    name: "Simple",
+                    ty: Record {
+                        fields: {
+                            "spec": Field {
+                                ty: Record {
+                                    fields: {
+                                        "name": Field {
+                                            ty: String,
+                                            required: false,
+                                            description: None,
+                                            default: None,
+                                        },
+                                    },
+                                    open: false,
+                                },
+                                required: false,
+                                description: None,
+                                default: None,
+                            },
+                            "metadata": Field {
+                                ty: Reference(
+                                    "io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta",
+                                ),
+                                required: false,
+                                description: None,
+                                default: None,
+                            },
+                        },
+                        open: false,
+                    },
+                    documentation: None,
+                    annotations: {},
+                },
+            ],
+            constants: [],
+            metadata: Metadata {
+                source_language: None,
+                source_file: None,
+                version: None,
+                generated_at: None,
+                custom: {},
+            },
+        },
+    ],
+}
