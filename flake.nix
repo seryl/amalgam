@@ -264,15 +264,24 @@
           
           MODE="''${1:-status}"
           
+          # Get current workspace version
+          VERSION=$(${pkgs.toml2json}/bin/toml2json < Cargo.toml | ${pkgs.jq}/bin/jq -r '.workspace.package.version')
+          
           case $MODE in
             local|on)
               echo "Switching to local development mode..."
               
-              # Update all Cargo.toml files to use path dependencies
-              ${pkgs.gnused}/bin/sed -i 's/amalgam-core = "[^"]*"/amalgam-core = { version = "0.1.0", path = "..\/amalgam-core" }/g' crates/*/Cargo.toml
-              ${pkgs.gnused}/bin/sed -i 's/amalgam-codegen = "[^"]*"/amalgam-codegen = { version = "0.1.0", path = "..\/amalgam-codegen" }/g' crates/*/Cargo.toml
-              ${pkgs.gnused}/bin/sed -i 's/amalgam-parser = "[^"]*"/amalgam-parser = { version = "0.1.0", path = "..\/amalgam-parser" }/g' crates/*/Cargo.toml
-              ${pkgs.gnused}/bin/sed -i 's/amalgam-daemon = "[^"]*"/amalgam-daemon = { version = "0.1.0", path = "..\/amalgam-daemon" }/g' crates/*/Cargo.toml
+              # Update all Cargo.toml files to use path dependencies with workspace version
+              ${pkgs.gnused}/bin/sed -i 's/amalgam-core = "[^"]*"/amalgam-core = { version = "'"$VERSION"'", path = "..\/amalgam-core" }/g' crates/*/Cargo.toml
+              ${pkgs.gnused}/bin/sed -i 's/amalgam-codegen = "[^"]*"/amalgam-codegen = { version = "'"$VERSION"'", path = "..\/amalgam-codegen" }/g' crates/*/Cargo.toml
+              ${pkgs.gnused}/bin/sed -i 's/amalgam-parser = "[^"]*"/amalgam-parser = { version = "'"$VERSION"'", path = "..\/amalgam-parser" }/g' crates/*/Cargo.toml
+              ${pkgs.gnused}/bin/sed -i 's/amalgam-daemon = "[^"]*"/amalgam-daemon = { version = "'"$VERSION"'", path = "..\/amalgam-daemon" }/g' crates/*/Cargo.toml
+              
+              # Also handle cases where they already have path dependencies but wrong version
+              ${pkgs.gnused}/bin/sed -i 's/amalgam-core = { version = "[^"]*", path/amalgam-core = { version = "'"$VERSION"'", path/g' crates/*/Cargo.toml
+              ${pkgs.gnused}/bin/sed -i 's/amalgam-codegen = { version = "[^"]*", path/amalgam-codegen = { version = "'"$VERSION"'", path/g' crates/*/Cargo.toml
+              ${pkgs.gnused}/bin/sed -i 's/amalgam-parser = { version = "[^"]*", path/amalgam-parser = { version = "'"$VERSION"'", path/g' crates/*/Cargo.toml
+              ${pkgs.gnused}/bin/sed -i 's/amalgam-daemon = { version = "[^"]*", path/amalgam-daemon = { version = "'"$VERSION"'", path/g' crates/*/Cargo.toml
               
               # Fix the core crate (it shouldn't reference itself)
               ${pkgs.gnused}/bin/sed -i '/amalgam-core = {.*path/d' crates/amalgam-core/Cargo.toml
@@ -283,8 +292,6 @@
               
             remote|off)
               echo "Switching to remote/publish mode..."
-              
-              VERSION=$(${pkgs.toml2json}/bin/toml2json < Cargo.toml | ${pkgs.jq}/bin/jq -r '.workspace.package.version')
               
               # Update all Cargo.toml files to use version-only dependencies
               ${pkgs.gnused}/bin/sed -i 's/amalgam-core = {[^}]*path[^}]*}/amalgam-core = "'"$VERSION"'"/g' crates/*/Cargo.toml
