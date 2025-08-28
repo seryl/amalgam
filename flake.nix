@@ -81,8 +81,9 @@
           prepare_for_publish() {
             local dir=$1
 
-            # Save original content instead of creating a .bak file
-            ORIGINAL_CONTENT=$(cat "$dir/Cargo.toml")
+            # Save original content instead of creating a .bak file (preserve exact content)
+            ORIGINAL_CONTENT=$(cat "$dir/Cargo.toml"; printf x)
+            ORIGINAL_CONTENT=''${ORIGINAL_CONTENT%x}
 
             # Replace path dependencies with version-only dependencies
             ${pkgs.gnused}/bin/sed -i 's/amalgam-core = {[^}]*path[^}]*}/amalgam-core = "'"$CURRENT_VERSION"'"/g' "$dir/Cargo.toml"
@@ -101,7 +102,7 @@
           restore_cargo_toml() {
             local dir=$1
             if [ -n "$ORIGINAL_CONTENT" ]; then
-              echo "$ORIGINAL_CONTENT" > "$dir/Cargo.toml"
+              printf "%s" "$ORIGINAL_CONTENT" > "$dir/Cargo.toml"
             fi
           }
 
