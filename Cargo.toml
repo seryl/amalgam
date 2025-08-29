@@ -16,7 +16,7 @@ tag-prefix = "v"
 tag-name = "{{prefix}}{{version}}"
 
 [workspace.package]
-version = "0.3.0"
+version = "0.4.1"
 edition = "2021"
 license = "Apache-2.0"
 repository = "https://github.com/seryl/amalgam"
@@ -75,3 +75,9 @@ futures = "0.3"
 
 # Terminal detection
 atty = "0.2"
+
+# Internal workspace dependencies
+amalgam-core = { path = "crates/amalgam-core" }
+amalgam-parser = { path = "crates/amalgam-parser" }
+amalgam-codegen = { path = "crates/amalgam-codegen" }
+amalgam-daemon = { path = "crates/amalgam-daemon" }

@@ -16,9 +16,9 @@ name = "amalgam"
 path = "src/main.rs"
 
 [dependencies]
-amalgam-core = { version = "0.3.0", path = "../amalgam-core" }
-amalgam-parser = { version = "0.3.0", path = "../amalgam-parser" }
-amalgam-codegen = { version = "0.3.0", path = "../amalgam-codegen" }
+amalgam-core.workspace = true
+amalgam-parser.workspace = true
+amalgam-codegen.workspace = true
 clap.workspace = true
 tokio.workspace = true
 anyhow.workspace = true

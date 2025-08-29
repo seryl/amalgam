@@ -12,8 +12,8 @@ keywords = ["parser", "kubernetes", "openapi", "crd", "golang"]
 categories = ["parser-implementations", "development-tools"]
 
 [dependencies]
-amalgam-core = { version = "0.3.0", path = "../amalgam-core" }
-amalgam-codegen = { version = "0.3.0", path = "../amalgam-codegen" }
+amalgam-core.workspace = true
+amalgam-codegen.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 serde_yaml.workspace = true

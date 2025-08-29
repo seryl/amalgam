@@ -12,7 +12,7 @@ keywords = ["codegen", "nickel", "golang", "generator", "configuration"]
 categories = ["development-tools::build-utils", "config"]
 
 [dependencies]
-amalgam-core = { version = "0.3.0", path = "../amalgam-core" }
+amalgam-core.workspace = true
 quote.workspace = true
 proc-macro2.workspace = true
 serde_json.workspace = true
