@@ -97,51 +97,65 @@ impl K8sTypesFetcher {
         Ok(schema)
     }
 
-    /// Extract common k8s types from OpenAPI schema
+    /// Extract all k8s types from specific namespaces dynamically
     pub fn extract_core_types(
         &self,
         openapi: &Value,
     ) -> Result<HashMap<TypeReference, TypeDefinition>, ParserError> {
         let mut types = HashMap::new();
 
-        // Common types we want to extract
-        let core_types = vec![
-            (
-                "io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta",
-                "ObjectMeta",
-            ),
-            ("io.k8s.apimachinery.pkg.apis.meta.v1.ListMeta", "ListMeta"),
-            ("io.k8s.apimachinery.pkg.apis.meta.v1.TypeMeta", "TypeMeta"),
-            (
-                "io.k8s.apimachinery.pkg.apis.meta.v1.LabelSelector",
-                "LabelSelector",
-            ),
-            ("io.k8s.api.core.v1.Volume", "Volume"),
-            ("io.k8s.api.core.v1.VolumeMount", "VolumeMount"),
-            ("io.k8s.api.core.v1.Container", "Container"),
-            ("io.k8s.api.core.v1.PodSpec", "PodSpec"),
-            (
-                "io.k8s.api.core.v1.ResourceRequirements",
-                "ResourceRequirements",
-            ),
-            ("io.k8s.api.core.v1.EnvVar", "EnvVar"),
-            (
-                "io.k8s.api.core.v1.ConfigMapKeySelector",
-                "ConfigMapKeySelector",
-            ),
-            ("io.k8s.api.core.v1.SecretKeySelector", "SecretKeySelector"),
+        // Namespaces we want to extract - these contain the most commonly used types
+        let target_namespaces = vec![
+            "io.k8s.apimachinery.pkg.apis.meta.v1",  // ObjectMeta, TypeMeta, etc.
+            "io.k8s.api.core.v1",                     // Pod, Service, ConfigMap, etc.
+            "io.k8s.api.apps.v1",                     // Deployment, StatefulSet, etc.
+            "io.k8s.api.batch.v1",                    // Job, CronJob
+            "io.k8s.api.networking.v1",               // Ingress, NetworkPolicy
+            "io.k8s.api.rbac.v1",                     // Role, RoleBinding, etc.
+            "io.k8s.api.storage.v1",                  // StorageClass
+            "io.k8s.api.autoscaling.v1",              // HorizontalPodAutoscaler
+            "io.k8s.api.policy.v1",                   // PodDisruptionBudget
+            "io.k8s.apimachinery.pkg.api.resource",   // Quantity
         ];
 
         if let Some(definitions) = openapi.get("definitions").and_then(|d| d.as_object()) {
-            for (full_name, short_name) in core_types {
-                if let Some(schema) = definitions.get(full_name) {
-                    let type_ref = self.parse_type_reference(full_name)?;
-                    let type_def = self.schema_to_type_definition(short_name, schema)?;
-                    types.insert(type_ref, type_def);
+            // Iterate through all definitions
+            for (full_name, schema) in definitions {
+                // Check if this type is in one of our target namespaces
+                let should_include = target_namespaces.iter().any(|&namespace| {
+                    full_name.starts_with(namespace)
+                });
+                
+                if should_include {
+                    // Extract the short name from the full type name
+                    let short_name = full_name
+                        .split('.')
+                        .last()
+                        .unwrap_or(full_name.as_str())
+                        .to_string();
+                    
+                    // Try to parse this as a k8s type reference
+                    match self.parse_type_reference(full_name) {
+                        Ok(type_ref) => {
+                            match self.schema_to_type_definition(&short_name, schema) {
+                                Ok(type_def) => {
+                                    types.insert(type_ref, type_def);
+                                }
+                                Err(e) => {
+                                    // Log but don't fail - some types might not parse correctly
+                                    tracing::debug!("Failed to parse type {}: {}", full_name, e);
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            tracing::debug!("Failed to parse reference {}: {}", full_name, e);
+                        }
+                    }
                 }
             }
         }
 
+        tracing::info!("Extracted {} k8s types from OpenAPI schema", types.len());
         Ok(types)
     }
 
@@ -188,6 +202,26 @@ impl K8sTypesFetcher {
 
     #[allow(clippy::only_used_in_recursion)]
     fn json_schema_to_type(&self, schema: &Value) -> Result<Type, ParserError> {
+        // Check for top-level $ref first
+        if let Some(ref_path) = schema.get("$ref").and_then(|r| r.as_str()) {
+            let type_name = ref_path.trim_start_matches("#/definitions/");
+            
+            // Resolve k8s type references to basic types
+            return Ok(match type_name {
+                name if name.ends_with(".Time") || name.ends_with(".MicroTime") => Type::String,
+                name if name.ends_with(".Duration") => Type::String,
+                name if name.ends_with(".IntOrString") => Type::Union(vec![Type::Integer, Type::String]),
+                name if name.ends_with(".Quantity") => Type::String,
+                name if name.ends_with(".FieldsV1") => Type::Any,
+                name if name.starts_with("io.k8s.") => {
+                    // For k8s internal references, use short name
+                    let short_name = name.split('.').last().unwrap_or(name);
+                    Type::Reference(short_name.to_string())
+                }
+                _ => Type::Reference(type_name.to_string())
+            });
+        }
+        
         let schema_type = schema.get("type").and_then(|v| v.as_str());
 
         match schema_type {
@@ -223,10 +257,44 @@ impl K8sTypesFetcher {
                         if let Some(ref_path) = field_schema.get("$ref").and_then(|r| r.as_str()) {
                             // Convert ref to type reference
                             let type_name = ref_path.trim_start_matches("#/definitions/");
+                            
+                            // For k8s types, resolve common references to basic types
+                            let resolved_type = match type_name {
+                                // Time types should be strings
+                                name if name.ends_with(".Time") || name.ends_with(".MicroTime") => {
+                                    Type::String
+                                }
+                                // Duration is a string
+                                name if name.ends_with(".Duration") => {
+                                    Type::String
+                                }
+                                // IntOrString can be either
+                                name if name.ends_with(".IntOrString") => {
+                                    Type::Union(vec![Type::Integer, Type::String])
+                                }
+                                // Quantity is a string (like "100m" or "1Gi")
+                                name if name.ends_with(".Quantity") || name == "io.k8s.apimachinery.pkg.api.resource.Quantity" => {
+                                    Type::String
+                                }
+                                // FieldsV1 is a complex type, represent as Any for now
+                                name if name.ends_with(".FieldsV1") => {
+                                    Type::Any
+                                }
+                                // For other k8s references within the same module, keep as reference
+                                // but only use the short name
+                                name if name.starts_with("io.k8s.") => {
+                                    // Extract just the type name (last part)
+                                    let short_name = name.split('.').last().unwrap_or(name);
+                                    Type::Reference(short_name.to_string())
+                                }
+                                // Keep full reference for non-k8s types
+                                _ => Type::Reference(type_name.to_string())
+                            };
+                            
                             fields.insert(
                                 field_name.clone(),
                                 Field {
-                                    ty: Type::Reference(type_name.to_string()),
+                                    ty: resolved_type,
                                     required: required.contains(field_name),
                                     description: field_schema
                                         .get("description")
@@ -236,6 +304,39 @@ impl K8sTypesFetcher {
                                 },
                             );
                         } else {
+                            // Check if this is a type string reference
+                            if field_schema.get("type").is_none() && field_schema.get("$ref").is_none() {
+                                // Check for x-kubernetes fields or direct type strings
+                                if let Value::String(type_str) = field_schema {
+                                    // This is a direct type reference string
+                                    let resolved_type = match type_str.as_str() {
+                                        // Handle k8s type references
+                                        s if s.ends_with(".Time") || s.ends_with(".MicroTime") => Type::String,
+                                        s if s.ends_with(".Duration") => Type::String,
+                                        s if s.ends_with(".IntOrString") => Type::Union(vec![Type::Integer, Type::String]),
+                                        s if s.ends_with(".Quantity") => Type::String,
+                                        s if s.ends_with(".FieldsV1") => Type::Any,
+                                        s if s.starts_with("io.k8s.") => {
+                                            // Extract just the type name (last part)
+                                            let short_name = s.split('.').last().unwrap_or(s);
+                                            Type::Reference(short_name.to_string())
+                                        }
+                                        _ => Type::Reference(type_str.clone())
+                                    };
+                                    
+                                    fields.insert(
+                                        field_name.clone(),
+                                        Field {
+                                            ty: resolved_type,
+                                            required: required.contains(field_name),
+                                            description: None,
+                                            default: None,
+                                        },
+                                    );
+                                    continue;
+                                }
+                            }
+                            
                             let field_type = self.json_schema_to_type(field_schema)?;
                             fields.insert(
                                 field_name.clone(),

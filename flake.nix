@@ -390,6 +390,41 @@
           echo "✓ All checks passed!"
         '';
 
+        # Regenerate examples helper
+        regenerate-examples = pkgs.writeShellScriptBin "regenerate-examples" ''
+          set -euo pipefail
+
+          echo "🔨 Building amalgam..."
+          ${rustWithComponents}/bin/cargo build --release
+
+          echo ""
+          echo "🧹 Cleaning old examples..."
+          rm -rf examples/crossplane
+          rm -rf examples/k8s_io
+
+          echo ""
+          echo "📥 Generating Kubernetes core types..."
+          ${rustWithComponents}/bin/cargo run --bin amalgam -- import k8s-core \
+            --version v1.31.0 \
+            --output examples/k8s_io
+
+          echo ""
+          echo "📥 Importing Crossplane CRDs..."
+          ${rustWithComponents}/bin/cargo run --bin amalgam -- import url \
+            --url https://github.com/crossplane/crossplane/tree/main/cluster/crds \
+            --output examples/crossplane
+
+          echo ""
+          echo "✅ Regeneration complete!"
+          echo ""
+          echo "To test the generated files:"
+          echo "  nickel export examples/test_crossplane_import.ncl"
+          echo ""
+          echo "To check all files for syntax errors:"
+          echo "  find examples/crossplane -name '*.ncl' -exec nickel typecheck {} \;"
+          echo "  find examples/k8s_io -name '*.ncl' -exec nickel typecheck {} \;"
+        '';
+
         # Build dependencies only
         cargoArtifacts = craneLib.buildDepsOnly {
           src = craneLib.cleanCargoSource ./.;
@@ -438,6 +473,7 @@
             publish
             dev-mode
             test-all
+            regenerate-examples
           ] ++ (with pkgs; [
             # Build dependencies
             openssl
@@ -466,7 +502,7 @@
             python311Packages.rich
             python311Packages.click
             python311Packages.toml
-            
+
             # General dev tools
             tokei      # code statistics
 
@@ -478,6 +514,9 @@
             # For Kubernetes integration
             kubectl
             kind
+
+            # For testing generated Nickel files
+            nickel
 
           ]) ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [];
 
@@ -497,12 +536,13 @@
             echo "Version: $VERSION"
             echo ""
             echo "Quick Commands:"
-            echo "  dev-mode local    - Switch to local development (path deps)"
-            echo "  dev-mode remote   - Switch to publish mode (crates.io deps)"
-            echo "  test-all          - Run all tests, clippy, and fmt"
-            echo "  publish check     - Check if ready to publish"
-            echo "  publish dry-run   - Test publishing process"
-            echo "  publish publish   - Actually publish to crates.io"
+            echo "  dev-mode local      - Switch to local development (path deps)"
+            echo "  dev-mode remote     - Switch to publish mode (crates.io deps)"
+            echo "  test-all            - Run all tests, clippy, and fmt"
+            echo "  regenerate-examples - Rebuild and regenerate example CRDs"
+            echo "  publish check       - Check if ready to publish"
+            echo "  publish dry-run     - Test publishing process"
+            echo "  publish publish     - Actually publish to crates.io"
             echo ""
             echo "Development Commands:"
             echo "  cargo build       - Build the project"

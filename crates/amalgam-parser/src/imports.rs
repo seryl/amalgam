@@ -83,20 +83,89 @@ impl TypeReference {
     }
 
     /// Get the import path for this reference relative to a base path
-    pub fn import_path(&self, _from_group: &str, _from_version: &str) -> String {
-        // Calculate relative path from current location to referenced type
-        let target_path = format!(
-            "{}/{}/{}.ncl",
-            self.group.replace('.', "_"),
-            self.version,
-            self.kind.to_lowercase()
-        );
-
-        // We're in a file at: group/version/kind.ncl
-        // We need to go up 2 levels to get to package root (version -> group -> package root)
-        let up_dirs = "../../";
-
-        format!("{}{}", up_dirs, target_path)
+    pub fn import_path(&self, from_group: &str, from_version: &str) -> String {
+        // Generic approach: Calculate the relative path between any two files
+        // Package layout convention:
+        //   vendor_dir/
+        //     ├── package_dir/        <- derived from group name
+        //     │   └── [group_path]/version/file.ncl
+        //     └── other_package/
+        //         └── [group_path]/version/file.ncl
+        
+        // Helper to derive package directory from group name
+        let group_to_package = |group: &str| -> String {
+            // Convention: 
+            // - Replace dots with underscores for filesystem compatibility
+            // - If the result would be just an org name (e.g., "crossplane_io"), 
+            //   try to extract a more meaningful package name
+            let sanitized = group.replace('.', "_");
+            
+            // If it ends with a common TLD pattern, extract the org name
+            if group.contains('.') {
+                // For domains like "apiextensions.crossplane.io", we want "crossplane"
+                // For domains like "k8s.io", we want "k8s_io"
+                let parts: Vec<&str> = group.split('.').collect();
+                if parts.len() >= 2 && (parts.last() == Some(&"io") || 
+                                        parts.last() == Some(&"com") || 
+                                        parts.last() == Some(&"org")) {
+                    // If there's a clear org name, use it
+                    if parts.len() == 2 {
+                        // Simple case like "k8s.io" -> "k8s_io"
+                        sanitized
+                    } else if parts.len() >= 3 {
+                        // Complex case like "apiextensions.crossplane.io"
+                        // Take the second-to-last part as the org name
+                        parts[parts.len() - 2].to_string()
+                    } else {
+                        sanitized
+                    }
+                } else {
+                    sanitized
+                }
+            } else {
+                sanitized
+            }
+        };
+        
+        // Helper to determine if a group needs its own subdirectory within the package
+        let needs_group_subdir = |group: &str, package: &str| -> bool {
+            // If the package name is derived from only part of the group,
+            // we need a subdirectory for the full group
+            let sanitized = group.replace('.', "_");
+            sanitized != package && group.contains('.')
+        };
+        
+        // Build the from path components
+        let from_package = group_to_package(from_group);
+        let mut from_components: Vec<String> = Vec::new();
+        from_components.push(from_package.clone());
+        
+        if needs_group_subdir(from_group, &from_package) {
+            from_components.push(from_group.to_string());
+        }
+        from_components.push(from_version.to_string());
+        
+        // Build the target path components
+        let target_package = group_to_package(&self.group);
+        let mut to_components: Vec<String> = Vec::new();
+        to_components.push(target_package.clone());
+        
+        if needs_group_subdir(&self.group, &target_package) {
+            to_components.push(self.group.clone());
+        }
+        to_components.push(self.version.clone());
+        to_components.push(format!("{}.ncl", self.kind.to_lowercase()));
+        
+        // Calculate the relative path
+        // From a file at: vendor/package1/group/version/file.ncl
+        // We need to go up to vendor/ then down to package2/...
+        // The number of ../ equals the depth from the file to the vendor directory
+        // which is the number of path components minus the vendor itself
+        let up_count = from_components.len();
+        let up_dirs = "../".repeat(up_count);
+        let down_path = to_components.join("/");
+        
+        format!("{}{}", up_dirs, down_path)
     }
 
     /// Get the module alias for imports
@@ -300,7 +369,12 @@ mod tests {
             "ObjectMeta".to_string(),
         );
 
+        // Test with a Crossplane group (2+ dots)
         let path = type_ref.import_path("apiextensions.crossplane.io", "v1");
-        assert_eq!(path, "../../k8s_io/v1/objectmeta.ncl");
+        assert_eq!(path, "../../../k8s_io/v1/objectmeta.ncl");
+        
+        // Test with a simple group (1 dot)
+        let path2 = type_ref.import_path("example.io", "v1");
+        assert_eq!(path2, "../../k8s_io/v1/objectmeta.ncl");
     }
 }

@@ -2,7 +2,7 @@
 
 use crate::{
     crd::{CRDParser, CRD},
-    imports::ImportResolver,
+    imports::{ImportResolver, TypeReference},
     ParserError,
 };
 use amalgam_codegen::Codegen;
@@ -216,25 +216,76 @@ impl NamespacedPackage {
                     let mut import_resolver = ImportResolver::new();
                     import_resolver.analyze_type(&type_def.ty);
 
-                    // Generate imports based on detected references
+                    // Build a mapping from full qualified names to alias.TypeName
+                    let mut reference_mappings: HashMap<String, String> = HashMap::new();
+                    
+                    // Group references by their import path to avoid duplicates
+                    let mut imports_by_path: HashMap<String, Vec<TypeReference>> = HashMap::new();
+                    
                     for type_ref in import_resolver.references() {
-                        // Convert TypeReference to Import
                         let import_path = type_ref.import_path(group, version);
-                        let alias = Some(type_ref.module_alias());
+                        imports_by_path.entry(import_path)
+                            .or_insert_with(Vec::new)
+                            .push(type_ref.clone());
+                    }
+
+                    // Generate a single import for each unique path and build mappings
+                    for (import_path, type_refs) in imports_by_path {
+                        // Generate a proper alias for this import
+                        let alias = if import_path.contains("k8s_io") {
+                            // For k8s types, extract the filename as the basis for the alias
+                            let filename = import_path
+                                .trim_end_matches(".ncl")
+                                .split('/')
+                                .last()
+                                .unwrap_or("unknown");
+                            format!("k8s_io_{}", filename)
+                        } else {
+                            format!("import_{}", module.imports.len())
+                        };
+
+                        // Create mappings for all types from this import
+                        for type_ref in &type_refs {
+                            // Build the full qualified name that appears in Type::Reference
+                            let full_name = if type_ref.group == "k8s.io" {
+                                // For k8s types, construct the full io.k8s... name
+                                if type_ref.kind == "ObjectMeta" || type_ref.kind == "ListMeta" {
+                                    format!("io.k8s.apimachinery.pkg.apis.meta.{}.{}", 
+                                           type_ref.version, type_ref.kind)
+                                } else {
+                                    format!("io.k8s.api.core.{}.{}", 
+                                           type_ref.version, type_ref.kind)
+                                }
+                            } else {
+                                // For other types, use a simpler format
+                                format!("{}/{}.{}", type_ref.group, type_ref.version, type_ref.kind)
+                            };
+                            
+                            // Map to alias.TypeName
+                            let mapped_name = format!("{}.{}", alias, type_ref.kind);
+                            reference_mappings.insert(full_name, mapped_name);
+                        }
 
                         tracing::debug!(
-                            "Adding import for {:?} -> path: {}, alias: {:?}",
-                            type_ref,
+                            "Adding import: path={}, alias={}, types={:?}",
                             import_path,
-                            alias
+                            alias,
+                            type_refs.iter().map(|t| &t.kind).collect::<Vec<_>>()
                         );
 
                         module.imports.push(Import {
                             path: import_path,
-                            alias,
+                            alias: Some(alias),
                             items: vec![], // Empty items means import the whole module
                         });
                     }
+                    
+                    // Transform the type definition to use the mapped references
+                    let mut transformed_type_def = type_def.clone();
+                    transform_type_references(&mut transformed_type_def.ty, &reference_mappings);
+                    
+                    // Use the transformed type definition
+                    module.types = vec![transformed_type_def];
 
                     tracing::debug!(
                         "Module {} has {} imports",
@@ -307,6 +358,37 @@ fn capitalize_first(s: &str) -> String {
     match chars.next() {
         None => String::new(),
         Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
+    }
+}
+
+/// Transform Type::Reference values using the provided mappings
+fn transform_type_references(ty: &mut Type, mappings: &HashMap<String, String>) {
+    match ty {
+        Type::Reference(name) => {
+            // Check if we have a mapping for this reference
+            if let Some(mapped) = mappings.get(name) {
+                *name = mapped.clone();
+            }
+        }
+        Type::Array(inner) => transform_type_references(inner, mappings),
+        Type::Optional(inner) => transform_type_references(inner, mappings),
+        Type::Map { value, .. } => transform_type_references(value, mappings),
+        Type::Record { fields, .. } => {
+            for field in fields.values_mut() {
+                transform_type_references(&mut field.ty, mappings);
+            }
+        }
+        Type::Union(types) => {
+            for ty in types {
+                transform_type_references(ty, mappings);
+            }
+        }
+        Type::TaggedUnion { variants, .. } => {
+            for variant_type in variants.values_mut() {
+                transform_type_references(variant_type, mappings);
+            }
+        }
+        _ => {} // Other types don't contain references
     }
 }
 

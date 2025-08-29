@@ -144,23 +144,24 @@ impl NickelCodegen {
         // Field name
         parts.push(format!("{}{}", indent, name));
 
-        // Optional modifier (put before type for readability)
-        if !field.required {
+        // In Nickel, a field with a default value is implicitly optional
+        // So we only add 'optional' if there's no default value
+        if !field.required && field.default.is_none() {
             parts.push("optional".to_string());
         }
 
         // Type
         parts.push(type_str);
 
-        // Default value (before doc)
+        // Documentation (must come BEFORE default in Nickel)
+        if let Some(desc) = &field.description {
+            parts.push(format!("doc {}", self.format_doc(desc)));
+        }
+
+        // Default value (must come AFTER doc in Nickel)
         if let Some(default) = &field.default {
             let default_str = format_json_value(default, indent_level);
             parts.push(format!("default = {}", default_str));
-        }
-
-        // Documentation (always last for better readability)
-        if let Some(desc) = &field.description {
-            parts.push(format!("doc {}", self.format_doc(desc)));
         }
 
         Ok(parts.join(" | "))
