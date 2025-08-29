@@ -1,15 +1,14 @@
 ---
 source: crates/amalgam-parser/tests/snapshot_test.rs
-assertion_line: 56
 expression: content
 ---
 # Module: simple.test.io
 
-let k8s_io_v1 = import "../../k8s_io/v1/objectmeta.ncl" in
+let k8s_io_objectmeta = import "../../k8s_io/v1/objectmeta.ncl" in
 
 {
   Simple = {
-    metadata | optional | k8s_io_v1.ObjectMeta,
+    metadata | optional | k8s_io_objectmeta.ObjectMeta,
     spec | optional | {
       name | optional | String,
     },

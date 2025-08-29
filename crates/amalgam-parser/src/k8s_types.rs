@@ -105,7 +105,7 @@ impl K8sTypesFetcher {
         let mut types = HashMap::new();
 
         // Namespaces we want to extract - these contain the most commonly used types
-        let target_namespaces = vec![
+        let target_namespaces = [
             "io.k8s.apimachinery.pkg.apis.meta.v1",  // ObjectMeta, TypeMeta, etc.
             "io.k8s.api.core.v1",                     // Pod, Service, ConfigMap, etc.
             "io.k8s.api.apps.v1",                     // Deployment, StatefulSet, etc.
@@ -130,7 +130,7 @@ impl K8sTypesFetcher {
                     // Extract the short name from the full type name
                     let short_name = full_name
                         .split('.')
-                        .last()
+                        .next_back()
                         .unwrap_or(full_name.as_str())
                         .to_string();
                     
@@ -177,7 +177,7 @@ impl K8sTypesFetcher {
         };
 
         let version = parts[parts.len() - 2].to_string();
-        let kind = parts[parts.len() - 1].to_string();
+        let kind = parts.last().unwrap().to_string();
 
         Ok(TypeReference::new(group, version, kind))
     }
@@ -215,7 +215,7 @@ impl K8sTypesFetcher {
                 name if name.ends_with(".FieldsV1") => Type::Any,
                 name if name.starts_with("io.k8s.") => {
                     // For k8s internal references, use short name
-                    let short_name = name.split('.').last().unwrap_or(name);
+                    let short_name = name.split('.').next_back().unwrap_or(name);
                     Type::Reference(short_name.to_string())
                 }
                 _ => Type::Reference(type_name.to_string())
@@ -284,7 +284,7 @@ impl K8sTypesFetcher {
                                 // but only use the short name
                                 name if name.starts_with("io.k8s.") => {
                                     // Extract just the type name (last part)
-                                    let short_name = name.split('.').last().unwrap_or(name);
+                                    let short_name = name.split('.').next_back().unwrap_or(name);
                                     Type::Reference(short_name.to_string())
                                 }
                                 // Keep full reference for non-k8s types
@@ -318,7 +318,7 @@ impl K8sTypesFetcher {
                                         s if s.ends_with(".FieldsV1") => Type::Any,
                                         s if s.starts_with("io.k8s.") => {
                                             // Extract just the type name (last part)
-                                            let short_name = s.split('.').last().unwrap_or(s);
+                                            let short_name = s.split('.').next_back().unwrap_or(s);
                                             Type::Reference(short_name.to_string())
                                         }
                                         _ => Type::Reference(type_str.clone())

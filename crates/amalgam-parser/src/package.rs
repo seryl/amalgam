@@ -225,7 +225,7 @@ impl NamespacedPackage {
                     for type_ref in import_resolver.references() {
                         let import_path = type_ref.import_path(group, version);
                         imports_by_path.entry(import_path)
-                            .or_insert_with(Vec::new)
+                            .or_default()
                             .push(type_ref.clone());
                     }
 
@@ -237,7 +237,7 @@ impl NamespacedPackage {
                             let filename = import_path
                                 .trim_end_matches(".ncl")
                                 .split('/')
-                                .last()
+                                .next_back()
                                 .unwrap_or("unknown");
                             format!("k8s_io_{}", filename)
                         } else {

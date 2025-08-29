@@ -523,13 +523,13 @@ async fn handle_k8s_core_import(version: &str, output_dir: &PathBuf) -> Result<(
     for (type_ref, type_def) in types {
         types_by_version
             .entry(type_ref.version.clone())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push((type_ref, type_def));
     }
     
     // Generate files for each version
     for (version, version_types) in &types_by_version {
-        let version_dir = output_dir.join(&version);
+        let version_dir = output_dir.join(version);
         fs::create_dir_all(&version_dir)?;
         
         let mut mod_imports = Vec::new();
