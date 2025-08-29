@@ -45,22 +45,12 @@
           YELLOW='\033[1;33m'
           NC='\033[0m' # No Color
 
-          # Parse arguments
-          MODE="''${1:-check}"
-          VERSION=""
-          BUMP_TYPE=""
+          # Parse arguments - default to publish mode
+          MODE="''${1:-publish}"
           SKIP_CHECKS="false"
 
           while [[ $# -gt 0 ]]; do
             case $1 in
-              --version)
-                VERSION="$2"
-                shift 2
-                ;;
-              --bump)
-                BUMP_TYPE="$2"
-                shift 2
-                ;;
               --skip-checks)
                 SKIP_CHECKS="true"
                 shift
@@ -115,42 +105,9 @@
           CURRENT_VERSION=$(${pkgs.toml2json}/bin/toml2json < Cargo.toml | ${pkgs.jq}/bin/jq -r '.workspace.package.version')
           echo -e "''${GREEN}Current version: $CURRENT_VERSION''${NC}"
 
-          # Handle semantic version bumping
-          if [ -n "$BUMP_TYPE" ] && [ -z "$VERSION" ]; then
-            IFS='.' read -r major minor patch <<< "$CURRENT_VERSION"
-            case $BUMP_TYPE in
-              major)
-                VERSION="$((major + 1)).0.0"
-                ;;
-              minor)
-                VERSION="$major.$((minor + 1)).0"
-                ;;
-              patch)
-                VERSION="$major.$minor.$((patch + 1))"
-                ;;
-              *)
-                echo -e "''${RED}Invalid bump type: $BUMP_TYPE (use major, minor, or patch)''${NC}"
-                exit 1
-                ;;
-            esac
-            echo -e "''${YELLOW}Auto-bumping $BUMP_TYPE version''${NC}"
-          fi
-
-          # Handle version bumping
-          if [ -n "$VERSION" ] && [ "$VERSION" != "$CURRENT_VERSION" ]; then
-            echo -e "''${YELLOW}Bumping version from $CURRENT_VERSION to $VERSION...''${NC}"
-
-            # Only update the workspace version - all members inherit it
-            ${pkgs.gnused}/bin/sed -i "s/^version = \"$CURRENT_VERSION\"/version = \"$VERSION\"/" Cargo.toml
-
-            # Update Cargo.lock
-            ${rustWithComponents}/bin/cargo update
-
-            CURRENT_VERSION=$VERSION
-            echo -e "''${GREEN}Version bumped to $VERSION''${NC}"
-            echo -e "''${YELLOW}Note: All workspace members inherit this version automatically''${NC}"
-            echo -e "''${YELLOW}Don't forget to commit these changes!''${NC}"
-          fi
+          # Note: Version bumping is handled by cargo-release
+          # Use: cargo release version patch/minor/major --execute
+          # Or: cargo release patch/minor/major --execute (to bump and publish)
 
           # Define crates in dependency order
           CRATES=(
@@ -272,24 +229,24 @@
               ;;
 
             *)
-              echo "Usage: publish [check|dry-run|publish] [OPTIONS]"
+              echo "Usage: publish [check|dry-run]"
+              echo ""
+              echo "Default behavior: Publishes all crates to crates.io"
               echo ""
               echo "Commands:"
-              echo "  check    - Check if crates are ready to publish (default)"
+              echo "  (none)   - Publish to crates.io (default)"
+              echo "  check    - Check if crates are ready to publish"
               echo "  dry-run  - Run cargo publish --dry-run for all crates"
-              echo "  publish  - Actually publish to crates.io"
               echo ""
               echo "Options:"
-              echo "  --version X.Y.Z      - Set exact version"
-              echo "  --bump TYPE          - Bump version (major|minor|patch)"
-              echo "  --skip-checks        - Skip tests/clippy/fmt in check mode"
+              echo "  --skip-checks  - Skip tests/clippy/fmt in check mode"
+              echo ""
+              echo "Note: Use 'release' command first to bump version and create tags"
               echo ""
               echo "Examples:"
-              echo "  publish --bump patch check  # Bump patch version and check"
-              echo "  publish --bump minor publish # Bump minor version and publish"
-              echo "  publish --version 1.0.0      # Set version to 1.0.0"
-              echo ""
-              echo "Note: All workspace members inherit the version from Cargo.toml"
+              echo "  release patch  # Bump version, test, commit, tag"
+              echo "  publish        # Publish to crates.io"
+              echo "  git push && git push --tags  # Push everything"
               exit 1
               ;;
           esac
@@ -359,6 +316,118 @@
               exit 1
               ;;
           esac
+        '';
+
+        # Release helper that validates everything before version bump
+        release = pkgs.writeShellScriptBin "release" ''
+          set -euo pipefail
+          
+          # Color output
+          RED='\033[0;31m'
+          GREEN='\033[0;32m'
+          YELLOW='\033[1;33m'
+          NC='\033[0m' # No Color
+          
+          BUMP_TYPE="''${1:-patch}"
+          
+          echo -e "''${YELLOW}Starting release process for $BUMP_TYPE version bump...''${NC}"
+          echo ""
+          
+          # Step 1: Run all tests
+          echo -e "''${YELLOW}Step 1: Running all tests...''${NC}"
+          if ! ${rustWithComponents}/bin/cargo test --workspace; then
+            echo -e "''${RED}✗ Tests failed! Fix tests before releasing.''${NC}"
+            exit 1
+          fi
+          echo -e "''${GREEN}✓ All tests passed''${NC}"
+          echo ""
+          
+          # Step 2: Check clippy with warnings as errors
+          echo -e "''${YELLOW}Step 2: Running clippy...''${NC}"
+          if ! ${rustWithComponents}/bin/cargo clippy --all-targets -- -D warnings; then
+            echo -e "''${RED}✗ Clippy found issues! Fix them before releasing.''${NC}"
+            exit 1
+          fi
+          echo -e "''${GREEN}✓ Clippy passed with no warnings''${NC}"
+          echo ""
+          
+          # Step 3: Check formatting
+          echo -e "''${YELLOW}Step 3: Checking formatting...''${NC}"
+          if ! ${rustWithComponents}/bin/cargo fmt -- --check; then
+            echo -e "''${RED}✗ Code is not formatted! Run 'cargo fmt' before releasing.''${NC}"
+            exit 1
+          fi
+          echo -e "''${GREEN}✓ Code is properly formatted''${NC}"
+          echo ""
+          
+          # Step 4: Check snapshot tests
+          echo -e "''${YELLOW}Step 4: Checking snapshot tests...''${NC}"
+          if ! ${rustWithComponents}/bin/cargo insta test; then
+            echo -e "''${RED}✗ Snapshot tests failed! Review with 'cargo insta review'.''${NC}"
+            exit 1
+          fi
+          echo -e "''${GREEN}✓ Snapshot tests passed''${NC}"
+          echo ""
+          
+          # Step 5: Get current version
+          CURRENT_VERSION=$(${pkgs.toml2json}/bin/toml2json < Cargo.toml | ${pkgs.jq}/bin/jq -r '.workspace.package.version')
+          echo -e "''${GREEN}Current version: $CURRENT_VERSION''${NC}"
+          
+          # Step 6: Bump version
+          echo -e "''${YELLOW}Step 6: Bumping $BUMP_TYPE version...''${NC}"
+          if ! ${rustWithComponents}/bin/cargo release version $BUMP_TYPE --execute; then
+            echo -e "''${RED}✗ Failed to bump version!''${NC}"
+            exit 1
+          fi
+          
+          # Update internal dependency versions in workspace
+          NEW_VERSION=$(${pkgs.toml2json}/bin/toml2json < Cargo.toml | ${pkgs.jq}/bin/jq -r '.workspace.package.version')
+          ${pkgs.gnused}/bin/sed -i "s/amalgam-core = { version = \"[^\"]*/amalgam-core = { version = \"$NEW_VERSION\"/" Cargo.toml
+          ${pkgs.gnused}/bin/sed -i "s/amalgam-parser = { version = \"[^\"]*/amalgam-parser = { version = \"$NEW_VERSION\"/" Cargo.toml
+          ${pkgs.gnused}/bin/sed -i "s/amalgam-codegen = { version = \"[^\"]*/amalgam-codegen = { version = \"$NEW_VERSION\"/" Cargo.toml
+          ${pkgs.gnused}/bin/sed -i "s/amalgam-daemon = { version = \"[^\"]*/amalgam-daemon = { version = \"$NEW_VERSION\"/" Cargo.toml
+          
+          echo -e "''${GREEN}✓ Version bumped to $NEW_VERSION''${NC}"
+          echo ""
+          
+          # Step 7: Update Cargo.lock
+          echo -e "''${YELLOW}Step 7: Updating Cargo.lock...''${NC}"
+          ${rustWithComponents}/bin/cargo update
+          echo -e "''${GREEN}✓ Cargo.lock updated''${NC}"
+          echo ""
+          
+          # Step 8: Check publish readiness
+          echo -e "''${YELLOW}Step 8: Checking publish readiness...''${NC}"
+          if ! publish check --skip-checks; then
+            echo -e "''${RED}✗ Not ready to publish!''${NC}"
+            exit 1
+          fi
+          echo -e "''${GREEN}✓ Ready to publish''${NC}"
+          echo ""
+          
+          # Step 9: Commit changes
+          echo -e "''${YELLOW}Step 9: Committing version bump...''${NC}"
+          ${pkgs.git}/bin/git add -A
+          ${pkgs.git}/bin/git commit -m "release: v$NEW_VERSION"
+          echo -e "''${GREEN}✓ Changes committed''${NC}"
+          echo ""
+          
+          # Step 10: Tag the release
+          echo -e "''${YELLOW}Step 10: Creating git tag...''${NC}"
+          ${pkgs.git}/bin/git tag "v$NEW_VERSION"
+          echo -e "''${GREEN}✓ Tagged as v$NEW_VERSION''${NC}"
+          echo ""
+          
+          echo -e "''${GREEN}🎉 Release v$NEW_VERSION prepared successfully!''${NC}"
+          echo ""
+          echo -e "''${YELLOW}Next steps:''${NC}"
+          echo "  1. Review the changes: git diff HEAD~1"
+          echo "  2. Publish to crates.io: publish"
+          echo "  3. Push to GitHub: git push && git push --tags"
+          echo ""
+          echo -e "''${YELLOW}To undo:''${NC}"
+          echo "  git reset --hard HEAD~1"
+          echo "  git tag -d v$NEW_VERSION"
         '';
 
         # Quick test runner
@@ -470,6 +539,7 @@
             rustWithComponents
 
             # Smart commands
+            release
             publish
             dev-mode
             test-all
@@ -536,13 +606,12 @@
             echo "Version: $VERSION"
             echo ""
             echo "Quick Commands:"
-            echo "  dev-mode local      - Switch to local development (path deps)"
-            echo "  dev-mode remote     - Switch to publish mode (crates.io deps)"
-            echo "  test-all            - Run all tests, clippy, and fmt"
-            echo "  regenerate-examples - Rebuild and regenerate example CRDs"
-            echo "  publish check       - Check if ready to publish"
-            echo "  publish dry-run     - Test publishing process"
-            echo "  publish publish     - Actually publish to crates.io"
+            echo "  release [patch|minor|major] - Complete release workflow (test, bump, tag)"
+            echo "  publish                     - Publish to crates.io (after release)"
+            echo "  test-all                    - Run all tests, clippy, and fmt"
+            echo "  regenerate-examples         - Rebuild and regenerate example CRDs"
+            echo "  dev-mode local              - Switch to local development (path deps)"
+            echo "  dev-mode remote             - Switch to publish mode (crates.io deps)"
             echo ""
             echo "Development Commands:"
             echo "  cargo build       - Build the project"
@@ -552,17 +621,25 @@
             echo "  cargo fmt         - Format code"
             echo "  cargo insta       - Manage snapshot tests"
             echo ""
-            echo "Publishing Workflow:"
-            echo "  1. test-all                      # Ensure all tests pass"
-            echo "  2. publish check                 # Check readiness"
-            echo "  3. publish --bump patch check   # Bump patch version and check"
-            echo "  4. publish publish               # Publish to crates.io"
-            echo "  5. git tag vX.Y.Z && git push --tags"
+            echo "Publishing Workflow (Simplified):"
+            echo "  1. release patch     # Validates, bumps version, commits, tags"
+            echo "  2. publish           # Publishes to crates.io"
+            echo "  3. git push && git push --tags  # Push to GitHub"
             echo ""
-            echo "Version Management:"
-            echo "  publish --bump major   # Bump major version (X.0.0)"
-            echo "  publish --bump minor   # Bump minor version (x.Y.0)"
-            echo "  publish --bump patch   # Bump patch version (x.y.Z)"
+            echo "Release Types:"
+            echo "  release patch  # Bump patch version (x.y.Z)"
+            echo "  release minor  # Bump minor version (x.Y.0)"
+            echo "  release major  # Bump major version (X.0.0)"
+            echo ""
+            echo "What 'release' does:"
+            echo "  - Runs all tests and clippy"
+            echo "  - Checks code formatting"
+            echo "  - Validates snapshot tests"
+            echo "  - Bumps version in all Cargo.toml files"
+            echo "  - Updates internal dependency versions"
+            echo "  - Commits changes with message 'release: vX.Y.Z'"
+            echo "  - Creates git tag vX.Y.Z"
+            echo "  - Verifies publish readiness"
             echo ""
 
             # Ensure we're in local dev mode by default

@@ -77,7 +77,7 @@ futures = "0.3"
 atty = "0.2"
 
 # Internal workspace dependencies
-amalgam-core = { path = "crates/amalgam-core" }
-amalgam-parser = { path = "crates/amalgam-parser" }
-amalgam-codegen = { path = "crates/amalgam-codegen" }
-amalgam-daemon = { path = "crates/amalgam-daemon" }
+amalgam-core = { version = "0.4.1", path = "crates/amalgam-core" }
+amalgam-parser = { version = "0.4.1", path = "crates/amalgam-parser" }
+amalgam-codegen = { version = "0.4.1", path = "crates/amalgam-codegen" }
+amalgam-daemon = { version = "0.4.1", path = "crates/amalgam-daemon" }
