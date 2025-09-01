@@ -46,19 +46,31 @@ fn is_k8s_type(name: &str) -> bool {
     // Common k8s.io types that might be referenced
     matches!(
         name,
-        "ListMeta" | "ObjectMeta" | "LabelSelector" | "Time" | "MicroTime" |
-        "Status" | "StatusDetails" | "StatusCause" | "FieldsV1" |
-        "ManagedFieldsEntry" | "OwnerReference" | "Preconditions" |
-        "DeleteOptions" | "ListOptions" | "GetOptions" | "WatchEvent"
+        "ListMeta"
+            | "ObjectMeta"
+            | "LabelSelector"
+            | "Time"
+            | "MicroTime"
+            | "Status"
+            | "StatusDetails"
+            | "StatusCause"
+            | "FieldsV1"
+            | "ManagedFieldsEntry"
+            | "OwnerReference"
+            | "Preconditions"
+            | "DeleteOptions"
+            | "ListOptions"
+            | "GetOptions"
+            | "WatchEvent"
     )
 }
 
 /// Generate import statement for a k8s type
 pub fn generate_k8s_import(type_name: &str, current_version: &str) -> Option<String> {
     let (import_path, version) = match type_name {
-        "ListMeta" | "ObjectMeta" | "LabelSelector" | "Status" | "StatusDetails" |
-        "DeleteOptions" | "ListOptions" | "GetOptions" | "WatchEvent" |
-        "ManagedFieldsEntry" | "OwnerReference" | "Preconditions" => {
+        "ListMeta" | "ObjectMeta" | "LabelSelector" | "Status" | "StatusDetails"
+        | "DeleteOptions" | "ListOptions" | "GetOptions" | "WatchEvent" | "ManagedFieldsEntry"
+        | "OwnerReference" | "Preconditions" => {
             // These are in meta/v1
             ("../v1", "v1")
         }
@@ -68,12 +80,12 @@ pub fn generate_k8s_import(type_name: &str, current_version: &str) -> Option<Str
         }
         _ => return None,
     };
-    
+
     // Don't import from the same version we're in
     if version == current_version {
         return None;
     }
-    
+
     Some(format!(
         "let {} = import \"{}/{}.ncl\" in",
         type_name.to_lowercase(),
@@ -86,32 +98,32 @@ pub fn generate_k8s_import(type_name: &str, current_version: &str) -> Option<Str
 pub fn fix_k8s_imports(
     content: &str,
     type_refs: &HashSet<String>,
-    current_version: &str
+    current_version: &str,
 ) -> String {
     let mut imports = Vec::new();
     let mut replacements = Vec::new();
-    
+
     for type_name in type_refs {
         if let Some(import_stmt) = generate_k8s_import(type_name, current_version) {
             imports.push(import_stmt);
             // Replace bare type reference with qualified reference
             replacements.push((
                 format!("| {}", type_name),
-                format!("| {}.{}", type_name.to_lowercase(), type_name)
+                format!("| {}.{}", type_name.to_lowercase(), type_name),
             ));
         }
     }
-    
+
     if imports.is_empty() {
         return content.to_string();
     }
-    
+
     // Add imports at the beginning and apply replacements
     let mut result = imports.join("\n") + "\n\n" + content;
-    
+
     for (from, to) in replacements {
         result = result.replace(&from, &to);
     }
-    
+
     result
 }

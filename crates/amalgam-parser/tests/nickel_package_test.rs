@@ -1,8 +1,10 @@
 //! Tests for Nickel package generation
 
-use amalgam_codegen::nickel_package::{NickelPackageConfig, NickelPackageGenerator, PackageDependency};
+use amalgam_codegen::nickel_package::{
+    NickelPackageConfig, NickelPackageGenerator, PackageDependency,
+};
+use amalgam_parser::crd::{CRDMetadata, CRDNames, CRDSchema, CRDSpec, CRDVersion, CRD};
 use amalgam_parser::package::PackageGenerator;
-use amalgam_parser::crd::{CRD, CRDMetadata, CRDNames, CRDSchema, CRDSpec, CRDVersion};
 use std::path::PathBuf;
 
 fn sample_crd() -> CRD {
@@ -62,10 +64,12 @@ fn test_generate_basic_nickel_manifest() {
         license: "MIT".to_string(),
         keywords: vec!["test".to_string(), "example".to_string()],
     };
-    
+
     let generator = NickelPackageGenerator::new(config);
-    let manifest = generator.generate_manifest(&[], std::collections::HashMap::new()).unwrap();
-    
+    let manifest = generator
+        .generate_manifest(&[], std::collections::HashMap::new())
+        .unwrap();
+
     // Check that the manifest contains expected content
     assert!(manifest.contains("name = \"test-package\""));
     assert!(manifest.contains("version = \"1.0.0\""));
@@ -84,7 +88,7 @@ fn test_generate_basic_nickel_manifest() {
 fn test_nickel_manifest_with_dependencies() {
     let config = NickelPackageConfig::default();
     let generator = NickelPackageGenerator::new(config);
-    
+
     let mut dependencies = std::collections::HashMap::new();
     dependencies.insert(
         "k8s_io".to_string(),
@@ -97,41 +101,41 @@ fn test_nickel_manifest_with_dependencies() {
             version: ">=1.0.0".to_string(),
         },
     );
-    
+
     let manifest = generator.generate_manifest(&[], dependencies).unwrap();
-    
+
     assert!(manifest.contains("dependencies = {"));
     assert!(manifest.contains("k8s_io = 'Path \"../k8s_io\""));
-    assert!(manifest.contains("stdlib = 'Index { package = \"github:nickel-lang/stdlib\", version = \">=1.0.0\" }"));
+    assert!(manifest.contains(
+        "stdlib = 'Index { package = \"github:nickel-lang/stdlib\", version = \">=1.0.0\" }"
+    ));
 }
 
 #[test]
 fn test_package_generates_nickel_manifest() {
-    let mut generator = PackageGenerator::new(
-        "test-crossplane".to_string(),
-        PathBuf::from("/tmp/test"),
-    );
-    
+    let mut generator =
+        PackageGenerator::new("test-crossplane".to_string(), PathBuf::from("/tmp/test"));
+
     generator.add_crd(sample_crd());
     let package = generator.generate_package().unwrap();
-    
+
     let manifest = package.generate_nickel_manifest(None);
-    
+
     // Check basic structure
     assert!(manifest.contains("name = \"test-crossplane\""));
     assert!(manifest.contains("description = \"Generated type definitions for test-crossplane\""));
     assert!(manifest.contains("version = \"0.1.0\""));
     assert!(manifest.contains("minimal_nickel_version = \"1.9.0\""));
-    
+
     // Check that group-based keywords are added
     assert!(manifest.contains("\"apiextensions-crossplane-io\""));
-    
+
     // Should detect k8s references if there are any
     // (in this simple test there aren't any)
     if manifest.contains("dependencies = {") {
         assert!(manifest.contains("k8s_io"));
     }
-    
+
     assert!(manifest.contains("| std.package.Manifest"));
 }
 
@@ -140,7 +144,7 @@ fn test_dependency_formatting() {
     // Test Path dependency
     let path_dep = PackageDependency::Path(PathBuf::from("/some/path"));
     assert_eq!(path_dep.to_nickel_string(), "'Path \"/some/path\"");
-    
+
     // Test Index dependency
     let index_dep = PackageDependency::Index {
         package: "github:org/repo".to_string(),
@@ -150,7 +154,7 @@ fn test_dependency_formatting() {
         index_dep.to_nickel_string(),
         "'Index { package = \"github:org/repo\", version = \"^1.0.0\" }"
     );
-    
+
     // Test Git dependency with branch
     let git_dep = PackageDependency::Git {
         url: "https://github.com/org/repo.git".to_string(),
@@ -162,7 +166,7 @@ fn test_dependency_formatting() {
         git_dep.to_nickel_string(),
         "'Git { url = \"https://github.com/org/repo.git\", branch = \"main\" }"
     );
-    
+
     // Test Git dependency with tag
     let git_tag_dep = PackageDependency::Git {
         url: "https://github.com/org/repo.git".to_string(),

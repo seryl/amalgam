@@ -1,13 +1,13 @@
 //! Package mode handling for code generation
-//! 
+//!
 //! This module provides generic package handling without special casing
 //! for specific packages. All package detection is based on actual usage.
 
+use amalgam_core::dependency_analyzer::DependencyAnalyzer;
+use amalgam_core::types::Type;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
-use amalgam_core::dependency_analyzer::DependencyAnalyzer;
-use amalgam_core::types::Type;
 
 /// Represents how a package dependency should be resolved
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -23,7 +23,7 @@ pub struct PackageDependency {
 pub enum PackageMode {
     /// Generate relative file imports (default for local development)
     Relative,
-    
+
     /// Generate package imports for nickel-mine
     Package {
         /// Map of external package dependencies discovered through analysis
@@ -31,7 +31,7 @@ pub enum PackageMode {
         /// Dependency analyzer for automatic detection
         analyzer: DependencyAnalyzer,
     },
-    
+
     /// Local development mode with local package paths
     LocalDevelopment {
         /// Map of package names to local paths
@@ -49,12 +49,12 @@ impl PackageMode {
     /// Create a new package mode with automatic dependency detection
     pub fn new_with_analyzer(manifest_path: Option<&PathBuf>) -> Self {
         let mut analyzer = DependencyAnalyzer::new();
-        
+
         // If we have a manifest, register known types from it
         if let Some(path) = manifest_path {
             let _ = analyzer.register_from_manifest(path);
         }
-        
+
         PackageMode::Package {
             dependencies: HashMap::new(),
             analyzer,
@@ -63,19 +63,23 @@ impl PackageMode {
 
     /// Analyze types to detect dependencies automatically
     pub fn analyze_and_update_dependencies(&mut self, types: &[Type], current_package: &str) {
-        if let PackageMode::Package { analyzer, dependencies } = self {
+        if let PackageMode::Package {
+            analyzer,
+            dependencies,
+        } = self
+        {
             analyzer.set_current_package(current_package);
-            
+
             // Analyze all types to find external references
             let mut all_refs = std::collections::HashSet::new();
             for ty in types {
                 let refs = analyzer.analyze_type(ty, current_package);
                 all_refs.extend(refs);
             }
-            
+
             // Determine required dependencies
             let detected_deps = analyzer.determine_dependencies(&all_refs);
-            
+
             // Update our dependency map
             for dep in detected_deps {
                 if !dependencies.contains_key(&dep.package_name) {
@@ -83,13 +87,13 @@ impl PackageMode {
                     let base = std::env::var("NICKEL_PACKAGE_BASE")
                         .unwrap_or_else(|_| "github:seryl/nickel-pkgs".to_string());
                     let package_id = format!("{}/{}", base, &dep.package_name);
-                    
+
                     let version = if dep.is_core_type {
                         ">=1.31.0".to_string()
                     } else {
                         ">=0.1.0".to_string()
                     };
-                    
+
                     dependencies.insert(
                         dep.package_name.clone(),
                         PackageDependency {
@@ -101,7 +105,6 @@ impl PackageMode {
             }
         }
     }
-
 
     /// Convert an import path based on the package mode
     pub fn convert_import(&self, import_path: &str) -> String {
@@ -136,7 +139,7 @@ impl PackageMode {
     fn detect_package_from_path(&self, import_path: &str) -> Option<String> {
         // Look for package patterns in the path
         // This is based on path structure, not hardcoded names
-        
+
         // Pattern: ../../../package_name/...
         if import_path.starts_with("../") {
             let parts: Vec<&str> = import_path.split('/').collect();
@@ -159,7 +162,7 @@ impl PackageMode {
                 }
             }
         }
-        
+
         None
     }
 
@@ -170,13 +173,13 @@ impl PackageMode {
                 // Use analyzer to detect and generate imports
                 let mut analyzer = analyzer.clone();
                 analyzer.set_current_package(current_package);
-                
+
                 let mut all_refs = std::collections::HashSet::new();
                 for ty in types {
                     let refs = analyzer.analyze_type(ty, current_package);
                     all_refs.extend(refs);
                 }
-                
+
                 let deps = analyzer.determine_dependencies(&all_refs);
                 analyzer.generate_imports(&deps, true)
             }
@@ -192,12 +195,11 @@ impl PackageMode {
                 for (dep_name, dep_info) in dependencies {
                     deps_str.push_str(&format!(
                         "    \"{}\" = \"{}\",\n",
-                        dep_name,
-                        dep_info.version
+                        dep_name, dep_info.version
                     ));
                 }
                 deps_str.push_str("  },\n");
-                
+
                 // Insert dependencies into manifest
                 if content.contains("dependencies = {}") {
                     content.replace("dependencies = {}", &deps_str.trim_end())
@@ -256,7 +258,11 @@ pub fn create_package_manifest(
         name,
         version,
         description,
-        keywords.iter().map(|k| format!("\"{}\"", k)).collect::<Vec<_>>().join(", "),
+        keywords
+            .iter()
+            .map(|k| format!("\"{}\"", k))
+            .collect::<Vec<_>>()
+            .join(", "),
         deps
     )
 }
@@ -268,11 +274,11 @@ mod tests {
     #[test]
     fn test_import_conversion_with_analyzer() {
         let mode = PackageMode::new_with_analyzer(None);
-        
+
         // Test that imports are converted based on detected packages
         let import = "../../../k8s_io/v1/objectmeta.ncl";
         let converted = mode.convert_import(import);
-        
+
         // Without registered dependencies, should stay as-is
         assert_eq!(converted, import);
     }
@@ -286,7 +292,7 @@ mod tests {
             vec!["test".to_string()],
             HashMap::new(),
         );
-        
+
         assert!(manifest.contains("name = \"test-package\""));
         assert!(manifest.contains("version = \"1.0.0\""));
         assert!(manifest.contains("dependencies = {}"));

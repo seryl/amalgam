@@ -36,7 +36,11 @@ impl Default for NickelPackageConfig {
             description: "Auto-generated Nickel type definitions".to_string(),
             authors: vec!["amalgam".to_string()],
             license: "Apache-2.0".to_string(),
-            keywords: vec!["kubernetes".to_string(), "crd".to_string(), "types".to_string()],
+            keywords: vec![
+                "kubernetes".to_string(),
+                "crd".to_string(),
+                "types".to_string(),
+            ],
         }
     }
 }
@@ -58,15 +62,18 @@ impl NickelPackageGenerator {
         dependencies: HashMap<String, PackageDependency>,
     ) -> Result<String, CodegenError> {
         let mut manifest = String::new();
-        
+
         // Start the manifest object
         manifest.push_str("{\n");
-        
+
         // Basic package metadata
         manifest.push_str(&format!("  name = \"{}\",\n", self.config.name));
-        manifest.push_str(&format!("  description = \"{}\",\n", self.config.description));
+        manifest.push_str(&format!(
+            "  description = \"{}\",\n",
+            self.config.description
+        ));
         manifest.push_str(&format!("  version = \"{}\",\n", self.config.version));
-        
+
         // Authors
         if !self.config.authors.is_empty() {
             manifest.push_str("  authors = [\n");
@@ -75,12 +82,12 @@ impl NickelPackageGenerator {
             }
             manifest.push_str("  ],\n");
         }
-        
+
         // License
         if !self.config.license.is_empty() {
             manifest.push_str(&format!("  license = \"{}\",\n", self.config.license));
         }
-        
+
         // Keywords
         if !self.config.keywords.is_empty() {
             manifest.push_str("  keywords = [\n");
@@ -89,13 +96,13 @@ impl NickelPackageGenerator {
             }
             manifest.push_str("  ],\n");
         }
-        
+
         // Minimal Nickel version
         manifest.push_str(&format!(
             "  minimal_nickel_version = \"{}\",\n",
             self.config.minimal_nickel_version
         ));
-        
+
         // Dependencies
         if !dependencies.is_empty() {
             manifest.push_str("  dependencies = {\n");
@@ -104,37 +111,40 @@ impl NickelPackageGenerator {
             }
             manifest.push_str("  },\n");
         }
-        
+
         // Close the manifest and apply the contract
         manifest.push_str("} | std.package.Manifest\n");
-        
+
         Ok(manifest)
     }
 
     /// Generate a main entry point file that exports all types
     pub fn generate_main_module(&self, modules: &[Module]) -> Result<String, CodegenError> {
         let mut main = String::new();
-        
+
         main.push_str("# Main module for ");
         main.push_str(&self.config.name);
         main.push_str("\n");
         main.push_str("# This file exports all generated types\n\n");
-        
+
         main.push_str("{\n");
-        
+
         // Group modules by their base name (e.g., group in k8s context)
         let mut grouped_modules: HashMap<String, Vec<&Module>> = HashMap::new();
         for module in modules {
             let parts: Vec<&str> = module.name.split('.').collect();
             if let Some(group) = parts.first() {
-                grouped_modules.entry(group.to_string()).or_default().push(module);
+                grouped_modules
+                    .entry(group.to_string())
+                    .or_default()
+                    .push(module);
             }
         }
-        
+
         // Export each group
         for (group, group_modules) in grouped_modules {
             main.push_str(&format!("  {} = {{\n", sanitize_identifier(&group)));
-            
+
             for module in group_modules {
                 // Get the relative module name (e.g., "v1" from "core.v1")
                 let parts: Vec<&str> = module.name.split('.').collect();
@@ -148,12 +158,12 @@ impl NickelPackageGenerator {
                     ));
                 }
             }
-            
+
             main.push_str("  },\n");
         }
-        
+
         main.push_str("}\n");
-        
+
         Ok(main)
     }
 }
@@ -164,10 +174,7 @@ pub enum PackageDependency {
     /// A path dependency to a local package
     Path(PathBuf),
     /// A dependency from the package index
-    Index {
-        package: String,
-        version: String,
-    },
+    Index { package: String, version: String },
     /// A git dependency
     Git {
         url: String,
@@ -185,9 +192,17 @@ impl PackageDependency {
                 format!("'Path \"{}\"", path.display())
             }
             PackageDependency::Index { package, version } => {
-                format!("'Index {{ package = \"{}\", version = \"{}\" }}", package, version)
+                format!(
+                    "'Index {{ package = \"{}\", version = \"{}\" }}",
+                    package, version
+                )
             }
-            PackageDependency::Git { url, branch, tag, rev } => {
+            PackageDependency::Git {
+                url,
+                branch,
+                tag,
+                rev,
+            } => {
                 let mut parts = vec![format!("url = \"{}\"", url)];
                 if let Some(branch) = branch {
                     parts.push(format!("branch = \"{}\"", branch));
@@ -208,7 +223,13 @@ impl PackageDependency {
 fn sanitize_identifier(s: &str) -> String {
     // Replace invalid characters with underscores
     s.chars()
-        .map(|c| if c.is_alphanumeric() || c == '_' { c } else { '_' })
+        .map(|c| {
+            if c.is_alphanumeric() || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
         .collect()
 }
 
@@ -227,10 +248,10 @@ mod tests {
             license: "MIT".to_string(),
             keywords: vec!["test".to_string()],
         };
-        
+
         let generator = NickelPackageGenerator::new(config);
         let manifest = generator.generate_manifest(&[], HashMap::new()).unwrap();
-        
+
         assert!(manifest.contains("name = \"test-package\""));
         assert!(manifest.contains("version = \"1.0.0\""));
         assert!(manifest.contains("| std.package.Manifest"));

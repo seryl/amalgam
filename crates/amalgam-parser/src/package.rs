@@ -221,13 +221,14 @@ impl NamespacedPackage {
 
                     // Build a mapping from full qualified names to alias.TypeName
                     let mut reference_mappings: HashMap<String, String> = HashMap::new();
-                    
+
                     // Group references by their import path to avoid duplicates
                     let mut imports_by_path: HashMap<String, Vec<TypeReference>> = HashMap::new();
-                    
+
                     for type_ref in import_resolver.references() {
                         let import_path = type_ref.import_path(group, version);
-                        imports_by_path.entry(import_path)
+                        imports_by_path
+                            .entry(import_path)
                             .or_default()
                             .push(type_ref.clone());
                     }
@@ -253,17 +254,21 @@ impl NamespacedPackage {
                             let full_name = if type_ref.group == "k8s.io" {
                                 // For k8s types, construct the full io.k8s... name
                                 if type_ref.kind == "ObjectMeta" || type_ref.kind == "ListMeta" {
-                                    format!("io.k8s.apimachinery.pkg.apis.meta.{}.{}", 
-                                           type_ref.version, type_ref.kind)
+                                    format!(
+                                        "io.k8s.apimachinery.pkg.apis.meta.{}.{}",
+                                        type_ref.version, type_ref.kind
+                                    )
                                 } else {
-                                    format!("io.k8s.api.core.{}.{}", 
-                                           type_ref.version, type_ref.kind)
+                                    format!(
+                                        "io.k8s.api.core.{}.{}",
+                                        type_ref.version, type_ref.kind
+                                    )
                                 }
                             } else {
                                 // For other types, use a simpler format
                                 format!("{}/{}.{}", type_ref.group, type_ref.version, type_ref.kind)
                             };
-                            
+
                             // Map to alias.TypeName
                             let mapped_name = format!("{}.{}", alias, type_ref.kind);
                             reference_mappings.insert(full_name, mapped_name);
@@ -282,11 +287,11 @@ impl NamespacedPackage {
                             items: vec![], // Empty items means import the whole module
                         });
                     }
-                    
+
                     // Transform the type definition to use the mapped references
                     let mut transformed_type_def = type_def.clone();
                     transform_type_references(&mut transformed_type_def.ty, &reference_mappings);
-                    
+
                     // Use the transformed type definition
                     module.types = vec![transformed_type_def];
 
@@ -300,7 +305,7 @@ impl NamespacedPackage {
                     // Generate the Nickel code with package mode
                     use amalgam_codegen::package_mode::PackageMode;
                     use std::path::PathBuf;
-                    
+
                     // Use analyzer-based package mode for automatic dependency detection
                     let manifest_path = PathBuf::from(".amalgam-manifest.toml");
                     let manifest = if manifest_path.exists() {
@@ -308,9 +313,9 @@ impl NamespacedPackage {
                     } else {
                         None
                     };
-                    
+
                     let mut package_mode = PackageMode::new_with_analyzer(manifest);
-                    
+
                     // Analyze types to detect dependencies
                     let mut all_types: Vec<amalgam_core::types::Type> = Vec::new();
                     for module in &ir.modules {
@@ -319,13 +324,13 @@ impl NamespacedPackage {
                         }
                     }
                     package_mode.analyze_and_update_dependencies(&all_types, &group);
-                    
+
                     let mut codegen = amalgam_codegen::nickel::NickelCodegen::new()
                         .with_package_mode(package_mode);
                     let mut generated = codegen
                         .generate(&ir)
                         .unwrap_or_else(|e| format!("# Error generating type: {}\n", e));
-                    
+
                     // For k8s.io packages, check for missing internal imports
                     if group == "k8s.io" || group.starts_with("io.k8s") {
                         use crate::k8s_imports::{find_k8s_type_references, fix_k8s_imports};
@@ -334,7 +339,7 @@ impl NamespacedPackage {
                             generated = fix_k8s_imports(&generated, &type_refs, version);
                         }
                     }
-                    
+
                     generated
                 })
             })
@@ -394,7 +399,7 @@ impl NamespacedPackage {
         });
 
         let generator = NickelPackageGenerator::new(config);
-        
+
         // Detect if we need k8s.io as a dependency
         let mut dependencies = HashMap::new();
         if self.has_k8s_references() {
@@ -404,21 +409,26 @@ impl NamespacedPackage {
                 PackageDependency::Path(PathBuf::from("../k8s_io")),
             );
         }
-        
+
         // Convert our types to modules for the generator
-        let modules: Vec<Module> = self.groups().into_iter().flat_map(|group| {
-            self.versions(&group).into_iter().map(move |version| {
-                Module {
-                    name: format!("{}.{}", group, version),
-                    imports: Vec::new(),
-                    types: Vec::new(),
-                    constants: Vec::new(),
-                    metadata: Default::default(),
-                }
+        let modules: Vec<Module> = self
+            .groups()
+            .into_iter()
+            .flat_map(|group| {
+                self.versions(&group)
+                    .into_iter()
+                    .map(move |version| Module {
+                        name: format!("{}.{}", group, version),
+                        imports: Vec::new(),
+                        types: Vec::new(),
+                        constants: Vec::new(),
+                        metadata: Default::default(),
+                    })
             })
-        }).collect();
-        
-        generator.generate_manifest(&modules, dependencies)
+            .collect();
+
+        generator
+            .generate_manifest(&modules, dependencies)
             .unwrap_or_else(|e| format!("# Error generating manifest: {}\n", e))
     }
 

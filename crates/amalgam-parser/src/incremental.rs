@@ -1,9 +1,11 @@
 //! Incremental update support for all parser types
-//! 
+//!
 //! This module implements fingerprinting for different source types
 //! to enable intelligent change detection and incremental updates.
 
-use amalgam_core::fingerprint::{ContentFingerprint, FingerprintBuilder, Fingerprintable, SourceInfo};
+use amalgam_core::fingerprint::{
+    ContentFingerprint, FingerprintBuilder, Fingerprintable, SourceInfo,
+};
 use std::path::Path;
 
 /// URL-based source fingerprinting (GitHub, GitLab, etc.)
@@ -16,16 +18,16 @@ pub struct UrlSource {
 impl Fingerprintable for UrlSource {
     fn create_fingerprint(&self) -> Result<ContentFingerprint, Box<dyn std::error::Error>> {
         let mut builder = FingerprintBuilder::new();
-        
+
         // Add all content that affects generation
         for content in &self.contents {
             builder.add_content_str(content);
         }
-        
+
         // Add metadata that could change
         builder.add_metadata("base_url", &self.base_url);
         builder.add_metadata("url_count", &self.urls.len().to_string());
-        
+
         // TODO: Add ETags and Last-Modified headers when available
         let source_info = SourceInfo::UrlCollection {
             base_url: self.base_url.clone(),
@@ -33,9 +35,9 @@ impl Fingerprintable for UrlSource {
             etags: vec![None; self.urls.len()], // Will be populated from HTTP headers
             last_modified: vec![None; self.urls.len()],
         };
-        
+
         builder.with_source_info(source_info);
-        
+
         Ok(builder.build())
     }
 }
@@ -50,17 +52,17 @@ pub struct K8sClusterSource {
 impl Fingerprintable for K8sClusterSource {
     fn create_fingerprint(&self) -> Result<ContentFingerprint, Box<dyn std::error::Error>> {
         let mut builder = FingerprintBuilder::new();
-        
+
         // Hash all CRD specifications
         for spec in &self.crd_specs {
             builder.add_content_str(spec);
         }
-        
+
         // Add server metadata
         builder.add_metadata("server_version", &self.server_version);
         builder.add_metadata("api_version", &self.api_version);
         builder.add_metadata("crd_count", &self.crd_specs.len().to_string());
-        
+
         // Create API resources hash
         let mut api_hasher = sha2::Sha256::new();
         use sha2::Digest;
@@ -68,13 +70,13 @@ impl Fingerprintable for K8sClusterSource {
             api_hasher.update(spec.as_bytes());
         }
         let api_resources_hash = format!("{:x}", api_hasher.finalize());
-        
+
         let source_info = SourceInfo::K8sCluster {
             version: self.api_version.clone(),
             server_version: self.server_version.clone(),
             api_resources_hash,
         };
-        
+
         builder.with_source_info(source_info);
         Ok(builder.build())
     }
@@ -90,26 +92,26 @@ pub struct K8sCoreSource {
 impl Fingerprintable for K8sCoreSource {
     fn create_fingerprint(&self) -> Result<ContentFingerprint, Box<dyn std::error::Error>> {
         let mut builder = FingerprintBuilder::new();
-        
+
         // The OpenAPI spec content is what matters for generation
         builder.add_content_str(&self.openapi_spec);
-        
+
         // Version and URL are metadata
         builder.add_metadata("k8s_version", &self.version);
         builder.add_metadata("spec_url", &self.spec_url);
-        
+
         // Hash just the OpenAPI spec for the fingerprint
         let mut hasher = sha2::Sha256::new();
         use sha2::Digest;
         hasher.update(self.openapi_spec.as_bytes());
         let openapi_hash = format!("{:x}", hasher.finalize());
-        
+
         let source_info = SourceInfo::K8sCore {
             version: self.version.clone(),
             openapi_hash,
             spec_url: self.spec_url.clone(),
         };
-        
+
         builder.with_source_info(source_info);
         Ok(builder.build())
     }
@@ -124,38 +126,42 @@ pub struct LocalFilesSource {
 impl Fingerprintable for LocalFilesSource {
     fn create_fingerprint(&self) -> Result<ContentFingerprint, Box<dyn std::error::Error>> {
         let mut builder = FingerprintBuilder::new();
-        
+
         // Add all file contents
         for content in &self.contents {
             builder.add_content_str(content);
         }
-        
+
         // Add metadata
         builder.add_metadata("file_count", &self.paths.len().to_string());
         for path in &self.paths {
             builder.add_metadata("file_path", path);
         }
-        
+
         // Get file metadata
         let mut mtimes = Vec::new();
         let mut file_sizes = Vec::new();
-        
+
         for path in &self.paths {
             if let Ok(metadata) = std::fs::metadata(path) {
-                mtimes.push(metadata.modified().unwrap_or(std::time::SystemTime::UNIX_EPOCH));
+                mtimes.push(
+                    metadata
+                        .modified()
+                        .unwrap_or(std::time::SystemTime::UNIX_EPOCH),
+                );
                 file_sizes.push(metadata.len());
             } else {
                 mtimes.push(std::time::SystemTime::UNIX_EPOCH);
                 file_sizes.push(0);
             }
         }
-        
+
         let source_info = SourceInfo::LocalFiles {
             paths: self.paths.clone(),
             mtimes,
             file_sizes,
         };
-        
+
         builder.with_source_info(source_info);
         Ok(builder.build())
     }
@@ -172,24 +178,24 @@ pub struct GitRepoSource {
 impl Fingerprintable for GitRepoSource {
     fn create_fingerprint(&self) -> Result<ContentFingerprint, Box<dyn std::error::Error>> {
         let mut builder = FingerprintBuilder::new();
-        
+
         // Add all file contents from the repo
         for content in &self.contents {
             builder.add_content_str(content);
         }
-        
+
         // Add Git metadata
         builder.add_metadata("git_url", &self.url);
         builder.add_metadata("git_commit", &self.commit);
         builder.add_metadata("path_count", &self.paths.len().to_string());
-        
+
         let source_info = SourceInfo::GitRepo {
             url: self.url.clone(),
             commit: self.commit.clone(),
             paths: self.paths.clone(),
             http_metadata: None, // Could add ETags from GitHub API
         };
-        
+
         builder.with_source_info(source_info);
         Ok(builder.build())
     }
@@ -201,12 +207,12 @@ pub fn needs_regeneration(
     source: &dyn Fingerprintable,
 ) -> Result<bool, Box<dyn std::error::Error>> {
     let fingerprint_path = ContentFingerprint::fingerprint_path(output_dir);
-    
+
     // If no previous fingerprint exists, we need to generate
     if !fingerprint_path.exists() {
         return Ok(true);
     }
-    
+
     let last_fingerprint = ContentFingerprint::load_from_file(&fingerprint_path)?;
     source.has_changed(&last_fingerprint)
 }
@@ -218,12 +224,12 @@ pub fn save_fingerprint(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let fingerprint = source.create_fingerprint()?;
     let fingerprint_path = ContentFingerprint::fingerprint_path(output_dir);
-    
+
     // Ensure directory exists
     if let Some(parent) = fingerprint_path.parent() {
         std::fs::create_dir_all(parent)?;
     }
-    
+
     fingerprint.save_to_file(&fingerprint_path)?;
     Ok(())
 }
@@ -246,14 +252,14 @@ pub fn detect_change_type(
     source: &dyn Fingerprintable,
 ) -> Result<ChangeType, Box<dyn std::error::Error>> {
     let fingerprint_path = ContentFingerprint::fingerprint_path(output_dir);
-    
+
     if !fingerprint_path.exists() {
         return Ok(ChangeType::FirstGeneration);
     }
-    
+
     let last_fingerprint = ContentFingerprint::load_from_file(&fingerprint_path)?;
     let current_fingerprint = source.create_fingerprint()?;
-    
+
     if current_fingerprint.content_matches(&last_fingerprint) {
         Ok(ChangeType::NoChange)
     } else if current_fingerprint.metadata_changed(&last_fingerprint) {
@@ -332,7 +338,7 @@ mod tests {
 
         // First generation
         match detect_change_type(output_dir, &source).unwrap() {
-            ChangeType::FirstGeneration => {},
+            ChangeType::FirstGeneration => {}
             other => panic!("Expected FirstGeneration, got {:?}", other),
         }
 
@@ -341,7 +347,7 @@ mod tests {
 
         // No change
         match detect_change_type(output_dir, &source).unwrap() {
-            ChangeType::NoChange => {},
+            ChangeType::NoChange => {}
             other => panic!("Expected NoChange, got {:?}", other),
         }
 
@@ -352,7 +358,7 @@ mod tests {
             contents: vec!["different_content".to_string()],
         };
         match detect_change_type(output_dir, &changed_source).unwrap() {
-            ChangeType::ContentChanged => {},
+            ChangeType::ContentChanged => {}
             other => panic!("Expected ContentChanged, got {:?}", other),
         }
     }

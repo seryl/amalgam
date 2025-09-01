@@ -1,6 +1,5 @@
 //! Tests for validating generated Nickel packages using the upstream Nickel library
 
-use std::path::{Path, PathBuf};
 use nickel_lang_core::{
     cache::{Cache, ErrorTolerance, ImportResolver},
     error::{Error, IntoDiagnostics},
@@ -8,37 +7,38 @@ use nickel_lang_core::{
     program::Program,
     typecheck::TypecheckMode,
 };
+use std::path::{Path, PathBuf};
 use tempfile::TempDir;
 
 /// Test helper to validate a Nickel file
 fn validate_nickel_file(path: &Path) -> Result<(), Error> {
     let mut cache = Cache::new(ErrorTolerance::Strict);
     let mut program = Program::new_from_file(path, std::io::stderr())?;
-    
+
     // First, parse the file
     program.parse()?;
-    
+
     // Then typecheck it if possible
     program.typecheck()?;
-    
+
     Ok(())
 }
 
 /// Test helper to validate a Nickel package with imports
 fn validate_nickel_package(package_root: &Path, entry_file: &str) -> Result<(), Error> {
     let entry_path = package_root.join(entry_file);
-    
+
     let mut cache = Cache::new(ErrorTolerance::Strict);
     cache.set_import_resolver(ImportResolver::new(package_root.to_path_buf()));
-    
+
     let mut program = Program::new_from_file(&entry_path, std::io::stderr())?;
-    
+
     // Parse with import resolution
     program.parse()?;
-    
+
     // Typecheck with import resolution
     program.typecheck()?;
-    
+
     Ok(())
 }
 
@@ -46,22 +46,27 @@ fn validate_nickel_package(package_root: &Path, entry_file: &str) -> Result<(), 
 mod tests {
     use super::*;
     use std::fs;
-    
+
     #[test]
     fn test_validate_k8s_io_package() {
         let package_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .parent().unwrap()
-            .parent().unwrap()
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
             .join("examples/k8s_io");
-        
+
         if !package_root.exists() {
-            eprintln!("Skipping test: k8s_io package not found at {:?}", package_root);
+            eprintln!(
+                "Skipping test: k8s_io package not found at {:?}",
+                package_root
+            );
             return;
         }
-        
+
         // Test the main module file
         let result = validate_nickel_package(&package_root, "mod.ncl");
-        
+
         match result {
             Ok(()) => println!("✓ k8s_io package validates successfully"),
             Err(e) => {
@@ -71,22 +76,27 @@ mod tests {
             }
         }
     }
-    
+
     #[test]
     fn test_validate_crossplane_package() {
         let package_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .parent().unwrap()
-            .parent().unwrap()
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
             .join("examples/crossplane");
-        
+
         if !package_root.exists() {
-            eprintln!("Skipping test: crossplane package not found at {:?}", package_root);
+            eprintln!(
+                "Skipping test: crossplane package not found at {:?}",
+                package_root
+            );
             return;
         }
-        
+
         // Test the main module file
         let result = validate_nickel_package(&package_root, "mod.ncl");
-        
+
         match result {
             Ok(()) => println!("✓ crossplane package validates successfully"),
             Err(e) => {
@@ -96,14 +106,16 @@ mod tests {
             }
         }
     }
-    
+
     #[test]
     fn test_validate_individual_files() {
         let examples_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .parent().unwrap()
-            .parent().unwrap()
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
             .join("examples");
-        
+
         // Test some individual files
         let test_files = vec![
             "k8s_io/v1/objectmeta.ncl",
@@ -111,15 +123,15 @@ mod tests {
             "k8s_io/v1/service.ncl",
             "crossplane/apiextensions.crossplane.io/v1/composition.ncl",
         ];
-        
+
         for file_path in test_files {
             let full_path = examples_dir.join(file_path);
-            
+
             if !full_path.exists() {
                 eprintln!("Skipping {}: file not found", file_path);
                 continue;
             }
-            
+
             match validate_nickel_file(&full_path) {
                 Ok(()) => println!("✓ {} validates successfully", file_path),
                 Err(e) => {
@@ -129,61 +141,66 @@ mod tests {
             }
         }
     }
-    
+
     #[test]
     fn test_import_resolution() {
         // Create a simple test case with imports
         let temp_dir = TempDir::new().unwrap();
         let root = temp_dir.path();
-        
+
         // Create a simple module structure
         fs::write(
             root.join("mod.ncl"),
             r#"{
   sub = import "./sub/mod.ncl",
   types = import "./types.ncl",
-}"#
-        ).unwrap();
-        
+}"#,
+        )
+        .unwrap();
+
         fs::create_dir(root.join("sub")).unwrap();
         fs::write(
             root.join("sub/mod.ncl"),
             r#"{
   value = 42,
-}"#
-        ).unwrap();
-        
+}"#,
+        )
+        .unwrap();
+
         fs::write(
             root.join("types.ncl"),
             r#"{
   MyType = { value | Number },
-}"#
-        ).unwrap();
-        
+}"#,
+        )
+        .unwrap();
+
         // Validate the package
         let result = validate_nickel_package(root, "mod.ncl");
         assert!(result.is_ok(), "Simple import test should pass");
     }
-    
+
     #[test]
     fn test_cross_package_imports() {
         let examples_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .parent().unwrap()
-            .parent().unwrap()
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
             .join("examples");
-        
+
         // Test the test file that imports both k8s and crossplane
         let test_file = examples_dir.join("test_with_packages.ncl");
-        
+
         if !test_file.exists() {
             eprintln!("Skipping test: test_with_packages.ncl not found");
             return;
         }
-        
+
         // This test will likely fail initially because of import resolution issues
         // We need to set up the import resolver properly
         let result = validate_nickel_file(&test_file);
-        
+
         match result {
             Ok(()) => println!("✓ Cross-package imports work correctly"),
             Err(e) => {
@@ -197,7 +214,7 @@ mod tests {
 /// Utility to validate all Nickel files in a directory tree
 pub fn validate_directory_tree(root: &Path) -> Vec<(PathBuf, Result<(), Error>)> {
     let mut results = Vec::new();
-    
+
     fn walk_dir(dir: &Path, results: &mut Vec<(PathBuf, Result<(), Error>)>) {
         if let Ok(entries) = fs::read_dir(dir) {
             for entry in entries.flatten() {
@@ -211,7 +228,7 @@ pub fn validate_directory_tree(root: &Path) -> Vec<(PathBuf, Result<(), Error>)>
             }
         }
     }
-    
+
     walk_dir(root, &mut results);
     results
 }
@@ -237,7 +254,10 @@ pub fn run_validation(package_path: &Path) -> Result<(), String> {
         if mod_file.exists() {
             match validate_nickel_package(package_path, "mod.ncl") {
                 Ok(()) => {
-                    println!("✓ Package at {} validates successfully", package_path.display());
+                    println!(
+                        "✓ Package at {} validates successfully",
+                        package_path.display()
+                    );
                     Ok(())
                 }
                 Err(e) => {
@@ -250,7 +270,7 @@ pub fn run_validation(package_path: &Path) -> Result<(), String> {
             // Validate all .ncl files in the directory
             let results = validate_directory_tree(package_path);
             let mut all_ok = true;
-            
+
             for (path, result) in results {
                 match result {
                     Ok(()) => println!("✓ {}", path.display()),
@@ -260,7 +280,7 @@ pub fn run_validation(package_path: &Path) -> Result<(), String> {
                     }
                 }
             }
-            
+
             if all_ok {
                 Ok(())
             } else {

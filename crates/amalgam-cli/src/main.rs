@@ -12,9 +12,9 @@ use amalgam_parser::{
     Parser as SchemaParser,
 };
 
-mod vendor;
-mod validate;
 mod manifest;
+mod validate;
+mod vendor;
 
 #[derive(Parser)]
 #[command(name = "amalgam")]
@@ -85,7 +85,7 @@ enum Commands {
         /// Path to the Nickel package or file to validate
         #[arg(short, long)]
         path: PathBuf,
-        
+
         /// Package path prefix for dependency resolution (e.g., examples/packages)
         #[arg(long)]
         package_path: Option<PathBuf>,
@@ -122,7 +122,7 @@ enum ImportSource {
         /// Output file path
         #[arg(short, long)]
         output: Option<PathBuf>,
-        
+
         /// Generate as submittable package (with package imports)
         #[arg(long)]
         package_mode: bool,
@@ -229,12 +229,16 @@ async fn main() -> Result<()> {
             let manager = vendor::VendorManager::new(project_root);
             manager.execute(command).await
         }
-        Commands::Validate { path, package_path, verbose: _ } => {
-            validate::run_validation_with_package_path(&path, package_path.as_deref())
-        }
-        Commands::GenerateFromManifest { manifest, packages, dry_run } => {
-            handle_manifest_generation(manifest, packages, dry_run).await
-        }
+        Commands::Validate {
+            path,
+            package_path,
+            verbose: _,
+        } => validate::run_validation_with_package_path(&path, package_path.as_deref()),
+        Commands::GenerateFromManifest {
+            manifest,
+            packages,
+            dry_run,
+        } => handle_manifest_generation(manifest, packages, dry_run).await,
     }
 }
 
@@ -338,7 +342,11 @@ async fn handle_import(source: ImportSource) -> Result<()> {
             Ok(())
         }
 
-        ImportSource::Crd { file, output, package_mode } => {
+        ImportSource::Crd {
+            file,
+            output,
+            package_mode,
+        } => {
             info!("Importing CRD from {:?}", file);
 
             let content = fs::read_to_string(&file)
@@ -406,7 +414,7 @@ async fn handle_import(source: ImportSource) -> Result<()> {
             let mut codegen = if package_mode {
                 use amalgam_codegen::package_mode::PackageMode;
                 use std::path::PathBuf;
-                
+
                 // Look for manifest in current directory first, then fallback locations
                 let manifest_path = if PathBuf::from(".amalgam-manifest.toml").exists() {
                     PathBuf::from(".amalgam-manifest.toml")
@@ -415,16 +423,16 @@ async fn handle_import(source: ImportSource) -> Result<()> {
                 } else {
                     PathBuf::from("does-not-exist")
                 };
-                
+
                 let manifest = if manifest_path.exists() {
                     Some(&manifest_path)
                 } else {
                     None
                 };
-                
+
                 // Create analyzer-based package mode
                 let mut package_mode = PackageMode::new_with_analyzer(manifest);
-                
+
                 // Analyze the IR to detect dependencies automatically
                 // Extract the package name from the CRD group
                 let package_name = crd.spec.group.split('.').next().unwrap_or("unknown");
@@ -435,7 +443,7 @@ async fn handle_import(source: ImportSource) -> Result<()> {
                     }
                 }
                 package_mode.analyze_and_update_dependencies(&all_types, package_name);
-                
+
                 NickelCodegen::new().with_package_mode(package_mode)
             } else {
                 NickelCodegen::new()
@@ -527,7 +535,12 @@ async fn handle_import(source: ImportSource) -> Result<()> {
             Ok(())
         }
 
-        ImportSource::K8sCore { version, output, types: _, nickel_package } => {
+        ImportSource::K8sCore {
+            version,
+            output,
+            types: _,
+            nickel_package,
+        } => {
             handle_k8s_core_import(&version, &output, nickel_package).await?;
             Ok(())
         }
@@ -538,9 +551,12 @@ async fn handle_import(source: ImportSource) -> Result<()> {
     }
 }
 
-fn apply_type_replacements(ty: &mut amalgam_core::types::Type, replacements: &std::collections::HashMap<String, String>) {
+fn apply_type_replacements(
+    ty: &mut amalgam_core::types::Type,
+    replacements: &std::collections::HashMap<String, String>,
+) {
     use amalgam_core::types::Type;
-    
+
     match ty {
         Type::Reference(name) => {
             if let Some(replacement) = replacements.get(name) {
@@ -570,9 +586,12 @@ fn apply_type_replacements(ty: &mut amalgam_core::types::Type, replacements: &st
     }
 }
 
-fn collect_type_references(ty: &amalgam_core::types::Type, refs: &mut std::collections::HashSet<String>) {
+fn collect_type_references(
+    ty: &amalgam_core::types::Type,
+    refs: &mut std::collections::HashSet<String>,
+) {
     use amalgam_core::types::Type;
-    
+
     match ty {
         Type::Reference(name) => {
             refs.insert(name.clone());
@@ -600,12 +619,16 @@ fn collect_type_references(ty: &amalgam_core::types::Type, refs: &mut std::colle
     }
 }
 
-async fn handle_manifest_generation(manifest_path: PathBuf, packages: Vec<String>, dry_run: bool) -> Result<()> {
+async fn handle_manifest_generation(
+    manifest_path: PathBuf,
+    packages: Vec<String>,
+    dry_run: bool,
+) -> Result<()> {
     use crate::manifest::Manifest;
-    
+
     info!("Loading manifest from {:?}", manifest_path);
     let mut manifest = Manifest::from_file(&manifest_path)?;
-    
+
     // Filter packages if specific ones were requested
     if !packages.is_empty() {
         manifest.packages.retain(|p| packages.contains(&p.name));
@@ -613,7 +636,7 @@ async fn handle_manifest_generation(manifest_path: PathBuf, packages: Vec<String
             anyhow::bail!("No matching packages found for: {:?}", packages);
         }
     }
-    
+
     if dry_run {
         info!("Dry run mode - showing what would be generated:");
         for package in &manifest.packages {
@@ -623,60 +646,70 @@ async fn handle_manifest_generation(manifest_path: PathBuf, packages: Vec<String
         }
         return Ok(());
     }
-    
+
     // Generate all packages
     let report = manifest.generate_all().await?;
     report.print_summary();
-    
+
     if !report.failed.is_empty() {
         anyhow::bail!("Some packages failed to generate");
     }
-    
+
     Ok(())
 }
 
-pub async fn handle_k8s_core_import(version: &str, output_dir: &PathBuf, nickel_package: bool) -> Result<()> {
+pub async fn handle_k8s_core_import(
+    version: &str,
+    output_dir: &PathBuf,
+    nickel_package: bool,
+) -> Result<()> {
     info!("Fetching Kubernetes {} core types...", version);
-    
+
     // Create fetcher
     let fetcher = K8sTypesFetcher::new();
-    
+
     // Fetch the OpenAPI schema
     let openapi = fetcher.fetch_k8s_openapi(version).await?;
-    
+
     // Extract core types
     let types = fetcher.extract_core_types(&openapi)?;
-    
+
     let total_types = types.len();
     info!("Extracted {} core types", total_types);
-    
+
     // Group types by version
-    let mut types_by_version: std::collections::HashMap<String, Vec<(amalgam_parser::imports::TypeReference, amalgam_core::ir::TypeDefinition)>> = std::collections::HashMap::new();
-    
+    let mut types_by_version: std::collections::HashMap<
+        String,
+        Vec<(
+            amalgam_parser::imports::TypeReference,
+            amalgam_core::ir::TypeDefinition,
+        )>,
+    > = std::collections::HashMap::new();
+
     for (type_ref, type_def) in types {
         types_by_version
             .entry(type_ref.version.clone())
             .or_default()
             .push((type_ref, type_def));
     }
-    
+
     // Generate files for each version
     for (version, version_types) in &types_by_version {
         let version_dir = output_dir.join(version);
         fs::create_dir_all(&version_dir)?;
-        
+
         let mut mod_imports = Vec::new();
-        
+
         // Generate each type in its own file
         for (type_ref, type_def) in version_types {
             // Check if this type references other types in the same version
             let mut imports = Vec::new();
             let mut type_replacements = std::collections::HashMap::new();
-            
+
             // Collect any references to other types in the same module
             let mut referenced_types = std::collections::HashSet::new();
             collect_type_references(&type_def.ty, &mut referenced_types);
-            
+
             // For each referenced type, check if it exists in the same version
             for referenced in &referenced_types {
                 // Check if this is a simple type name (not a full path)
@@ -690,49 +723,53 @@ pub async fn handle_k8s_core_import(version: &str, output_dir: &PathBuf, nickel_
                             alias: Some(alias.clone()),
                             items: vec![referenced.clone()],
                         });
-                        
+
                         // Store replacement: ManagedFieldsEntry -> managedfieldsentry.ManagedFieldsEntry
-                        type_replacements.insert(referenced.clone(), format!("{}.{}", alias, referenced));
+                        type_replacements
+                            .insert(referenced.clone(), format!("{}.{}", alias, referenced));
                     }
                 }
             }
-            
+
             // Apply type replacements to the type definition
             let mut updated_type_def = type_def.clone();
             apply_type_replacements(&mut updated_type_def.ty, &type_replacements);
-            
+
             // Create a module with the type and its imports
             let module = amalgam_core::ir::Module {
-                name: format!("k8s.io.{}.{}", type_ref.version, type_ref.kind.to_lowercase()),
+                name: format!(
+                    "k8s.io.{}.{}",
+                    type_ref.version,
+                    type_ref.kind.to_lowercase()
+                ),
                 imports,
                 types: vec![updated_type_def],
                 constants: vec![],
                 metadata: Default::default(),
             };
-            
+
             // Create IR with the module
             let mut ir = amalgam_core::IR::new();
             ir.add_module(module);
-            
+
             // Generate Nickel code
             let mut codegen = NickelCodegen::new();
             let code = codegen.generate(&ir)?;
-            
+
             // Write to file
             let filename = format!("{}.ncl", type_ref.kind.to_lowercase());
             let file_path = version_dir.join(&filename);
             fs::write(&file_path, code)?;
-            
+
             info!("Generated {:?}", file_path);
-            
+
             // Add to module imports
-            mod_imports.push(format!("  {} = (import \"./{}\").{},", 
-                type_ref.kind, 
-                filename,
-                type_ref.kind
+            mod_imports.push(format!(
+                "  {} = (import \"./{}\").{},",
+                type_ref.kind, filename, type_ref.kind
             ));
         }
-        
+
         // Generate mod.ncl for this version
         let mod_content = format!(
             "# Kubernetes core {} types\n{{\n{}\n}}\n",
@@ -741,25 +778,25 @@ pub async fn handle_k8s_core_import(version: &str, output_dir: &PathBuf, nickel_
         );
         fs::write(version_dir.join("mod.ncl"), mod_content)?;
     }
-    
+
     // Generate top-level mod.ncl with all versions
     let mut version_imports = Vec::new();
     for version in types_by_version.keys() {
         version_imports.push(format!("  {} = import \"./{}/mod.ncl\",", version, version));
     }
-    
+
     let root_mod_content = format!(
         "# Kubernetes core types\n{{\n{}\n}}\n",
         version_imports.join("\n")
     );
     fs::write(output_dir.join("mod.ncl"), root_mod_content)?;
-    
+
     // Generate Nickel package manifest if requested
     if nickel_package {
         info!("Generating Nickel package manifest (experimental)");
-        
+
         use amalgam_codegen::nickel_package::{NickelPackageConfig, NickelPackageGenerator};
-        
+
         let config = NickelPackageConfig {
             name: "k8s-io".to_string(),
             version: "0.1.0".to_string(),
@@ -767,30 +804,39 @@ pub async fn handle_k8s_core_import(version: &str, output_dir: &PathBuf, nickel_
             description: format!("Kubernetes {} core type definitions for Nickel", version),
             authors: vec!["amalgam".to_string()],
             license: "Apache-2.0".to_string(),
-            keywords: vec!["kubernetes".to_string(), "k8s".to_string(), "types".to_string()],
+            keywords: vec![
+                "kubernetes".to_string(),
+                "k8s".to_string(),
+                "types".to_string(),
+            ],
         };
-        
+
         let generator = NickelPackageGenerator::new(config);
-        
+
         // Convert types to modules for manifest generation
-        let modules: Vec<amalgam_core::ir::Module> = types_by_version.iter().map(|(ver, _)| {
-            amalgam_core::ir::Module {
+        let modules: Vec<amalgam_core::ir::Module> = types_by_version
+            .iter()
+            .map(|(ver, _)| amalgam_core::ir::Module {
                 name: ver.clone(),
                 imports: Vec::new(),
                 types: Vec::new(),
                 constants: Vec::new(),
                 metadata: Default::default(),
-            }
-        }).collect();
-        
-        let manifest = generator.generate_manifest(&modules, std::collections::HashMap::new())
+            })
+            .collect();
+
+        let manifest = generator
+            .generate_manifest(&modules, std::collections::HashMap::new())
             .unwrap_or_else(|e| format!("# Error generating manifest: {}\n", e));
-        
+
         fs::write(output_dir.join("Nickel-pkg.ncl"), manifest)?;
         info!("✓ Generated Nickel-pkg.ncl");
     }
-    
-    info!("Successfully generated {} k8s core types in {:?}", total_types, output_dir);
+
+    info!(
+        "Successfully generated {} k8s core types in {:?}",
+        total_types, output_dir
+    );
     if nickel_package {
         info!("  with Nickel package manifest");
     }

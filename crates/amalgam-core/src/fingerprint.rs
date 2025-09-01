@@ -1,14 +1,14 @@
 //! Content fingerprinting for intelligent change detection
-//! 
+//!
 //! This module provides universal change detection across all source types
 //! by creating content-based fingerprints that capture everything affecting
 //! code generation.
 
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
 use std::time::SystemTime;
-use chrono::{DateTime, Utc};
-use sha2::{Sha256, Digest};
 
 /// Universal content fingerprint for change detection
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -31,30 +31,30 @@ pub struct ContentFingerprint {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum SourceInfo {
     /// Git repository source
-    GitRepo { 
-        url: String, 
-        commit: String, 
+    GitRepo {
+        url: String,
+        commit: String,
         paths: Vec<String>,
         /// ETags or last-modified headers if available
         http_metadata: Option<BTreeMap<String, String>>,
     },
     /// Kubernetes cluster API
-    K8sCluster { 
-        version: String, 
+    K8sCluster {
+        version: String,
         server_version: String,
         /// Hash of all CRD resource versions
         api_resources_hash: String,
     },
     /// Collection of URLs (like GitHub file listings)
-    UrlCollection { 
+    UrlCollection {
         base_url: String,
-        urls: Vec<String>, 
+        urls: Vec<String>,
         etags: Vec<Option<String>>,
         last_modified: Vec<Option<DateTime<Utc>>>,
     },
     /// Local files
-    LocalFiles { 
-        paths: Vec<String>, 
+    LocalFiles {
+        paths: Vec<String>,
         mtimes: Vec<SystemTime>,
         file_sizes: Vec<u64>,
     },
@@ -117,42 +117,43 @@ impl FingerprintBuilder {
             metadata_hash,
             combined_hash,
             created_at: Utc::now(),
-            source_info: self.source_info.clone().unwrap_or_else(|| {
-                SourceInfo::LocalFiles {
+            source_info: self
+                .source_info
+                .clone()
+                .unwrap_or_else(|| SourceInfo::LocalFiles {
                     paths: vec!["unknown".to_string()],
                     mtimes: vec![SystemTime::now()],
                     file_sizes: vec![0],
-                }
-            }),
+                }),
             amalgam_version: env!("CARGO_PKG_VERSION").to_string(),
         }
     }
 
     fn hash_content(&self) -> String {
         let mut hasher = Sha256::new();
-        
+
         // Sort content for deterministic hashing
         let mut sorted_content = self.content_parts.clone();
         sorted_content.sort();
-        
+
         for content in &sorted_content {
             hasher.update(content);
         }
-        
+
         format!("{:x}", hasher.finalize())
     }
 
     fn hash_metadata(&self) -> String {
         let mut hasher = Sha256::new();
-        
+
         // Sort metadata for deterministic hashing
         let mut sorted_metadata = self.metadata_parts.clone();
         sorted_metadata.sort();
-        
+
         for metadata in &sorted_metadata {
             hasher.update(metadata.as_bytes());
         }
-        
+
         format!("{:x}", hasher.finalize())
     }
 
@@ -199,7 +200,9 @@ impl ContentFingerprint {
     }
 
     /// Load fingerprint from a file
-    pub fn load_from_file(path: &std::path::Path) -> Result<ContentFingerprint, Box<dyn std::error::Error>> {
+    pub fn load_from_file(
+        path: &std::path::Path,
+    ) -> Result<ContentFingerprint, Box<dyn std::error::Error>> {
         if !path.exists() {
             return Err("Fingerprint file does not exist".into());
         }
@@ -218,9 +221,12 @@ impl ContentFingerprint {
 pub trait Fingerprintable {
     /// Create a content fingerprint for this source
     fn create_fingerprint(&self) -> Result<ContentFingerprint, Box<dyn std::error::Error>>;
-    
+
     /// Check if content has changed since the last fingerprint
-    fn has_changed(&self, last_fingerprint: &ContentFingerprint) -> Result<bool, Box<dyn std::error::Error>> {
+    fn has_changed(
+        &self,
+        last_fingerprint: &ContentFingerprint,
+    ) -> Result<bool, Box<dyn std::error::Error>> {
         let current = self.create_fingerprint()?;
         Ok(current.content_changed(last_fingerprint) || current.metadata_changed(last_fingerprint))
     }
@@ -239,7 +245,7 @@ mod tests {
             .add_metadata("source", "test");
 
         let fingerprint = builder.build();
-        
+
         assert!(!fingerprint.content_hash.is_empty());
         assert!(!fingerprint.metadata_hash.is_empty());
         assert!(!fingerprint.combined_hash.is_empty());

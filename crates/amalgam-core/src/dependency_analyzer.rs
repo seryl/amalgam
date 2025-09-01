@@ -1,5 +1,5 @@
 //! Universal dependency detection and analysis
-//! 
+//!
 //! This module provides generic dependency detection without special casing
 //! for specific packages like k8s_io or crossplane.
 
@@ -61,10 +61,10 @@ impl DependencyAnalyzer {
         // Load the manifest and register all known types
         let content = std::fs::read_to_string(manifest_path)
             .map_err(|e| format!("Failed to read manifest: {}", e))?;
-        
-        let manifest: toml::Value = toml::from_str(&content)
-            .map_err(|e| format!("Failed to parse manifest: {}", e))?;
-        
+
+        let manifest: toml::Value =
+            toml::from_str(&content).map_err(|e| format!("Failed to parse manifest: {}", e))?;
+
         if let Some(packages) = manifest.get("packages").and_then(|p| p.as_array()) {
             for package in packages {
                 if let Some(name) = package.get("name").and_then(|n| n.as_str()) {
@@ -81,7 +81,7 @@ impl DependencyAnalyzer {
                 }
             }
         }
-        
+
         Ok(())
     }
 
@@ -112,10 +112,12 @@ impl DependencyAnalyzer {
             ("SecretKeySelector", "io.k8s.api.core.v1"),
             ("ConfigMapKeySelector", "io.k8s.api.core.v1"),
         ];
-        
+
         for (type_name, api_group) in core_types {
-            self.type_registry.insert(type_name.to_string(), "k8s_io".to_string());
-            self.api_group_registry.insert(api_group.to_string(), "k8s_io".to_string());
+            self.type_registry
+                .insert(type_name.to_string(), "k8s_io".to_string());
+            self.api_group_registry
+                .insert(api_group.to_string(), "k8s_io".to_string());
         }
     }
 
@@ -128,20 +130,15 @@ impl DependencyAnalyzer {
                 if components.len() >= 2 {
                     let org = components[0];
                     let repo = components[1];
-                    
+
                     // Generate likely API groups based on org/repo
                     // This is pattern matching, not hardcoding
                     let api_groups = match (org, repo) {
                         (org, _) if org.contains("crossplane") => {
-                            vec![
-                                format!("apiextensions.{}.io", org),
-                                format!("{}.io", org),
-                            ]
+                            vec![format!("apiextensions.{}.io", org), format!("{}.io", org)]
                         }
                         (org, _repo) if org == "prometheus-operator" => {
-                            vec![
-                                "monitoring.coreos.com".to_string(),
-                            ]
+                            vec!["monitoring.coreos.com".to_string()]
                         }
                         (org, _repo) if org == "cert-manager" => {
                             vec![
@@ -156,9 +153,10 @@ impl DependencyAnalyzer {
                             ]
                         }
                     };
-                    
+
                     for api_group in api_groups {
-                        self.api_group_registry.insert(api_group, package_name.to_string());
+                        self.api_group_registry
+                            .insert(api_group, package_name.to_string());
                     }
                 }
             }
@@ -173,7 +171,12 @@ impl DependencyAnalyzer {
     }
 
     /// Recursively collect type references
-    fn collect_type_references(&self, ty: &Type, refs: &mut HashSet<TypeReference>, location: &str) {
+    fn collect_type_references(
+        &self,
+        ty: &Type,
+        refs: &mut HashSet<TypeReference>,
+        location: &str,
+    ) {
         match ty {
             Type::Reference(name) => {
                 // Check if this is an external type reference
@@ -218,7 +221,7 @@ impl DependencyAnalyzer {
     fn parse_type_reference(&self, name: &str, location: &str) -> Option<TypeReference> {
         // Extract the simple name from potentially qualified name
         let simple_name = name.split('.').last().unwrap_or(name).to_string();
-        
+
         // Check if we know this type
         if self.type_registry.contains_key(&simple_name) {
             // Don't create reference if it's from the same package
@@ -233,7 +236,7 @@ impl DependencyAnalyzer {
                 }
             }
         }
-        
+
         // Check if the full name contains a known API group
         if let Some(api_group) = self.extract_api_group(name) {
             if self.api_group_registry.contains_key(&api_group) {
@@ -245,7 +248,7 @@ impl DependencyAnalyzer {
                 });
             }
         }
-        
+
         None
     }
 
@@ -264,9 +267,12 @@ impl DependencyAnalyzer {
     }
 
     /// Analyze a set of type references to determine required dependencies
-    pub fn determine_dependencies(&self, type_refs: &HashSet<TypeReference>) -> Vec<DetectedDependency> {
+    pub fn determine_dependencies(
+        &self,
+        type_refs: &HashSet<TypeReference>,
+    ) -> Vec<DetectedDependency> {
         let mut dependencies: HashMap<String, DetectedDependency> = HashMap::new();
-        
+
         for type_ref in type_refs {
             // Determine which package provides this type
             let package_name = if let Some(name) = self.type_registry.get(&type_ref.simple_name) {
@@ -280,20 +286,21 @@ impl DependencyAnalyzer {
             } else {
                 continue; // Can't determine package
             };
-            
+
             // Add to dependencies
-            let entry = dependencies.entry(package_name.clone()).or_insert_with(|| {
-                DetectedDependency {
-                    package_name: package_name.clone(),
-                    required_types: HashSet::new(),
-                    api_version: type_ref.api_group.clone(),
-                    is_core_type: package_name == "k8s_io",
-                }
-            });
-            
+            let entry =
+                dependencies
+                    .entry(package_name.clone())
+                    .or_insert_with(|| DetectedDependency {
+                        package_name: package_name.clone(),
+                        required_types: HashSet::new(),
+                        api_version: type_ref.api_group.clone(),
+                        is_core_type: package_name == "k8s_io",
+                    });
+
             entry.required_types.insert(type_ref.simple_name.clone());
         }
-        
+
         dependencies.into_values().collect()
     }
 
@@ -303,13 +310,18 @@ impl DependencyAnalyzer {
     }
 
     /// Build import statements for detected dependencies
-    pub fn generate_imports(&self, dependencies: &[DetectedDependency], package_mode: bool) -> Vec<String> {
+    pub fn generate_imports(
+        &self,
+        dependencies: &[DetectedDependency],
+        package_mode: bool,
+    ) -> Vec<String> {
         let mut imports = Vec::new();
-        
+
         for dep in dependencies {
             if package_mode {
                 // Package-style import
-                imports.push(format!("let {} = import \"{}\" in", 
+                imports.push(format!(
+                    "let {} = import \"{}\" in",
                     dep.package_name.replace('-', "_"),
                     dep.package_name
                 ));
@@ -317,13 +329,14 @@ impl DependencyAnalyzer {
                 // Relative import - calculate the path
                 // This would need proper path resolution based on file structure
                 let path = self.calculate_relative_path(&dep.package_name);
-                imports.push(format!("let {} = import \"{}\" in",
+                imports.push(format!(
+                    "let {} = import \"{}\" in",
                     dep.package_name.replace('-', "_"),
                     path
                 ));
             }
         }
-        
+
         imports
     }
 
@@ -348,17 +361,20 @@ mod tests {
     #[test]
     fn test_type_reference_detection() {
         let analyzer = DependencyAnalyzer::new();
-        
+
         // Test parsing a k8s type reference
         let type_ref = analyzer.parse_type_reference(
             "io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta",
-            "test_location"
+            "test_location",
         );
-        
+
         assert!(type_ref.is_some());
         let type_ref = type_ref.unwrap();
         assert_eq!(type_ref.simple_name, "ObjectMeta");
-        assert_eq!(type_ref.api_group, Some("io.k8s.apimachinery.pkg.apis.meta.v1".to_string()));
+        assert_eq!(
+            type_ref.api_group,
+            Some("io.k8s.apimachinery.pkg.apis.meta.v1".to_string())
+        );
     }
 
     #[test]
@@ -366,7 +382,7 @@ mod tests {
         let mut analyzer = DependencyAnalyzer::new();
         analyzer.register_k8s_core_types();
         analyzer.set_current_package("crossplane");
-        
+
         let mut refs = HashSet::new();
         refs.insert(TypeReference {
             full_name: "ObjectMeta".to_string(),
@@ -374,7 +390,7 @@ mod tests {
             api_group: Some("io.k8s.apimachinery.pkg.apis.meta.v1".to_string()),
             source_location: "spec.metadata".to_string(),
         });
-        
+
         let deps = analyzer.determine_dependencies(&refs);
         assert_eq!(deps.len(), 1);
         assert_eq!(deps[0].package_name, "k8s_io");
