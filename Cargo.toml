@@ -15,6 +15,9 @@ pre-release-commit-message = "release: version {{version}}"
 tag-prefix = "v"
 tag-name = "{{prefix}}{{version}}"
 
+[workspace.metadata.crane]
+name = "amalgam"
+
 [workspace.package]
 version = "0.5.0"
 edition = "2021"
