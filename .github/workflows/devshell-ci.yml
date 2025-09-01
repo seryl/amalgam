@@ -1,0 +1,110 @@
+name: Development Shell CI
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'CI target to run: ci (build/test/lint), generate, validate, or all'
+        required: false
+        default: 'ci'
+
+jobs:
+  devshell-ci:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v24
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
+            # Add any custom binary caches here
+            substituters = https://cache.nixos.org https://nix-community.cachix.org
+            trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs=
+
+      - name: Setup direnv
+        run: |
+          # Install direnv
+          nix profile install nixpkgs#direnv nixpkgs#nix-direnv
+          
+          # Configure direnv
+          echo "source_url \"https://raw.githubusercontent.com/nix-community/nix-direnv/master/direnvrc\" \"sha256-zelF0vLbEl5uaqrfIzbgNzJWGmLzCmYAkInj/LNxvKs=\"" > ~/.direnvrc
+          
+          # Allow the .envrc
+          direnv allow
+          
+          # Export direnv hooks for bash
+          eval "$(direnv hook bash)"
+
+      - name: Setup Attic cache (if configured)
+        if: env.ENABLE_ATTIC == 'true' && env.ATTIC_SERVER != '' && env.ATTIC_CACHE != ''
+        env:
+          ENABLE_ATTIC: ${{ secrets.ENABLE_ATTIC || 'false' }}
+          ATTIC_SERVER: ${{ secrets.ATTIC_SERVER }}
+          ATTIC_CACHE: ${{ secrets.ATTIC_CACHE }}
+          ATTIC_TOKEN: ${{ secrets.ATTIC_TOKEN }}
+        run: |
+          # Load the dev shell via direnv
+          eval "$(direnv export bash)"
+          
+          if [ -n "$ATTIC_TOKEN" ]; then
+            attic login "$ATTIC_SERVER" "$ATTIC_TOKEN"
+          fi
+          
+          attic use "$ATTIC_CACHE"
+          attic watch-store "$ATTIC_CACHE" &
+
+      - name: Run CI pipeline
+        env:
+          ATTIC_SERVER: ${{ secrets.ATTIC_SERVER }}
+          ATTIC_CACHE: ${{ secrets.ATTIC_CACHE }}
+          ATTIC_TOKEN: ${{ secrets.ATTIC_TOKEN }}
+        run: |
+          # Load the dev shell environment via direnv
+          eval "$(direnv export bash)"
+          
+          # Now we're in the dev shell with all tools available
+          echo "Running CI pipeline with target: ${{ github.event.inputs.target || 'ci' }}"
+          
+          # Use ci-runner command from the devshell
+          ci-runner ${{ github.event.inputs.target || 'ci' }}
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: ci-output
+          path: |
+            target/release/amalgam
+            Cargo.lock
+          retention-days: 30
+
+  # Simple flake check job
+  flake-check:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v24
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - name: Run flake checks
+        run: |
+          nix flake check --print-build-logs

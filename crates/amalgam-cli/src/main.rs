@@ -13,6 +13,8 @@ use amalgam_parser::{
 };
 
 mod vendor;
+mod validate;
+mod manifest;
 
 #[derive(Parser)]
 #[command(name = "amalgam")]
@@ -77,6 +79,36 @@ enum Commands {
         #[command(subcommand)]
         command: vendor::VendorCommand,
     },
+
+    /// Validate a Nickel package
+    Validate {
+        /// Path to the Nickel package or file to validate
+        #[arg(short, long)]
+        path: PathBuf,
+        
+        /// Package path prefix for dependency resolution (e.g., examples/packages)
+        #[arg(long)]
+        package_path: Option<PathBuf>,
+
+        /// Enable verbose output
+        #[arg(short, long)]
+        verbose: bool,
+    },
+
+    /// Generate packages from a manifest file
+    GenerateFromManifest {
+        /// Path to the manifest file (TOML format)
+        #[arg(short, long, default_value = ".amalgam-manifest.toml")]
+        manifest: PathBuf,
+
+        /// Only generate specific packages (by name)
+        #[arg(short, long)]
+        packages: Vec<String>,
+
+        /// Dry run - show what would be generated without doing it
+        #[arg(long)]
+        dry_run: bool,
+    },
 }
 
 #[derive(Subcommand)]
@@ -90,6 +122,10 @@ enum ImportSource {
         /// Output file path
         #[arg(short, long)]
         output: Option<PathBuf>,
+        
+        /// Generate as submittable package (with package imports)
+        #[arg(long)]
+        package_mode: bool,
     },
 
     /// Import CRDs from URL (GitHub repo, directory, or direct file)
@@ -105,6 +141,10 @@ enum ImportSource {
         /// Package name (defaults to last part of URL)
         #[arg(short, long)]
         package: Option<String>,
+
+        /// Generate Nickel package manifest (experimental)
+        #[arg(long)]
+        nickel_package: bool,
     },
 
     /// Import from OpenAPI specification
@@ -131,6 +171,10 @@ enum ImportSource {
         /// Specific types to import (if empty, imports common types)
         #[arg(short, long)]
         types: Vec<String>,
+
+        /// Generate Nickel package manifest (experimental)
+        #[arg(long)]
+        nickel_package: bool,
     },
 
     /// Import from Kubernetes cluster (not implemented)
@@ -185,6 +229,12 @@ async fn main() -> Result<()> {
             let manager = vendor::VendorManager::new(project_root);
             manager.execute(command).await
         }
+        Commands::Validate { path, package_path, verbose: _ } => {
+            validate::run_validation_with_package_path(&path, package_path.as_deref())
+        }
+        Commands::GenerateFromManifest { manifest, packages, dry_run } => {
+            handle_manifest_generation(manifest, packages, dry_run).await
+        }
     }
 }
 
@@ -194,6 +244,7 @@ async fn handle_import(source: ImportSource) -> Result<()> {
             url,
             output,
             package,
+            nickel_package,
         } => {
             info!("Fetching CRDs from URL: {}", url);
 
@@ -263,6 +314,14 @@ async fn handle_import(source: ImportSource) -> Result<()> {
                 }
             }
 
+            // Generate Nickel package manifest if requested
+            if nickel_package {
+                info!("Generating Nickel package manifest (experimental)");
+                let manifest = package_structure.generate_nickel_manifest(None);
+                fs::write(output.join("Nickel-pkg.ncl"), manifest)?;
+                info!("✓ Generated Nickel-pkg.ncl");
+            }
+
             info!("Generated package '{}' in {:?}", package_name, output);
             info!("Package structure:");
             for group in package_structure.groups() {
@@ -272,11 +331,14 @@ async fn handle_import(source: ImportSource) -> Result<()> {
                     info!("    {}/: {} types", version, kinds.len());
                 }
             }
+            if nickel_package {
+                info!("  Nickel-pkg.ncl (package manifest)");
+            }
 
             Ok(())
         }
 
-        ImportSource::Crd { file, output } => {
+        ImportSource::Crd { file, output, package_mode } => {
             info!("Importing CRD from {:?}", file);
 
             let content = fs::read_to_string(&file)
@@ -340,8 +402,44 @@ async fn handle_import(source: ImportSource) -> Result<()> {
                 );
             }
 
-            // Generate Nickel code by default
-            let mut codegen = NickelCodegen::new();
+            // Generate Nickel code with package mode support
+            let mut codegen = if package_mode {
+                use amalgam_codegen::package_mode::PackageMode;
+                use std::path::PathBuf;
+                
+                // Look for manifest in current directory first, then fallback locations
+                let manifest_path = if PathBuf::from(".amalgam-manifest.toml").exists() {
+                    PathBuf::from(".amalgam-manifest.toml")
+                } else if PathBuf::from("amalgam-manifest.toml").exists() {
+                    PathBuf::from("amalgam-manifest.toml")
+                } else {
+                    PathBuf::from("does-not-exist")
+                };
+                
+                let manifest = if manifest_path.exists() {
+                    Some(&manifest_path)
+                } else {
+                    None
+                };
+                
+                // Create analyzer-based package mode
+                let mut package_mode = PackageMode::new_with_analyzer(manifest);
+                
+                // Analyze the IR to detect dependencies automatically
+                // Extract the package name from the CRD group
+                let package_name = crd.spec.group.split('.').next().unwrap_or("unknown");
+                let mut all_types: Vec<amalgam_core::types::Type> = Vec::new();
+                for module in &ir.modules {
+                    for type_def in &module.types {
+                        all_types.push(type_def.ty.clone());
+                    }
+                }
+                package_mode.analyze_and_update_dependencies(&all_types, package_name);
+                
+                NickelCodegen::new().with_package_mode(package_mode)
+            } else {
+                NickelCodegen::new()
+            };
             let code = codegen.generate(&ir)?;
 
             if let Some(output_path) = output {
@@ -429,8 +527,8 @@ async fn handle_import(source: ImportSource) -> Result<()> {
             Ok(())
         }
 
-        ImportSource::K8sCore { version, output, types: _ } => {
-            handle_k8s_core_import(&version, &output).await?;
+        ImportSource::K8sCore { version, output, types: _, nickel_package } => {
+            handle_k8s_core_import(&version, &output, nickel_package).await?;
             Ok(())
         }
 
@@ -502,7 +600,42 @@ fn collect_type_references(ty: &amalgam_core::types::Type, refs: &mut std::colle
     }
 }
 
-async fn handle_k8s_core_import(version: &str, output_dir: &PathBuf) -> Result<()> {
+async fn handle_manifest_generation(manifest_path: PathBuf, packages: Vec<String>, dry_run: bool) -> Result<()> {
+    use crate::manifest::Manifest;
+    
+    info!("Loading manifest from {:?}", manifest_path);
+    let mut manifest = Manifest::from_file(&manifest_path)?;
+    
+    // Filter packages if specific ones were requested
+    if !packages.is_empty() {
+        manifest.packages.retain(|p| packages.contains(&p.name));
+        if manifest.packages.is_empty() {
+            anyhow::bail!("No matching packages found for: {:?}", packages);
+        }
+    }
+    
+    if dry_run {
+        info!("Dry run mode - showing what would be generated:");
+        for package in &manifest.packages {
+            if package.enabled {
+                info!("  - {} -> {}", package.name, package.output);
+            }
+        }
+        return Ok(());
+    }
+    
+    // Generate all packages
+    let report = manifest.generate_all().await?;
+    report.print_summary();
+    
+    if !report.failed.is_empty() {
+        anyhow::bail!("Some packages failed to generate");
+    }
+    
+    Ok(())
+}
+
+pub async fn handle_k8s_core_import(version: &str, output_dir: &PathBuf, nickel_package: bool) -> Result<()> {
     info!("Fetching Kubernetes {} core types...", version);
     
     // Create fetcher
@@ -621,7 +754,46 @@ async fn handle_k8s_core_import(version: &str, output_dir: &PathBuf) -> Result<(
     );
     fs::write(output_dir.join("mod.ncl"), root_mod_content)?;
     
+    // Generate Nickel package manifest if requested
+    if nickel_package {
+        info!("Generating Nickel package manifest (experimental)");
+        
+        use amalgam_codegen::nickel_package::{NickelPackageConfig, NickelPackageGenerator};
+        
+        let config = NickelPackageConfig {
+            name: "k8s-io".to_string(),
+            version: "0.1.0".to_string(),
+            minimal_nickel_version: "1.9.0".to_string(),
+            description: format!("Kubernetes {} core type definitions for Nickel", version),
+            authors: vec!["amalgam".to_string()],
+            license: "Apache-2.0".to_string(),
+            keywords: vec!["kubernetes".to_string(), "k8s".to_string(), "types".to_string()],
+        };
+        
+        let generator = NickelPackageGenerator::new(config);
+        
+        // Convert types to modules for manifest generation
+        let modules: Vec<amalgam_core::ir::Module> = types_by_version.iter().map(|(ver, _)| {
+            amalgam_core::ir::Module {
+                name: ver.clone(),
+                imports: Vec::new(),
+                types: Vec::new(),
+                constants: Vec::new(),
+                metadata: Default::default(),
+            }
+        }).collect();
+        
+        let manifest = generator.generate_manifest(&modules, std::collections::HashMap::new())
+            .unwrap_or_else(|e| format!("# Error generating manifest: {}\n", e));
+        
+        fs::write(output_dir.join("Nickel-pkg.ncl"), manifest)?;
+        info!("✓ Generated Nickel-pkg.ncl");
+    }
+    
     info!("Successfully generated {} k8s core types in {:?}", total_types, output_dir);
+    if nickel_package {
+        info!("  with Nickel package manifest");
+    }
     Ok(())
 }
 

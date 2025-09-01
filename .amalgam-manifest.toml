@@ -1,0 +1,38 @@
+# Minimal Amalgam Package Generation Manifest for Testing
+# Tests universal dependency detection without special casing
+
+[config]
+# Output directory for generated packages
+output_base = "examples/packages"
+# Enable package mode for nickel-mine compatibility
+package_mode = true
+# Base package ID for dependencies
+base_package_id = "github:seryl/nickel-pkgs"
+# Local package prefix for development - generates Path dependencies
+local_package_prefix = "examples/packages"
+
+# Core Kubernetes types - foundation for other packages
+[[packages]]
+name = "k8s-io"
+type = "k8s-core"
+version = "v1.31.0"
+output = "k8s_io"
+description = "Kubernetes core type definitions including apimachinery"
+keywords = ["kubernetes", "k8s", "types", "api", "core"]
+# No dependencies - this is the base package
+dependencies = {}
+
+# CrossPlane - should auto-detect k8s_io dependency
+[[packages]]
+name = "crossplane"
+type = "url"
+url = "https://github.com/crossplane/crossplane/tree/main/cluster/crds"
+git_ref = "v1.17.2"  # Lock to specific version
+version = "1.17.2"   # Package version
+output = "crossplane"
+description = "Crossplane CRD type definitions for infrastructure as code"
+keywords = ["crossplane", "kubernetes", "infrastructure", "gitops"]
+# Explicit dependency constraints (auto-detected dependencies will use these)
+[packages.dependencies]
+k8s_io = { version = "1.31.0" }  # Require k8s 1.31 or higher (Nickel will allow compatible versions)
+

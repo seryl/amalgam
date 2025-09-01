@@ -21,6 +21,15 @@
           inherit system;
           config.allowUnfree = true;
         };
+        
+        # Build Nickel with package support by overriding the derivation
+        nickel-with-packages = pkgs.nickel.overrideAttrs (oldAttrs: {
+          # Add package-experimental to the build features
+          buildFeatures = (oldAttrs.buildFeatures or [ "default" ]) ++ [ "package-experimental" ];
+          
+          # Update the pname to distinguish it
+          pname = "nickel-with-packages";
+        });
 
         # Use latest stable Rust with all components
         rustWithComponents = fenix.packages.${system}.stable.withComponents [
@@ -522,6 +531,7 @@
         packages = {
           default = amalgam;
           amalgam = amalgam;
+          nickel-with-packages = nickel-with-packages;
         };
 
         # Apps
@@ -585,8 +595,8 @@
             kubectl
             kind
 
-            # For testing generated Nickel files
-            nickel
+            # For testing generated Nickel files (with package support)
+            nickel-with-packages
 
           ]) ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [];
 
@@ -612,6 +622,14 @@
             echo "  regenerate-examples         - Rebuild and regenerate example CRDs"
             echo "  dev-mode local              - Switch to local development (path deps)"
             echo "  dev-mode remote             - Switch to publish mode (crates.io deps)"
+            echo ""
+            echo "Nickel Package Support (experimental):"
+            echo "  ✓ Nickel built with package-experimental feature enabled"
+            echo "  amalgam import url --url <URL> --output <DIR> --nickel-package"
+            echo "  amalgam import k8s-core --output <DIR> --nickel-package"
+            echo "    Generates Nickel-pkg.ncl manifest for use with Nickel package manager"
+            echo ""
+            echo "  Test packages: nickel eval examples/packages/test_app/main.ncl"
             echo ""
             echo "Development Commands:"
             echo "  cargo build       - Build the project"

@@ -16,7 +16,7 @@ tag-prefix = "v"
 tag-name = "{{prefix}}{{version}}"
 
 [workspace.package]
-version = "0.4.1"
+version = "0.5.0"
 edition = "2021"
 license = "Apache-2.0"
 repository = "https://github.com/seryl/amalgam"
@@ -38,7 +38,8 @@ kube = { version = "0.95", features = ["runtime", "derive"] }
 k8s-openapi = { version = "0.23", features = ["latest"] }
 
 # Nickel integration
-nickel-lang-core = "1.9"
+nickel-lang-core = "0.14"
+nickel-lang-package = "0.3.0"
 
 # Async runtime
 tokio = { version = "1", features = ["full"] }
@@ -77,7 +78,7 @@ futures = "0.3"
 atty = "0.2"
 
 # Internal workspace dependencies
-amalgam-core = { version = "0.4.1", path = "crates/amalgam-core" }
-amalgam-parser = { version = "0.4.1", path = "crates/amalgam-parser" }
-amalgam-codegen = { version = "0.4.1", path = "crates/amalgam-codegen" }
-amalgam-daemon = { version = "0.4.1", path = "crates/amalgam-daemon" }
+amalgam-core = { version = "0.5.0", path = "crates/amalgam-core" }
+amalgam-parser = { version = "0.5.0", path = "crates/amalgam-parser" }
+amalgam-codegen = { version = "0.5.0", path = "crates/amalgam-codegen" }
+amalgam-daemon = { version = "0.5.0", path = "crates/amalgam-daemon" }

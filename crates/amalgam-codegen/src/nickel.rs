@@ -1,5 +1,6 @@
 //! Nickel code generator with improved formatting
 
+use crate::package_mode::PackageMode;
 use crate::resolver::{ResolutionContext, TypeResolver};
 use crate::{Codegen, CodegenError};
 use amalgam_core::{
@@ -11,6 +12,7 @@ use std::fmt::Write;
 pub struct NickelCodegen {
     indent_size: usize,
     resolver: TypeResolver,
+    package_mode: PackageMode,
 }
 
 impl NickelCodegen {
@@ -18,7 +20,13 @@ impl NickelCodegen {
         Self {
             indent_size: 2,
             resolver: TypeResolver::new(),
+            package_mode: PackageMode::default(),
         }
+    }
+    
+    pub fn with_package_mode(mut self, mode: PackageMode) -> Self {
+        self.package_mode = mode;
+        self
     }
 
     fn indent(&self, level: usize) -> String {
@@ -225,13 +233,29 @@ impl Codegen for NickelCodegen {
             // Generate imports if any
             if !module.imports.is_empty() {
                 for import in &module.imports {
-                    writeln!(
-                        output,
-                        "let {} = import \"{}\" in",
-                        import.alias.as_ref().unwrap_or(&import.path),
-                        import.path
-                    )
-                    .map_err(|e| CodegenError::Generation(e.to_string()))?;
+                    // Convert import path based on package mode
+                    let import_path = self.package_mode.convert_import(&import.path);
+                    
+                    // Generate import statement
+                    // If the path is a package name (no slashes), use package import syntax
+                    let import_statement = if !import_path.contains('/') && import_path.starts_with('"') {
+                        // Package import: import "package_name"
+                        format!(
+                            "let {} = import {} in",
+                            import.alias.as_ref().unwrap_or(&import.path.replace('/', "_")),
+                            import_path
+                        )
+                    } else {
+                        // Regular file import
+                        format!(
+                            "let {} = import \"{}\" in",
+                            import.alias.as_ref().unwrap_or(&import.path.replace('/', "_")),
+                            import_path
+                        )
+                    };
+                    
+                    writeln!(output, "{}", import_statement)
+                        .map_err(|e| CodegenError::Generation(e.to_string()))?;
                 }
                 writeln!(output).map_err(|e| CodegenError::Generation(e.to_string()))?;
             }

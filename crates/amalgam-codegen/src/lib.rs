@@ -3,6 +3,8 @@
 pub mod error;
 pub mod go;
 pub mod nickel;
+pub mod nickel_package;
+pub mod package_mode;
 pub mod resolver;
 
 use amalgam_core::IR;

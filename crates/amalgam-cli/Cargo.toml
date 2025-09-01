@@ -11,6 +11,10 @@ readme = "README.md"
 keywords = ["nickel", "kubernetes", "crd", "openapi", "configuration"]
 categories = ["command-line-utilities", "development-tools", "config"]
 
+[lib]
+name = "amalgam"
+path = "src/lib.rs"
+
 [[bin]]
 name = "amalgam"
 path = "src/main.rs"
@@ -30,3 +34,6 @@ openapiv3.workspace = true
 toml = "0.8"
 chrono = "0.4"
 serde.workspace = true
+nickel-lang-core.workspace = true
+tempfile.workspace = true
+walkdir = "2.4"

@@ -5,7 +5,10 @@ use crate::{
     imports::{ImportResolver, TypeReference},
     ParserError,
 };
-use amalgam_codegen::Codegen;
+use amalgam_codegen::{
+    nickel_package::{NickelPackageConfig, NickelPackageGenerator, PackageDependency},
+    Codegen,
+};
 use amalgam_core::{
     ir::{Import, Module, TypeDefinition, IR},
     types::Type,
@@ -294,11 +297,45 @@ impl NamespacedPackage {
                     );
                     ir.add_module(module);
 
-                    // Generate the Nickel code
-                    let mut codegen = amalgam_codegen::nickel::NickelCodegen::new();
-                    codegen
+                    // Generate the Nickel code with package mode
+                    use amalgam_codegen::package_mode::PackageMode;
+                    use std::path::PathBuf;
+                    
+                    // Use analyzer-based package mode for automatic dependency detection
+                    let manifest_path = PathBuf::from(".amalgam-manifest.toml");
+                    let manifest = if manifest_path.exists() {
+                        Some(&manifest_path)
+                    } else {
+                        None
+                    };
+                    
+                    let mut package_mode = PackageMode::new_with_analyzer(manifest);
+                    
+                    // Analyze types to detect dependencies
+                    let mut all_types: Vec<amalgam_core::types::Type> = Vec::new();
+                    for module in &ir.modules {
+                        for type_def in &module.types {
+                            all_types.push(type_def.ty.clone());
+                        }
+                    }
+                    package_mode.analyze_and_update_dependencies(&all_types, &group);
+                    
+                    let mut codegen = amalgam_codegen::nickel::NickelCodegen::new()
+                        .with_package_mode(package_mode);
+                    let mut generated = codegen
                         .generate(&ir)
-                        .unwrap_or_else(|e| format!("# Error generating type: {}\n", e))
+                        .unwrap_or_else(|e| format!("# Error generating type: {}\n", e));
+                    
+                    // For k8s.io packages, check for missing internal imports
+                    if group == "k8s.io" || group.starts_with("io.k8s") {
+                        use crate::k8s_imports::{find_k8s_type_references, fix_k8s_imports};
+                        let type_refs = find_k8s_type_references(&type_def.ty);
+                        if !type_refs.is_empty() {
+                            generated = fix_k8s_imports(&generated, &type_refs, version);
+                        }
+                    }
+                    
+                    generated
                 })
             })
         })
@@ -335,6 +372,68 @@ impl NamespacedPackage {
                 })
             })
             .unwrap_or_default()
+    }
+
+    /// Generate a Nickel package manifest (Nickel-pkg.ncl)
+    pub fn generate_nickel_manifest(&self, config: Option<NickelPackageConfig>) -> String {
+        let config = config.unwrap_or_else(|| NickelPackageConfig {
+            name: self.name.clone(),
+            description: format!("Generated type definitions for {}", self.name),
+            version: "0.1.0".to_string(),
+            minimal_nickel_version: "1.9.0".to_string(),
+            authors: vec!["amalgam".to_string()],
+            license: "Apache-2.0".to_string(),
+            keywords: {
+                let mut keywords = vec!["kubernetes".to_string(), "types".to_string()];
+                // Add groups as keywords
+                for group in self.groups() {
+                    keywords.push(group.replace('.', "-"));
+                }
+                keywords
+            },
+        });
+
+        let generator = NickelPackageGenerator::new(config);
+        
+        // Detect if we need k8s.io as a dependency
+        let mut dependencies = HashMap::new();
+        if self.has_k8s_references() {
+            // Add k8s.io as a path dependency (assuming it's in a sibling directory)
+            dependencies.insert(
+                "k8s_io".to_string(),
+                PackageDependency::Path(PathBuf::from("../k8s_io")),
+            );
+        }
+        
+        // Convert our types to modules for the generator
+        let modules: Vec<Module> = self.groups().into_iter().flat_map(|group| {
+            self.versions(&group).into_iter().map(move |version| {
+                Module {
+                    name: format!("{}.{}", group, version),
+                    imports: Vec::new(),
+                    types: Vec::new(),
+                    constants: Vec::new(),
+                    metadata: Default::default(),
+                }
+            })
+        }).collect();
+        
+        generator.generate_manifest(&modules, dependencies)
+            .unwrap_or_else(|e| format!("# Error generating manifest: {}\n", e))
+    }
+
+    /// Check if any types reference k8s.io types
+    fn has_k8s_references(&self) -> bool {
+        for (_, versions) in &self.types {
+            for (_, kinds) in versions {
+                for (_, type_def) in kinds {
+                    if needs_k8s_imports(&type_def.ty) {
+                        return true;
+                    }
+                }
+            }
+        }
+        false
     }
 }
 

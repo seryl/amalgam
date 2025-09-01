@@ -16,6 +16,9 @@ serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
+toml = "0.8"
+chrono = { version = "0.4", features = ["serde"] }
+sha2 = "0.10"
 
 [dev-dependencies]
 proptest.workspace = true
