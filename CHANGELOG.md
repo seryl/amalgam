@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.1] - 2025-09-01
+
+### Added
+- Smart workspace dependency management tool (`workspace-deps`) for switching between local and remote dependencies
+- Python-based version bump tool (`version-bump`) for reliable version management
+- Python-based tooling infrastructure in `nix/packages/` for better maintainability
+- SmartError pattern for actionable error messages in development tools
+
+### Changed
+- Replaced hardcoded dev-mode script with dynamic workspace dependency discovery
+- Updated release script to use new Python-based version-bump tool
+- Improved development environment by removing unnecessary cargo tools (cargo-workspaces, cargo-release)
+- Fixed Python linting issues by using shell wrapper approach
+
+### Fixed
+- Test fixture inclusion in Nix builds with custom source filter
+- Workspace dependency publishing workflow for crates.io
+- Release script version bumping now works correctly
+
 ## [0.6.0] - 2025-09-01
 
 ### Changed

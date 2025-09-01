@@ -35,3 +35,7 @@ result-*
 # WASM
 /pkg/
 /wasm-pack.log
+
+# Python
+__pycache__
+*.pyc

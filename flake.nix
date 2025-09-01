@@ -261,71 +261,16 @@
           esac
         '';
 
-        # Dev mode switcher
-        dev-mode = pkgs.writeShellScriptBin "dev-mode" ''
-          set -euo pipefail
-
-          MODE="''${1:-status}"
-
-          # Get current workspace version
-          VERSION=$(${pkgs.toml2json}/bin/toml2json < Cargo.toml | ${pkgs.jq}/bin/jq -r '.workspace.package.version')
-
-          case $MODE in
-            local|on)
-              echo "Switching to local development mode..."
-
-              # Update all Cargo.toml files to use path dependencies with workspace version
-              ${pkgs.gnused}/bin/sed -i 's/amalgam-core = "[^"]*"/amalgam-core = { version = "'"$VERSION"'", path = "..\/amalgam-core" }/g' crates/*/Cargo.toml
-              ${pkgs.gnused}/bin/sed -i 's/amalgam-codegen = "[^"]*"/amalgam-codegen = { version = "'"$VERSION"'", path = "..\/amalgam-codegen" }/g' crates/*/Cargo.toml
-              ${pkgs.gnused}/bin/sed -i 's/amalgam-parser = "[^"]*"/amalgam-parser = { version = "'"$VERSION"'", path = "..\/amalgam-parser" }/g' crates/*/Cargo.toml
-              ${pkgs.gnused}/bin/sed -i 's/amalgam-daemon = "[^"]*"/amalgam-daemon = { version = "'"$VERSION"'", path = "..\/amalgam-daemon" }/g' crates/*/Cargo.toml
-
-              # Also handle cases where they already have path dependencies but wrong version
-              ${pkgs.gnused}/bin/sed -i 's/amalgam-core = { version = "[^"]*", path/amalgam-core = { version = "'"$VERSION"'", path/g' crates/*/Cargo.toml
-              ${pkgs.gnused}/bin/sed -i 's/amalgam-codegen = { version = "[^"]*", path/amalgam-codegen = { version = "'"$VERSION"'", path/g' crates/*/Cargo.toml
-              ${pkgs.gnused}/bin/sed -i 's/amalgam-parser = { version = "[^"]*", path/amalgam-parser = { version = "'"$VERSION"'", path/g' crates/*/Cargo.toml
-              ${pkgs.gnused}/bin/sed -i 's/amalgam-daemon = { version = "[^"]*", path/amalgam-daemon = { version = "'"$VERSION"'", path/g' crates/*/Cargo.toml
-
-              # Fix the core crate (it shouldn't reference itself)
-              ${pkgs.gnused}/bin/sed -i '/amalgam-core = {.*path/d' crates/amalgam-core/Cargo.toml
-
-              ${rustWithComponents}/bin/cargo update
-              echo "✓ Switched to local development mode (using path dependencies)"
-              ;;
-
-            remote|off)
-              echo "Switching to remote/publish mode..."
-
-              # Update all Cargo.toml files to use version-only dependencies
-              ${pkgs.gnused}/bin/sed -i 's/amalgam-core = {[^}]*path[^}]*}/amalgam-core = "'"$VERSION"'"/g' crates/*/Cargo.toml
-              ${pkgs.gnused}/bin/sed -i 's/amalgam-codegen = {[^}]*path[^}]*}/amalgam-codegen = "'"$VERSION"'"/g' crates/*/Cargo.toml
-              ${pkgs.gnused}/bin/sed -i 's/amalgam-parser = {[^}]*path[^}]*}/amalgam-parser = "'"$VERSION"'"/g' crates/*/Cargo.toml
-              ${pkgs.gnused}/bin/sed -i 's/amalgam-daemon = {[^}]*path[^}]*}/amalgam-daemon = "'"$VERSION"'"/g' crates/*/Cargo.toml
-
-              echo "✓ Switched to remote mode (using crates.io dependencies)"
-              echo "Note: This mode requires all dependencies to be published to crates.io"
-              ;;
-
-            status)
-              echo "Checking dependency mode..."
-              if grep -q "path = " crates/amalgam-parser/Cargo.toml; then
-                echo "Currently in: LOCAL development mode (using path dependencies)"
-              else
-                echo "Currently in: REMOTE mode (using crates.io dependencies)"
-              fi
-              ;;
-
-            *)
-              echo "Usage: dev-mode [local|remote|status]"
-              echo ""
-              echo "Modes:"
-              echo "  local/on   - Use local path dependencies (for development)"
-              echo "  remote/off - Use crates.io dependencies (for publishing)"
-              echo "  status     - Show current mode (default)"
-              exit 1
-              ;;
-          esac
+        # Workspace dependency manager (Python-based for smart error handling)
+        workspace-deps = pkgs.writeShellScriptBin "workspace-deps" ''
+          exec ${pkgs.python3.withPackages (ps: with ps; [ tomli ])}/bin/python3 ${./nix/packages/workspace-deps/workspace-deps.py} "$@"
         '';
+
+        # Version bump tool (Python-based for reliability)
+        version-bump = pkgs.writeShellScriptBin "version-bump" ''
+          exec ${pkgs.python3.withPackages (ps: with ps; [ tomli ])}/bin/python3 ${./nix/packages/version-bump/version-bump.py} "$@"
+        '';
+
 
         # Release helper that validates everything before version bump
         release = pkgs.writeShellScriptBin "release" ''
@@ -365,18 +310,13 @@
           
           # Step 4: Bump version
           echo -e "''${YELLOW}Step 4: Bumping $BUMP_TYPE version...''${NC}"
-          if ! ${rustWithComponents}/bin/cargo release version $BUMP_TYPE --execute; then
+          if ! version-bump $BUMP_TYPE; then
             echo -e "''${RED}✗ Failed to bump version!''${NC}"
             exit 1
           fi
           
-          # Update internal dependency versions in workspace
+          # Get the new version
           NEW_VERSION=$(${pkgs.toml2json}/bin/toml2json < Cargo.toml | ${pkgs.jq}/bin/jq -r '.workspace.package.version')
-          ${pkgs.gnused}/bin/sed -i "s/amalgam-core = { version = \"[^\"]*/amalgam-core = { version = \"$NEW_VERSION\"/" Cargo.toml
-          ${pkgs.gnused}/bin/sed -i "s/amalgam-parser = { version = \"[^\"]*/amalgam-parser = { version = \"$NEW_VERSION\"/" Cargo.toml
-          ${pkgs.gnused}/bin/sed -i "s/amalgam-codegen = { version = \"[^\"]*/amalgam-codegen = { version = \"$NEW_VERSION\"/" Cargo.toml
-          ${pkgs.gnused}/bin/sed -i "s/amalgam-daemon = { version = \"[^\"]*/amalgam-daemon = { version = \"$NEW_VERSION\"/" Cargo.toml
-          
           echo -e "''${GREEN}✓ Version bumped to $NEW_VERSION''${NC}"
           echo ""
           
@@ -432,7 +372,7 @@
               echo ""
 
               # Ensure we're in local dev mode
-              dev-mode local > /dev/null 2>&1
+              workspace-deps local > /dev/null 2>&1
 
               echo "1. Running cargo check..."
               ${rustWithComponents}/bin/cargo check --workspace --all-targets
@@ -469,7 +409,7 @@
           echo ""
 
           # Ensure we're in local dev mode
-          dev-mode local > /dev/null 2>&1
+          workspace-deps local > /dev/null 2>&1
 
           echo "1. Formatting code..."
           ${rustWithComponents}/bin/cargo fmt --all
@@ -586,7 +526,8 @@
             fix
             release
             publish
-            dev-mode
+            workspace-deps
+            version-bump
             regenerate-examples
           ] ++ (with pkgs; [
             # Build dependencies
@@ -655,14 +596,14 @@
             echo "  5. git push && git push --tags  # Push to GitHub"
             echo ""
             echo "Other Commands:"
-            echo "  dev-mode local       - Switch to local development (path deps)"
-            echo "  dev-mode remote      - Switch to publish mode (crates.io deps)"
+            echo "  workspace-deps local - Switch to local development (path deps)"
+            echo "  workspace-deps remote - Switch to publish mode (crates.io deps)"
             echo "  cargo watch          - Watch for changes"
             echo "  cargo insta review   - Review snapshot test changes"
             echo ""
 
             # Ensure we're in local dev mode by default
-            dev-mode local 2>/dev/null || true
+            workspace-deps local 2>/dev/null || true
           '';
 
           # Environment variables
