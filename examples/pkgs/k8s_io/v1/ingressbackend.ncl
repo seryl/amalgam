@@ -1,7 +1,7 @@
 # Module: k8s.io.v1.ingressbackend
 
-let ingressservicebackend = import "./ingressservicebackend.ncl" in
 let typedlocalobjectreference = import "./typedlocalobjectreference.ncl" in
+let ingressservicebackend = import "./ingressservicebackend.ncl" in
 
 {
   # IngressBackend describes all endpoints for a given service and port.

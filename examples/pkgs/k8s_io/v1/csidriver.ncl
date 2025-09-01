@@ -1,7 +1,7 @@
 # Module: k8s.io.v1.csidriver
 
-let csidriverspec = import "./csidriverspec.ncl" in
 let objectmeta = import "./objectmeta.ncl" in
+let csidriverspec = import "./csidriverspec.ncl" in
 
 {
   # CSIDriver captures information about a Container Storage Interface (CSI) volume driver deployed on the cluster. Kubernetes attach detach controller uses this object to determine whether attach is required. Kubelet uses this object to determine whether pod information needs to be passed on mount. CSIDriver objects are non-namespaced.
@@ -15,6 +15,6 @@ Kind is a string value representing the REST resource this object represents. Se
     metadata | optional | objectmeta.ObjectMeta | doc m%"
 Standard object metadata. metadata.Name indicates the name of the CSI driver that this object refers to; it MUST be the same name returned by the CSI GetPluginName() call for that driver. The driver name must be 63 characters or less, beginning and ending with an alphanumeric character ([a-z0-9A-Z]) with dashes (-), dots (.), and alphanumerics between. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
 "%,
-    spec | csidriverspec.CSIDriverSpec | doc "spec represents the specification of the CSI Driver.",
+    spec | optional | csidriverspec.CSIDriverSpec | doc "spec represents the specification of the CSI Driver.",
   },
 }

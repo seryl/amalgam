@@ -14,7 +14,7 @@ Health of the resource. can be one of:
 
 In future we may want to introduce the PermanentlyUnhealthy Status.
 "%,
-    resourceID | String | doc m%"
+    resourceID | optional | String | doc m%"
 ResourceID is the unique identifier of the resource. See the ResourceID type for more information.
 "%,
   },

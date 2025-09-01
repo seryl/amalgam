@@ -1,20 +1,20 @@
 # Module: k8s.io.v1.podspec
 
-let resourcerequirements = import "./resourcerequirements.ncl" in
-let podreadinessgate = import "./podreadinessgate.ncl" in
 let toleration = import "./toleration.ncl" in
-let localobjectreference = import "./localobjectreference.ncl" in
-let container = import "./container.ncl" in
 let hostalias = import "./hostalias.ncl" in
 let podschedulinggate = import "./podschedulinggate.ncl" in
+let podresourceclaim = import "./podresourceclaim.ncl" in
+let podsecuritycontext = import "./podsecuritycontext.ncl" in
 let topologyspreadconstraint = import "./topologyspreadconstraint.ncl" in
+let ephemeralcontainer = import "./ephemeralcontainer.ncl" in
+let container = import "./container.ncl" in
+let podos = import "./podos.ncl" in
 let poddnsconfig = import "./poddnsconfig.ncl" in
 let volume = import "./volume.ncl" in
-let ephemeralcontainer = import "./ephemeralcontainer.ncl" in
+let localobjectreference = import "./localobjectreference.ncl" in
+let podreadinessgate = import "./podreadinessgate.ncl" in
+let resourcerequirements = import "./resourcerequirements.ncl" in
 let affinity = import "./affinity.ncl" in
-let podsecuritycontext = import "./podsecuritycontext.ncl" in
-let podos = import "./podos.ncl" in
-let podresourceclaim = import "./podresourceclaim.ncl" in
 
 {
   # PodSpec is a description of a pod.
@@ -26,7 +26,7 @@ Optional duration in seconds the pod may be active on the node relative to Start
     automountServiceAccountToken | optional | Bool | doc m%"
 AutomountServiceAccountToken indicates whether a service account token should be automatically mounted.
 "%,
-    containers | Array container.Container | doc m%"
+    containers | optional | Array container.Container | doc m%"
 List of containers belonging to the pod. Containers cannot currently be added or removed. There must be at least one container in a Pod. Cannot be updated.
 "%,
     dnsConfig | optional | poddnsconfig.PodDNSConfig | doc m%"
@@ -80,7 +80,7 @@ Overhead represents the resource overhead associated with running a pod for a gi
     preemptionPolicy | optional | String | doc m%"
 PreemptionPolicy is the Policy for preempting pods with lower priority. One of Never, PreemptLowerPriority. Defaults to PreemptLowerPriority if unset.
 "%,
-    priority | optional | Number | doc m%"
+    "priority" | optional | Number | doc m%"
 The priority value. Various system components use this field to find the priority of the pod. When Priority Admission Controller is enabled, it prevents users from setting this field. The admission controller populates this field from PriorityClassName. The higher the value, the higher the priority.
 "%,
     priorityClassName | optional | String | doc m%"

@@ -5,7 +5,7 @@ let resourcehealth = import "./resourcehealth.ncl" in
 {
   # ResourceStatus represents the status of a single resource allocated to a Pod.
   ResourceStatus = {
-    name | String | doc m%"
+    name | optional | String | doc m%"
 Name of the resource. Must be unique within the pod and in case of non-DRA resource, match one of the resources from the pod spec. For DRA resources, the value must be "claim:<claim_name>/<request>". When this status is reported about a container, the "claim_name" and "request" must match one of the claims of this container.
 "%,
     resources | optional | Array resourcehealth.ResourceHealth | doc m%"

@@ -9,20 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Recursive Type Discovery**: Replaced hardcoded namespace lists with intelligent recursive discovery that automatically finds all referenced types
-- Support for unversioned k8s types (e.g., `RawExtension`) placed in v0 directory to avoid conflicts
+- **Comprehensive Type Coverage**: Expanded from 199 to 321 Kubernetes types through recursive discovery including versioned APIs (v1alpha1, v1beta1, v2)
+- Support for unversioned k8s types (e.g., `RawExtension`, `IntOrString`) placed in v0 directory to avoid conflicts
 - Reserved keyword escaping for field names starting with `$` (like `$ref`, `$schema`) in generated Nickel code
-- Comprehensive type coverage: Now generates 199+ k8s types (up from ~150) including previously missing types
 
-### Fixed
+### Fixed  
+- **Required Field Usability Issue**: Made all fields optional by default to enable gradual object construction (e.g., `k8s.v1.LabelSelector & {}` now works)
+- **Cross-Package Import Resolution**: Fixed imports to use full package IDs from manifest configuration instead of bare package names
 - Missing type references (e.g., `RawExtension`, `NodeSelector`) now properly discovered and generated
 - Cross-version imports for unversioned runtime types (v0 → other versions)
 - Syntax errors from unescaped special field names in JSON Schema types
 - Reserved keyword escaping in JSON object field names within default values
 
 ### Changed
+- **Breaking**: All generated fields are now optional by default instead of required, enabling practical usage patterns
 - k8s type extraction now uses seed-based recursive discovery instead of fixed namespace lists
+- Updated to Kubernetes v1.33.4 schema version (from v1.31.0)  
 - Unversioned types are placed in v0 to distinguish from versioned APIs
 - Enhanced import logic handles both v1 core types and v0 unversioned types
+- Package imports now use full package IDs like `"github:seryl/nickel-pkgs/pkgs/k8s_io"` for consistency
 
 ## [0.6.2] - 2025-09-01
 

@@ -2,8 +2,8 @@
 
 let configmapkeyselector = import "./configmapkeyselector.ncl" in
 let resourcefieldselector = import "./resourcefieldselector.ncl" in
-let objectfieldselector = import "./objectfieldselector.ncl" in
 let secretkeyselector = import "./secretkeyselector.ncl" in
+let objectfieldselector = import "./objectfieldselector.ncl" in
 
 {
   # EnvVarSource represents a source for the value of an EnvVar.

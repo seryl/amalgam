@@ -3,6 +3,6 @@
 {
   # DaemonEndpoint contains information about a single Daemon endpoint.
   DaemonEndpoint = {
-    Port | Number | doc "Port number of the given endpoint.",
+    Port | optional | Number | doc "Port number of the given endpoint.",
   },
 }

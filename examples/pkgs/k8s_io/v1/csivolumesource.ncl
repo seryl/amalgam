@@ -5,7 +5,7 @@ let localobjectreference = import "./localobjectreference.ncl" in
 {
   # Represents a source location of a volume to mount, managed by an external CSI driver
   CSIVolumeSource = {
-    driver | String | doc m%"
+    driver | optional | String | doc m%"
 driver is the name of the CSI driver that handles this volume. Consult with your admin for the correct name as registered in the cluster.
 "%,
     fsType | optional | String | doc m%"

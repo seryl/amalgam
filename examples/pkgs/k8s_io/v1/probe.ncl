@@ -1,9 +1,9 @@
 # Module: k8s.io.v1.probe
 
-let grpcaction = import "./grpcaction.ncl" in
-let execaction = import "./execaction.ncl" in
-let tcpsocketaction = import "./tcpsocketaction.ncl" in
 let httpgetaction = import "./httpgetaction.ncl" in
+let grpcaction = import "./grpcaction.ncl" in
+let tcpsocketaction = import "./tcpsocketaction.ncl" in
+let execaction = import "./execaction.ncl" in
 
 {
   # Probe describes a health check to be performed against a container to determine whether it is alive or ready to receive traffic.

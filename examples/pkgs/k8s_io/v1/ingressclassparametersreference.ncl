@@ -6,8 +6,8 @@
     apiGroup | optional | String | doc m%"
 apiGroup is the group for the resource being referenced. If APIGroup is not specified, the specified Kind must be in the core API group. For any other third-party types, APIGroup is required.
 "%,
-    kind | String | doc "kind is the type of resource being referenced.",
-    name | String | doc "name is the name of resource being referenced.",
+    kind | optional | String | doc "kind is the type of resource being referenced.",
+    name | optional | String | doc "name is the name of resource being referenced.",
     namespace | optional | String | doc m%"
 namespace is the namespace of the resource being referenced. This field is required when scope is set to "Namespace" and must be unset when scope is set to "Cluster".
 "%,

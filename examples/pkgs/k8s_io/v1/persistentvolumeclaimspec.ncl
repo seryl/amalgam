@@ -1,8 +1,8 @@
 # Module: k8s.io.v1.persistentvolumeclaimspec
 
+let volumeresourcerequirements = import "./volumeresourcerequirements.ncl" in
 let labelselector = import "./labelselector.ncl" in
 let typedobjectreference = import "./typedobjectreference.ncl" in
-let volumeresourcerequirements = import "./volumeresourcerequirements.ncl" in
 let typedlocalobjectreference = import "./typedlocalobjectreference.ncl" in
 
 {

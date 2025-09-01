@@ -1,6 +1,6 @@
 # Amalgam Package Manifest
-# Generated: 2025-09-01T21:27:24.143225+00:00
-# Generator: amalgam v0.6.1
+# Generated: 2025-09-01T23:35:46.786769+00:00
+# Generator: amalgam v0.6.3
 # Source: https://github.com/crossplane/crossplane/tree/v2.0.2/cluster/crds
 # Git ref: v2.0.2
 {

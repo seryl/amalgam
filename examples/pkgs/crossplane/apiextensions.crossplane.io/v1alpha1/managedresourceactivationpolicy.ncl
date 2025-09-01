@@ -1,6 +1,6 @@
 # Module: managedresourceactivationpolicy.apiextensions.crossplane.io
 
-let k8s_io_objectmeta = import "k8s_io" in
+let k8s_io_objectmeta = import "github:seryl/nickel-pkgs/k8s_io" in
 
 {
   ManagedResourceActivationPolicy = {
@@ -19,7 +19,7 @@ More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-
 "%,
     metadata | optional | k8s_io_objectmeta.ObjectMeta,
     spec | optional | {
-      activate | Array String | doc m%"
+      activate | optional | Array String | doc m%"
 Activations is an array of MRD names to activate. Supports wildcard
 prefixes (like `*.aws.crossplane.io`) but not full regular expressions.
 "%,
@@ -29,7 +29,7 @@ ManagedResourceActivationPolicySpec specifies the desired activation state of Ma
     status | optional | {
       activated | optional | Array String | doc "Activated names the ManagedResourceDefinitions this policy has activated.",
       conditions | optional | Array {
-        lastTransitionTime | String | doc m%"
+        lastTransitionTime | optional | String | doc m%"
 LastTransitionTime is the last time this condition transitioned from one
 status to another.
 "%,
@@ -42,9 +42,9 @@ ObservedGeneration represents the .metadata.generation that the condition was se
 For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
 with respect to the current state of the instance.
 "%,
-        reason | String | doc "A Reason for this condition's last transition from one status to another.",
-        status | String | doc "Status of this condition; is it currently True, False, or Unknown?",
-        type | String | doc m%"
+        reason | optional | String | doc "A Reason for this condition's last transition from one status to another.",
+        status | optional | String | doc "Status of this condition; is it currently True, False, or Unknown?",
+        type | optional | String | doc m%"
 Type of this condition. At most one of each condition type may apply to
 a resource at any point in time.
 "%,

@@ -1,8 +1,8 @@
 # Module: k8s.io.v1.containerstate
 
-let containerstaterunning = import "./containerstaterunning.ncl" in
-let containerstateterminated = import "./containerstateterminated.ncl" in
 let containerstatewaiting = import "./containerstatewaiting.ncl" in
+let containerstateterminated = import "./containerstateterminated.ncl" in
+let containerstaterunning = import "./containerstaterunning.ncl" in
 
 {
   # ContainerState holds a possible state of container. Only one of its members may be specified. If none of them is specified, the default one is ContainerStateWaiting.

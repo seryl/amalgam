@@ -10,10 +10,10 @@
 If set, this represents the .metadata.generation that the pod condition was set based upon. This is an alpha field. Enable PodObservedGenerationTracking to be able to use this field.
 "%,
     reason | optional | String | doc "Unique, one-word, CamelCase reason for the condition's last transition.",
-    status | String | doc m%"
+    status | optional | String | doc m%"
 Status is the status of the condition. Can be True, False, Unknown. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#pod-conditions
 "%,
-    type | String | doc m%"
+    type | optional | String | doc m%"
 Type is the type of the condition. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#pod-conditions
 "%,
   },

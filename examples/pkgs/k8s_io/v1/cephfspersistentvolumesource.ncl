@@ -5,7 +5,7 @@ let secretreference = import "./secretreference.ncl" in
 {
   # Represents a Ceph Filesystem mount that lasts the lifetime of a pod Cephfs volumes do not support ownership management or SELinux relabeling.
   CephFSPersistentVolumeSource = {
-    monitors | Array String | doc m%"
+    monitors | optional | Array String | doc m%"
 monitors is Required: Monitors is a collection of Ceph monitors More info: https://examples.k8s.io/volumes/cephfs/README.md#how-to-use-it
 "%,
     path | optional | String | doc m%"

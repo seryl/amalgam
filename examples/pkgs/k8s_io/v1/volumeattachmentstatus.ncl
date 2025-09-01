@@ -8,7 +8,7 @@ let volumeerror = import "./volumeerror.ncl" in
     attachError | optional | volumeerror.VolumeError | doc m%"
 attachError represents the last error encountered during attach operation, if any. This field must only be set by the entity completing the attach operation, i.e. the external-attacher.
 "%,
-    attached | Bool | doc m%"
+    attached | optional | Bool | doc m%"
 attached indicates the volume is successfully attached. This field must only be set by the entity completing the attach operation, i.e. the external-attacher.
 "%,
     attachmentMetadata | optional | { .. } | doc m%"

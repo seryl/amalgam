@@ -1,10 +1,10 @@
 # Module: k8s.io.v1.securitycontext
 
-let capabilities = import "./capabilities.ncl" in
-let apparmorprofile = import "./apparmorprofile.ncl" in
-let selinuxoptions = import "./selinuxoptions.ncl" in
-let windowssecuritycontextoptions = import "./windowssecuritycontextoptions.ncl" in
 let seccompprofile = import "./seccompprofile.ncl" in
+let windowssecuritycontextoptions = import "./windowssecuritycontextoptions.ncl" in
+let apparmorprofile = import "./apparmorprofile.ncl" in
+let capabilities = import "./capabilities.ncl" in
+let selinuxoptions = import "./selinuxoptions.ncl" in
 
 {
   # SecurityContext holds security configuration that will be applied to a container. Some fields are present in both SecurityContext and PodSecurityContext.  When both are set, the values in SecurityContext take precedence.

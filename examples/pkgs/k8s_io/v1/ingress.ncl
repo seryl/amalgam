@@ -1,8 +1,8 @@
 # Module: k8s.io.v1.ingress
 
+let ingressspec = import "./ingressspec.ncl" in
 let objectmeta = import "./objectmeta.ncl" in
 let ingressstatus = import "./ingressstatus.ncl" in
-let ingressspec = import "./ingressspec.ncl" in
 
 {
   # Ingress is a collection of rules that allow inbound connections to reach the endpoints defined by a backend. An Ingress can be configured to give services externally-reachable urls, load balance traffic, terminate SSL, offer name based virtual hosting etc.

@@ -1,9 +1,9 @@
 # Module: k8s.io.v1.jobspec
 
-let podfailurepolicy = import "./podfailurepolicy.ncl" in
-let successpolicy = import "./successpolicy.ncl" in
-let podtemplatespec = import "./podtemplatespec.ncl" in
 let labelselector = import "./labelselector.ncl" in
+let successpolicy = import "./successpolicy.ncl" in
+let podfailurepolicy = import "./podfailurepolicy.ncl" in
+let podtemplatespec = import "./podtemplatespec.ncl" in
 
 {
   # JobSpec describes how the job execution will look like.
@@ -61,7 +61,7 @@ successPolicy specifies the policy when the Job can be declared as succeeded. If
     suspend | optional | Bool | doc m%"
 suspend specifies whether the Job controller should create Pods or not. If a Job is created with suspend set to true, no Pods are created by the Job controller. If a Job is suspended after creation (i.e. the flag goes from false to true), the Job controller will delete all active Pods associated with this Job. Users must design their workload to gracefully handle this. Suspending a Job will reset the StartTime field of the Job, effectively resetting the ActiveDeadlineSeconds timer too. Defaults to false.
 "%,
-    template | podtemplatespec.PodTemplateSpec | doc m%"
+    template | optional | podtemplatespec.PodTemplateSpec | doc m%"
 Describes the pod that will be created when executing a job. The only allowed template.spec.restartPolicy values are "Never" or "OnFailure". More info: https://kubernetes.io/docs/concepts/workloads/controllers/jobs-run-to-completion/
 "%,
     ttlSecondsAfterFinished | optional | Number | doc m%"

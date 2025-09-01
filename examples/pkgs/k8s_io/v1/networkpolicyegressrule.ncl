@@ -1,7 +1,7 @@
 # Module: k8s.io.v1.networkpolicyegressrule
 
-let networkpolicyport = import "./networkpolicyport.ncl" in
 let networkpolicypeer = import "./networkpolicypeer.ncl" in
+let networkpolicyport = import "./networkpolicyport.ncl" in
 
 {
   # NetworkPolicyEgressRule describes a particular set of traffic that is allowed out of pods matched by a NetworkPolicySpec's podSelector. The traffic must match both ports and to. This type is beta-level in 1.8

@@ -1,6 +1,6 @@
 # Module: environmentconfig.apiextensions.crossplane.io
 
-let k8s_io_objectmeta = import "k8s_io" in
+let k8s_io_objectmeta = import "github:seryl/nickel-pkgs/k8s_io" in
 
 {
   EnvironmentConfig = {

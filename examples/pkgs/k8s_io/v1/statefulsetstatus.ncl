@@ -24,7 +24,7 @@ observedGeneration is the most recent generation observed for this StatefulSet. 
     readyReplicas | optional | Number | doc m%"
 readyReplicas is the number of pods created for this StatefulSet with a Ready Condition.
 "%,
-    replicas | Number | doc "replicas is the number of Pods created by the StatefulSet controller.",
+    replicas | optional | Number | doc "replicas is the number of Pods created by the StatefulSet controller.",
     updateRevision | optional | String | doc m%"
 updateRevision, if not empty, indicates the version of the StatefulSet used to generate Pods in the sequence [replicas-updatedReplicas,replicas)
 "%,

@@ -18,7 +18,7 @@ The application protocol for this port. This is used as a hint for implementatio
     name | optional | String | doc m%"
 The name of this port.  This must match the 'name' field in the corresponding ServicePort. Must be a DNS_LABEL. Optional only if one port is defined.
 "%,
-    port | Number | doc "The port number of the endpoint.",
+    port | optional | Number | doc "The port number of the endpoint.",
     protocol | optional | String | doc "The IP protocol for this port. Must be UDP, TCP, or SCTP. Default is TCP.",
   },
 }

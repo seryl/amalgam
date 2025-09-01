@@ -1,8 +1,8 @@
 # Module: k8s.io.v1.replicaset
 
 let replicasetspec = import "./replicasetspec.ncl" in
-let objectmeta = import "./objectmeta.ncl" in
 let replicasetstatus = import "./replicasetstatus.ncl" in
+let objectmeta = import "./objectmeta.ncl" in
 
 {
   # ReplicaSet ensures that a specified number of pod replicas are running at any given time.

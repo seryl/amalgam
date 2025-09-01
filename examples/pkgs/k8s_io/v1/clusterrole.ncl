@@ -1,7 +1,7 @@
 # Module: k8s.io.v1.clusterrole
 
-let objectmeta = import "./objectmeta.ncl" in
 let aggregationrule = import "./aggregationrule.ncl" in
+let objectmeta = import "./objectmeta.ncl" in
 let policyrule = import "./policyrule.ncl" in
 
 {

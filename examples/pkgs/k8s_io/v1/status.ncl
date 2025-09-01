@@ -1,7 +1,7 @@
 # Module: k8s.io.v1.status
 
-let listmeta = import "./listmeta.ncl" in
 let statusdetails = import "./statusdetails.ncl" in
+let listmeta = import "./listmeta.ncl" in
 
 {
   # Status is a return value for calls that don't return other objects.

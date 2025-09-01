@@ -1,10 +1,10 @@
 # Module: deploymentruntimeconfig.pkg.crossplane.io
 
-let k8s_io_objectmeta = import "k8s_io" in
-let k8s_io_toleration = import "k8s_io" in
-let k8s_io_envvar = import "k8s_io" in
-let k8s_io_envfromsource = import "k8s_io" in
-let k8s_io_volumemount = import "k8s_io" in
+let k8s_io_envvar = import "github:seryl/nickel-pkgs/k8s_io" in
+let k8s_io_toleration = import "github:seryl/nickel-pkgs/k8s_io" in
+let k8s_io_objectmeta = import "github:seryl/nickel-pkgs/k8s_io" in
+let k8s_io_envfromsource = import "github:seryl/nickel-pkgs/k8s_io" in
+let k8s_io_volumemount = import "github:seryl/nickel-pkgs/k8s_io" in
 
 {
   DeploymentRuntimeConfig = {
@@ -21,7 +21,7 @@ Cannot be updated.
 In CamelCase.
 More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
 "%,
-    metadata | optional | k8s_io_objectmeta.ObjectMeta,
+    metadata | optional | k8s_io_envvar.ObjectMeta,
     spec | optional | {
       deploymentTemplate | optional | {
         metadata | optional | {
@@ -65,10 +65,10 @@ The number of old ReplicaSets to retain to allow rollback.
 This is a pointer to distinguish between explicit zero and not specified.
 Defaults to 10.
 "%,
-          selector | {
+          selector | optional | {
             matchExpressions | optional | Array {
-              key | String | doc "key is the label key that the selector applies to.",
-              operator | String | doc m%"
+              key | optional | String | doc "key is the label key that the selector applies to.",
+              operator | optional | String | doc m%"
 operator represents a key's relationship to a set of values.
 Valid operators are In, NotIn, Exists and DoesNotExist.
 "%,
@@ -127,7 +127,7 @@ RollingUpdate.
 Type of deployment. Can be "Recreate" or "RollingUpdate". Default is RollingUpdate.
 "%,
           } | doc "The deployment strategy to use to replace existing pods with new ones.",
-          template | {
+          template | optional | {
             metadata | optional | {
               annotations | optional | {
               },
@@ -149,10 +149,10 @@ Value must be a positive integer.
               affinity | optional | {
                 nodeAffinity | optional | {
                   preferredDuringSchedulingIgnoredDuringExecution | optional | Array {
-                    preference | {
+                    preference | optional | {
                       matchExpressions | optional | Array {
-                        key | String | doc "The label key that the selector applies to.",
-                        operator | String | doc m%"
+                        key | optional | String | doc "The label key that the selector applies to.",
+                        operator | optional | String | doc m%"
 Represents a key's relationship to a set of values.
 Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt.
 "%,
@@ -165,8 +165,8 @@ This array is replaced during a strategic merge patch.
 "%,
                       } | doc "A list of node selector requirements by node's labels.",
                       matchFields | optional | Array {
-                        key | String | doc "The label key that the selector applies to.",
-                        operator | String | doc m%"
+                        key | optional | String | doc "The label key that the selector applies to.",
+                        operator | optional | String | doc m%"
 Represents a key's relationship to a set of values.
 Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt.
 "%,
@@ -179,7 +179,7 @@ This array is replaced during a strategic merge patch.
 "%,
                       } | doc "A list of node selector requirements by node's fields.",
                     } | doc "A node selector term, associated with the corresponding weight.",
-                    weight | Number | doc m%"
+                    weight | optional | Number | doc m%"
 Weight associated with matching the corresponding nodeSelectorTerm, in the range 1-100.
 "%,
                   } | doc m%"
@@ -194,10 +194,10 @@ compute a sum by iterating through the elements of this field and adding
 node(s) with the highest sum are the most preferred.
 "%,
                   requiredDuringSchedulingIgnoredDuringExecution | optional | {
-                    nodeSelectorTerms | Array {
+                    nodeSelectorTerms | optional | Array {
                       matchExpressions | optional | Array {
-                        key | String | doc "The label key that the selector applies to.",
-                        operator | String | doc m%"
+                        key | optional | String | doc "The label key that the selector applies to.",
+                        operator | optional | String | doc m%"
 Represents a key's relationship to a set of values.
 Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt.
 "%,
@@ -210,8 +210,8 @@ This array is replaced during a strategic merge patch.
 "%,
                       } | doc "A list of node selector requirements by node's labels.",
                       matchFields | optional | Array {
-                        key | String | doc "The label key that the selector applies to.",
-                        operator | String | doc m%"
+                        key | optional | String | doc "The label key that the selector applies to.",
+                        operator | optional | String | doc m%"
 Represents a key's relationship to a set of values.
 Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt.
 "%,
@@ -234,11 +234,11 @@ may or may not try to eventually evict the pod from its node.
                 } | doc "Describes node affinity scheduling rules for the pod.",
                 podAffinity | optional | {
                   preferredDuringSchedulingIgnoredDuringExecution | optional | Array {
-                    podAffinityTerm | {
+                    podAffinityTerm | optional | {
                       labelSelector | optional | {
                         matchExpressions | optional | Array {
-                          key | String | doc "key is the label key that the selector applies to.",
-                          operator | String | doc m%"
+                          key | optional | String | doc "key is the label key that the selector applies to.",
+                          operator | optional | String | doc m%"
 operator represents a key's relationship to a set of values.
 Valid operators are In, NotIn, Exists and DoesNotExist.
 "%,
@@ -283,8 +283,8 @@ Also, mismatchLabelKeys cannot be set when labelSelector isn't set.
 "%,
                       namespaceSelector | optional | {
                         matchExpressions | optional | Array {
-                          key | String | doc "key is the label key that the selector applies to.",
-                          operator | String | doc m%"
+                          key | optional | String | doc "key is the label key that the selector applies to.",
+                          operator | optional | String | doc m%"
 operator represents a key's relationship to a set of values.
 Valid operators are In, NotIn, Exists and DoesNotExist.
 "%,
@@ -316,7 +316,7 @@ The term is applied to the union of the namespaces listed in this field
 and the ones selected by namespaceSelector.
 null or empty namespaces list and null namespaceSelector means "this pod's namespace".
 "%,
-                      topologyKey | String | doc m%"
+                      topologyKey | optional | String | doc m%"
 This pod should be co-located (affinity) or not co-located (anti-affinity) with the pods matching
 the labelSelector in the specified namespaces, where co-located is defined as running on a node
 whose value of the label with key topologyKey matches that of any node on which any of the
@@ -324,7 +324,7 @@ selected pods is running.
 Empty topologyKey is not allowed.
 "%,
                     } | doc "Required. A pod affinity term, associated with the corresponding weight.",
-                    weight | Number | doc m%"
+                    weight | optional | Number | doc m%"
 weight associated with matching the corresponding podAffinityTerm,
 in the range 1-100.
 "%,
@@ -342,8 +342,8 @@ node(s) with the highest sum are the most preferred.
                   requiredDuringSchedulingIgnoredDuringExecution | optional | Array {
                     labelSelector | optional | {
                       matchExpressions | optional | Array {
-                        key | String | doc "key is the label key that the selector applies to.",
-                        operator | String | doc m%"
+                        key | optional | String | doc "key is the label key that the selector applies to.",
+                        operator | optional | String | doc m%"
 operator represents a key's relationship to a set of values.
 Valid operators are In, NotIn, Exists and DoesNotExist.
 "%,
@@ -388,8 +388,8 @@ Also, mismatchLabelKeys cannot be set when labelSelector isn't set.
 "%,
                     namespaceSelector | optional | {
                       matchExpressions | optional | Array {
-                        key | String | doc "key is the label key that the selector applies to.",
-                        operator | String | doc m%"
+                        key | optional | String | doc "key is the label key that the selector applies to.",
+                        operator | optional | String | doc m%"
 operator represents a key's relationship to a set of values.
 Valid operators are In, NotIn, Exists and DoesNotExist.
 "%,
@@ -421,7 +421,7 @@ The term is applied to the union of the namespaces listed in this field
 and the ones selected by namespaceSelector.
 null or empty namespaces list and null namespaceSelector means "this pod's namespace".
 "%,
-                    topologyKey | String | doc m%"
+                    topologyKey | optional | String | doc m%"
 This pod should be co-located (affinity) or not co-located (anti-affinity) with the pods matching
 the labelSelector in the specified namespaces, where co-located is defined as running on a node
 whose value of the label with key topologyKey matches that of any node on which any of the
@@ -442,11 +442,11 @@ Describes pod affinity scheduling rules (e.g. co-locate this pod in the same nod
 "%,
                 podAntiAffinity | optional | {
                   preferredDuringSchedulingIgnoredDuringExecution | optional | Array {
-                    podAffinityTerm | {
+                    podAffinityTerm | optional | {
                       labelSelector | optional | {
                         matchExpressions | optional | Array {
-                          key | String | doc "key is the label key that the selector applies to.",
-                          operator | String | doc m%"
+                          key | optional | String | doc "key is the label key that the selector applies to.",
+                          operator | optional | String | doc m%"
 operator represents a key's relationship to a set of values.
 Valid operators are In, NotIn, Exists and DoesNotExist.
 "%,
@@ -491,8 +491,8 @@ Also, mismatchLabelKeys cannot be set when labelSelector isn't set.
 "%,
                       namespaceSelector | optional | {
                         matchExpressions | optional | Array {
-                          key | String | doc "key is the label key that the selector applies to.",
-                          operator | String | doc m%"
+                          key | optional | String | doc "key is the label key that the selector applies to.",
+                          operator | optional | String | doc m%"
 operator represents a key's relationship to a set of values.
 Valid operators are In, NotIn, Exists and DoesNotExist.
 "%,
@@ -524,7 +524,7 @@ The term is applied to the union of the namespaces listed in this field
 and the ones selected by namespaceSelector.
 null or empty namespaces list and null namespaceSelector means "this pod's namespace".
 "%,
-                      topologyKey | String | doc m%"
+                      topologyKey | optional | String | doc m%"
 This pod should be co-located (affinity) or not co-located (anti-affinity) with the pods matching
 the labelSelector in the specified namespaces, where co-located is defined as running on a node
 whose value of the label with key topologyKey matches that of any node on which any of the
@@ -532,7 +532,7 @@ selected pods is running.
 Empty topologyKey is not allowed.
 "%,
                     } | doc "Required. A pod affinity term, associated with the corresponding weight.",
-                    weight | Number | doc m%"
+                    weight | optional | Number | doc m%"
 weight associated with matching the corresponding podAffinityTerm,
 in the range 1-100.
 "%,
@@ -550,8 +550,8 @@ node(s) with the highest sum are the most preferred.
                   requiredDuringSchedulingIgnoredDuringExecution | optional | Array {
                     labelSelector | optional | {
                       matchExpressions | optional | Array {
-                        key | String | doc "key is the label key that the selector applies to.",
-                        operator | String | doc m%"
+                        key | optional | String | doc "key is the label key that the selector applies to.",
+                        operator | optional | String | doc m%"
 operator represents a key's relationship to a set of values.
 Valid operators are In, NotIn, Exists and DoesNotExist.
 "%,
@@ -596,8 +596,8 @@ Also, mismatchLabelKeys cannot be set when labelSelector isn't set.
 "%,
                     namespaceSelector | optional | {
                       matchExpressions | optional | Array {
-                        key | String | doc "key is the label key that the selector applies to.",
-                        operator | String | doc m%"
+                        key | optional | String | doc "key is the label key that the selector applies to.",
+                        operator | optional | String | doc m%"
 operator represents a key's relationship to a set of values.
 Valid operators are In, NotIn, Exists and DoesNotExist.
 "%,
@@ -629,7 +629,7 @@ The term is applied to the union of the namespaces listed in this field
 and the ones selected by namespaceSelector.
 null or empty namespaces list and null namespaceSelector means "this pod's namespace".
 "%,
-                    topologyKey | String | doc m%"
+                    topologyKey | optional | String | doc m%"
 This pod should be co-located (affinity) or not co-located (anti-affinity) with the pods matching
 the labelSelector in the specified namespaces, where co-located is defined as running on a node
 whose value of the label with key topologyKey matches that of any node on which any of the
@@ -652,7 +652,7 @@ Describes pod anti-affinity scheduling rules (e.g. avoid putting this pod in the
               automountServiceAccountToken | optional | Bool | doc m%"
 AutomountServiceAccountToken indicates whether a service account token should be automatically mounted.
 "%,
-              containers | Array {
+              containers | optional | Array {
                 args | optional | Array String | doc m%"
 Arguments to the entrypoint.
 The container image's CMD is used if this is not provided.
@@ -673,11 +673,11 @@ produce the string literal "$(VAR_NAME)". Escaped references will never be expan
 of whether the variable exists or not. Cannot be updated.
 More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell
 "%,
-                env | optional | Array k8s_io_objectmeta.EnvVar | doc m%"
+                env | optional | Array k8s_io_envvar.EnvVar | doc m%"
 List of environment variables to set in the container.
 Cannot be updated.
 "%,
-                envFrom | optional | Array k8s_io_objectmeta.EnvFromSource | doc m%"
+                envFrom | optional | Array k8s_io_envvar.EnvFromSource | doc m%"
 List of sources to populate environment variables in the container.
 The keys defined within a source must be a C_IDENTIFIER. All invalid keys
 will be reported as an event when the container is starting. When a key exists in multiple
@@ -715,14 +715,14 @@ Host name to connect to, defaults to the pod IP. You probably want to set
 "Host" in httpHeaders instead.
 "%,
                       httpHeaders | optional | Array {
-                        name | String | doc m%"
+                        name | optional | String | doc m%"
 The header field name.
 This will be canonicalized upon output, so case-variant names will be understood as the same header.
 "%,
-                        value | String | doc "The header field value",
+                        value | optional | String | doc "The header field value",
                       } | doc "Custom headers to set in the request. HTTP allows repeated headers.",
                       path | optional | String | doc "Path to access on the HTTP server.",
-                      port | Number | String | doc m%"
+                      port | optional | Number | String | doc m%"
 Name or number of the port to access on the container.
 Number must be in the range 1 to 65535.
 Name must be an IANA_SVC_NAME.
@@ -733,11 +733,11 @@ Defaults to HTTP.
 "%,
                     } | doc "HTTPGet specifies an HTTP GET request to perform.",
                     sleep | optional | {
-                      seconds | Number | doc "Seconds is the number of seconds to sleep.",
+                      seconds | optional | Number | doc "Seconds is the number of seconds to sleep.",
                     } | doc "Sleep represents a duration that the container should sleep.",
                     tcpSocket | optional | {
                       host | optional | String | doc "Optional: Host name to connect to, defaults to the pod IP.",
-                      port | Number | String | doc m%"
+                      port | optional | Number | String | doc m%"
 Number or name of the port to access on the container.
 Number must be in the range 1 to 65535.
 Name must be an IANA_SVC_NAME.
@@ -769,14 +769,14 @@ Host name to connect to, defaults to the pod IP. You probably want to set
 "Host" in httpHeaders instead.
 "%,
                       httpHeaders | optional | Array {
-                        name | String | doc m%"
+                        name | optional | String | doc m%"
 The header field name.
 This will be canonicalized upon output, so case-variant names will be understood as the same header.
 "%,
-                        value | String | doc "The header field value",
+                        value | optional | String | doc "The header field value",
                       } | doc "Custom headers to set in the request. HTTP allows repeated headers.",
                       path | optional | String | doc "Path to access on the HTTP server.",
-                      port | Number | String | doc m%"
+                      port | optional | Number | String | doc m%"
 Name or number of the port to access on the container.
 Number must be in the range 1 to 65535.
 Name must be an IANA_SVC_NAME.
@@ -787,11 +787,11 @@ Defaults to HTTP.
 "%,
                     } | doc "HTTPGet specifies an HTTP GET request to perform.",
                     sleep | optional | {
-                      seconds | Number | doc "Seconds is the number of seconds to sleep.",
+                      seconds | optional | Number | doc "Seconds is the number of seconds to sleep.",
                     } | doc "Sleep represents a duration that the container should sleep.",
                     tcpSocket | optional | {
                       host | optional | String | doc "Optional: Host name to connect to, defaults to the pod IP.",
-                      port | Number | String | doc m%"
+                      port | optional | Number | String | doc m%"
 Number or name of the port to access on the container.
 Number must be in the range 1 to 65535.
 Name must be an IANA_SVC_NAME.
@@ -836,7 +836,7 @@ Minimum consecutive failures for the probe to be considered failed after having 
 Defaults to 3. Minimum value is 1.
 "%,
                   grpc | optional | {
-                    port | Number | doc "Port number of the gRPC service. Number must be in the range 1 to 65535.",
+                    port | optional | Number | doc "Port number of the gRPC service. Number must be in the range 1 to 65535.",
                     service | String | doc m%"
 Service is the name of the service to place in the gRPC HealthCheckRequest
 (see https://github.com/grpc/grpc/blob/master/doc/health-checking.md).
@@ -850,14 +850,14 @@ Host name to connect to, defaults to the pod IP. You probably want to set
 "Host" in httpHeaders instead.
 "%,
                     httpHeaders | optional | Array {
-                      name | String | doc m%"
+                      name | optional | String | doc m%"
 The header field name.
 This will be canonicalized upon output, so case-variant names will be understood as the same header.
 "%,
-                      value | String | doc "The header field value",
+                      value | optional | String | doc "The header field value",
                     } | doc "Custom headers to set in the request. HTTP allows repeated headers.",
                     path | optional | String | doc "Path to access on the HTTP server.",
-                    port | Number | String | doc m%"
+                    port | optional | Number | String | doc m%"
 Name or number of the port to access on the container.
 Number must be in the range 1 to 65535.
 Name must be an IANA_SVC_NAME.
@@ -881,7 +881,7 @@ Defaults to 1. Must be 1 for liveness and startup. Minimum value is 1.
 "%,
                   tcpSocket | optional | {
                     host | optional | String | doc "Optional: Host name to connect to, defaults to the pod IP.",
-                    port | Number | String | doc m%"
+                    port | optional | Number | String | doc m%"
 Number or name of the port to access on the container.
 Number must be in the range 1 to 65535.
 Name must be an IANA_SVC_NAME.
@@ -910,13 +910,13 @@ Container will be restarted if the probe fails.
 Cannot be updated.
 More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes
 "%,
-                name | String | doc m%"
+                name | optional | String | doc m%"
 Name of the container specified as a DNS_LABEL.
 Each container in a pod must have a unique name (DNS_LABEL).
 Cannot be updated.
 "%,
                 ports | optional | Array {
-                  containerPort | Number | doc m%"
+                  containerPort | optional | Number | doc m%"
 Number of port to expose on the pod's IP address.
 This must be a valid port number, 0 < x < 65536.
 "%,
@@ -960,7 +960,7 @@ Minimum consecutive failures for the probe to be considered failed after having 
 Defaults to 3. Minimum value is 1.
 "%,
                   grpc | optional | {
-                    port | Number | doc "Port number of the gRPC service. Number must be in the range 1 to 65535.",
+                    port | optional | Number | doc "Port number of the gRPC service. Number must be in the range 1 to 65535.",
                     service | String | doc m%"
 Service is the name of the service to place in the gRPC HealthCheckRequest
 (see https://github.com/grpc/grpc/blob/master/doc/health-checking.md).
@@ -974,14 +974,14 @@ Host name to connect to, defaults to the pod IP. You probably want to set
 "Host" in httpHeaders instead.
 "%,
                     httpHeaders | optional | Array {
-                      name | String | doc m%"
+                      name | optional | String | doc m%"
 The header field name.
 This will be canonicalized upon output, so case-variant names will be understood as the same header.
 "%,
-                      value | String | doc "The header field value",
+                      value | optional | String | doc "The header field value",
                     } | doc "Custom headers to set in the request. HTTP allows repeated headers.",
                     path | optional | String | doc "Path to access on the HTTP server.",
-                    port | Number | String | doc m%"
+                    port | optional | Number | String | doc m%"
 Name or number of the port to access on the container.
 Number must be in the range 1 to 65535.
 Name must be an IANA_SVC_NAME.
@@ -1005,7 +1005,7 @@ Defaults to 1. Must be 1 for liveness and startup. Minimum value is 1.
 "%,
                   tcpSocket | optional | {
                     host | optional | String | doc "Optional: Host name to connect to, defaults to the pod IP.",
-                    port | Number | String | doc m%"
+                    port | optional | Number | String | doc m%"
 Number or name of the port to access on the container.
 Number must be in the range 1 to 65535.
 Name must be an IANA_SVC_NAME.
@@ -1035,18 +1035,18 @@ Cannot be updated.
 More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes
 "%,
                 resizePolicy | optional | Array {
-                  resourceName | String | doc m%"
+                  resourceName | optional | String | doc m%"
 Name of the resource to which this resource resize policy applies.
 Supported values: cpu, memory.
 "%,
-                  restartPolicy | String | doc m%"
+                  restartPolicy | optional | String | doc m%"
 Restart policy to apply when specified resource is resized.
 If not specified, it defaults to NotRequired.
 "%,
                 } | doc "Resources resize policy for the container.",
                 resources | optional | {
                   claims | optional | Array {
-                    name | String | doc m%"
+                    name | optional | String | doc m%"
 Name must match the name of one entry in pod.spec.resourceClaims of
 the Pod where this field is used. It makes that resource available
 inside a container.
@@ -1116,7 +1116,7 @@ The profile must be preconfigured on the node to work.
 Must match the loaded name of the profile.
 Must be set if and only if type is "Localhost".
 "%,
-                    type | String | doc m%"
+                    type | optional | String | doc m%"
 type indicates which kind of AppArmor profile will be applied.
 Valid options are:
   Localhost - a profile pre-loaded on the node.
@@ -1195,7 +1195,7 @@ The profile must be preconfigured on the node to work.
 Must be a descending path, relative to the kubelet's configured seccomp profile location.
 Must be set if type is "Localhost". Must NOT be set for any other type.
 "%,
-                    type | String | doc m%"
+                    type | optional | String | doc m%"
 type indicates which kind of seccomp profile will be applied.
 Valid options are:
 
@@ -1254,7 +1254,7 @@ Minimum consecutive failures for the probe to be considered failed after having 
 Defaults to 3. Minimum value is 1.
 "%,
                   grpc | optional | {
-                    port | Number | doc "Port number of the gRPC service. Number must be in the range 1 to 65535.",
+                    port | optional | Number | doc "Port number of the gRPC service. Number must be in the range 1 to 65535.",
                     service | String | doc m%"
 Service is the name of the service to place in the gRPC HealthCheckRequest
 (see https://github.com/grpc/grpc/blob/master/doc/health-checking.md).
@@ -1268,14 +1268,14 @@ Host name to connect to, defaults to the pod IP. You probably want to set
 "Host" in httpHeaders instead.
 "%,
                     httpHeaders | optional | Array {
-                      name | String | doc m%"
+                      name | optional | String | doc m%"
 The header field name.
 This will be canonicalized upon output, so case-variant names will be understood as the same header.
 "%,
-                      value | String | doc "The header field value",
+                      value | optional | String | doc "The header field value",
                     } | doc "Custom headers to set in the request. HTTP allows repeated headers.",
                     path | optional | String | doc "Path to access on the HTTP server.",
-                    port | Number | String | doc m%"
+                    port | optional | Number | String | doc m%"
 Name or number of the port to access on the container.
 Number must be in the range 1 to 65535.
 Name must be an IANA_SVC_NAME.
@@ -1299,7 +1299,7 @@ Defaults to 1. Must be 1 for liveness and startup. Minimum value is 1.
 "%,
                   tcpSocket | optional | {
                     host | optional | String | doc "Optional: Host name to connect to, defaults to the pod IP.",
-                    port | Number | String | doc m%"
+                    port | optional | Number | String | doc m%"
 Number or name of the port to access on the container.
 Number must be in the range 1 to 65535.
 Name must be an IANA_SVC_NAME.
@@ -1368,12 +1368,12 @@ Whether this container should allocate a TTY for itself, also requires 'stdin' t
 Default is false.
 "%,
                 volumeDevices | optional | Array {
-                  devicePath | String | doc m%"
+                  devicePath | optional | String | doc m%"
 devicePath is the path inside of the container that the device will be mapped to.
 "%,
-                  name | String | doc "name must match the name of a persistentVolumeClaim in the pod",
+                  name | optional | String | doc "name must match the name of a persistentVolumeClaim in the pod",
                 } | doc "volumeDevices is the list of block devices to be used by the container.",
-                volumeMounts | optional | Array k8s_io_objectmeta.VolumeMount | doc m%"
+                volumeMounts | optional | Array k8s_io_envvar.VolumeMount | doc m%"
 Pod volumes to mount into the container's filesystem.
 Cannot be updated.
 "%,
@@ -1451,11 +1451,11 @@ produce the string literal "$(VAR_NAME)". Escaped references will never be expan
 of whether the variable exists or not. Cannot be updated.
 More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell
 "%,
-                env | optional | Array k8s_io_objectmeta.EnvVar | doc m%"
+                env | optional | Array k8s_io_envvar.EnvVar | doc m%"
 List of environment variables to set in the container.
 Cannot be updated.
 "%,
-                envFrom | optional | Array k8s_io_objectmeta.EnvFromSource | doc m%"
+                envFrom | optional | Array k8s_io_envvar.EnvFromSource | doc m%"
 List of sources to populate environment variables in the container.
 The keys defined within a source must be a C_IDENTIFIER. All invalid keys
 will be reported as an event when the container is starting. When a key exists in multiple
@@ -1491,14 +1491,14 @@ Host name to connect to, defaults to the pod IP. You probably want to set
 "Host" in httpHeaders instead.
 "%,
                       httpHeaders | optional | Array {
-                        name | String | doc m%"
+                        name | optional | String | doc m%"
 The header field name.
 This will be canonicalized upon output, so case-variant names will be understood as the same header.
 "%,
-                        value | String | doc "The header field value",
+                        value | optional | String | doc "The header field value",
                       } | doc "Custom headers to set in the request. HTTP allows repeated headers.",
                       path | optional | String | doc "Path to access on the HTTP server.",
-                      port | Number | String | doc m%"
+                      port | optional | Number | String | doc m%"
 Name or number of the port to access on the container.
 Number must be in the range 1 to 65535.
 Name must be an IANA_SVC_NAME.
@@ -1509,11 +1509,11 @@ Defaults to HTTP.
 "%,
                     } | doc "HTTPGet specifies an HTTP GET request to perform.",
                     sleep | optional | {
-                      seconds | Number | doc "Seconds is the number of seconds to sleep.",
+                      seconds | optional | Number | doc "Seconds is the number of seconds to sleep.",
                     } | doc "Sleep represents a duration that the container should sleep.",
                     tcpSocket | optional | {
                       host | optional | String | doc "Optional: Host name to connect to, defaults to the pod IP.",
-                      port | Number | String | doc m%"
+                      port | optional | Number | String | doc m%"
 Number or name of the port to access on the container.
 Number must be in the range 1 to 65535.
 Name must be an IANA_SVC_NAME.
@@ -1545,14 +1545,14 @@ Host name to connect to, defaults to the pod IP. You probably want to set
 "Host" in httpHeaders instead.
 "%,
                       httpHeaders | optional | Array {
-                        name | String | doc m%"
+                        name | optional | String | doc m%"
 The header field name.
 This will be canonicalized upon output, so case-variant names will be understood as the same header.
 "%,
-                        value | String | doc "The header field value",
+                        value | optional | String | doc "The header field value",
                       } | doc "Custom headers to set in the request. HTTP allows repeated headers.",
                       path | optional | String | doc "Path to access on the HTTP server.",
-                      port | Number | String | doc m%"
+                      port | optional | Number | String | doc m%"
 Name or number of the port to access on the container.
 Number must be in the range 1 to 65535.
 Name must be an IANA_SVC_NAME.
@@ -1563,11 +1563,11 @@ Defaults to HTTP.
 "%,
                     } | doc "HTTPGet specifies an HTTP GET request to perform.",
                     sleep | optional | {
-                      seconds | Number | doc "Seconds is the number of seconds to sleep.",
+                      seconds | optional | Number | doc "Seconds is the number of seconds to sleep.",
                     } | doc "Sleep represents a duration that the container should sleep.",
                     tcpSocket | optional | {
                       host | optional | String | doc "Optional: Host name to connect to, defaults to the pod IP.",
-                      port | Number | String | doc m%"
+                      port | optional | Number | String | doc m%"
 Number or name of the port to access on the container.
 Number must be in the range 1 to 65535.
 Name must be an IANA_SVC_NAME.
@@ -1609,7 +1609,7 @@ Minimum consecutive failures for the probe to be considered failed after having 
 Defaults to 3. Minimum value is 1.
 "%,
                   grpc | optional | {
-                    port | Number | doc "Port number of the gRPC service. Number must be in the range 1 to 65535.",
+                    port | optional | Number | doc "Port number of the gRPC service. Number must be in the range 1 to 65535.",
                     service | String | doc m%"
 Service is the name of the service to place in the gRPC HealthCheckRequest
 (see https://github.com/grpc/grpc/blob/master/doc/health-checking.md).
@@ -1623,14 +1623,14 @@ Host name to connect to, defaults to the pod IP. You probably want to set
 "Host" in httpHeaders instead.
 "%,
                     httpHeaders | optional | Array {
-                      name | String | doc m%"
+                      name | optional | String | doc m%"
 The header field name.
 This will be canonicalized upon output, so case-variant names will be understood as the same header.
 "%,
-                      value | String | doc "The header field value",
+                      value | optional | String | doc "The header field value",
                     } | doc "Custom headers to set in the request. HTTP allows repeated headers.",
                     path | optional | String | doc "Path to access on the HTTP server.",
-                    port | Number | String | doc m%"
+                    port | optional | Number | String | doc m%"
 Name or number of the port to access on the container.
 Number must be in the range 1 to 65535.
 Name must be an IANA_SVC_NAME.
@@ -1654,7 +1654,7 @@ Defaults to 1. Must be 1 for liveness and startup. Minimum value is 1.
 "%,
                   tcpSocket | optional | {
                     host | optional | String | doc "Optional: Host name to connect to, defaults to the pod IP.",
-                    port | Number | String | doc m%"
+                    port | optional | Number | String | doc m%"
 Number or name of the port to access on the container.
 Number must be in the range 1 to 65535.
 Name must be an IANA_SVC_NAME.
@@ -1678,12 +1678,12 @@ Defaults to 1 second. Minimum value is 1.
 More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes
 "%,
                 } | doc "Probes are not allowed for ephemeral containers.",
-                name | String | doc m%"
+                name | optional | String | doc m%"
 Name of the ephemeral container specified as a DNS_LABEL.
 This name must be unique among all containers, init containers and ephemeral containers.
 "%,
                 ports | optional | Array {
-                  containerPort | Number | doc m%"
+                  containerPort | optional | Number | doc m%"
 Number of port to expose on the pod's IP address.
 This must be a valid port number, 0 < x < 65536.
 "%,
@@ -1719,7 +1719,7 @@ Minimum consecutive failures for the probe to be considered failed after having 
 Defaults to 3. Minimum value is 1.
 "%,
                   grpc | optional | {
-                    port | Number | doc "Port number of the gRPC service. Number must be in the range 1 to 65535.",
+                    port | optional | Number | doc "Port number of the gRPC service. Number must be in the range 1 to 65535.",
                     service | String | doc m%"
 Service is the name of the service to place in the gRPC HealthCheckRequest
 (see https://github.com/grpc/grpc/blob/master/doc/health-checking.md).
@@ -1733,14 +1733,14 @@ Host name to connect to, defaults to the pod IP. You probably want to set
 "Host" in httpHeaders instead.
 "%,
                     httpHeaders | optional | Array {
-                      name | String | doc m%"
+                      name | optional | String | doc m%"
 The header field name.
 This will be canonicalized upon output, so case-variant names will be understood as the same header.
 "%,
-                      value | String | doc "The header field value",
+                      value | optional | String | doc "The header field value",
                     } | doc "Custom headers to set in the request. HTTP allows repeated headers.",
                     path | optional | String | doc "Path to access on the HTTP server.",
-                    port | Number | String | doc m%"
+                    port | optional | Number | String | doc m%"
 Name or number of the port to access on the container.
 Number must be in the range 1 to 65535.
 Name must be an IANA_SVC_NAME.
@@ -1764,7 +1764,7 @@ Defaults to 1. Must be 1 for liveness and startup. Minimum value is 1.
 "%,
                   tcpSocket | optional | {
                     host | optional | String | doc "Optional: Host name to connect to, defaults to the pod IP.",
-                    port | Number | String | doc m%"
+                    port | optional | Number | String | doc m%"
 Number or name of the port to access on the container.
 Number must be in the range 1 to 65535.
 Name must be an IANA_SVC_NAME.
@@ -1789,18 +1789,18 @@ More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#cont
 "%,
                 } | doc "Probes are not allowed for ephemeral containers.",
                 resizePolicy | optional | Array {
-                  resourceName | String | doc m%"
+                  resourceName | optional | String | doc m%"
 Name of the resource to which this resource resize policy applies.
 Supported values: cpu, memory.
 "%,
-                  restartPolicy | String | doc m%"
+                  restartPolicy | optional | String | doc m%"
 Restart policy to apply when specified resource is resized.
 If not specified, it defaults to NotRequired.
 "%,
                 } | doc "Resources resize policy for the container.",
                 resources | optional | {
                   claims | optional | Array {
-                    name | String | doc m%"
+                    name | optional | String | doc m%"
 Name must match the name of one entry in pod.spec.resourceClaims of
 the Pod where this field is used. It makes that resource available
 inside a container.
@@ -1858,7 +1858,7 @@ The profile must be preconfigured on the node to work.
 Must match the loaded name of the profile.
 Must be set if and only if type is "Localhost".
 "%,
-                    type | String | doc m%"
+                    type | optional | String | doc m%"
 type indicates which kind of AppArmor profile will be applied.
 Valid options are:
   Localhost - a profile pre-loaded on the node.
@@ -1937,7 +1937,7 @@ The profile must be preconfigured on the node to work.
 Must be a descending path, relative to the kubelet's configured seccomp profile location.
 Must be set if type is "Localhost". Must NOT be set for any other type.
 "%,
-                    type | String | doc m%"
+                    type | optional | String | doc m%"
 type indicates which kind of seccomp profile will be applied.
 Valid options are:
 
@@ -1995,7 +1995,7 @@ Minimum consecutive failures for the probe to be considered failed after having 
 Defaults to 3. Minimum value is 1.
 "%,
                   grpc | optional | {
-                    port | Number | doc "Port number of the gRPC service. Number must be in the range 1 to 65535.",
+                    port | optional | Number | doc "Port number of the gRPC service. Number must be in the range 1 to 65535.",
                     service | String | doc m%"
 Service is the name of the service to place in the gRPC HealthCheckRequest
 (see https://github.com/grpc/grpc/blob/master/doc/health-checking.md).
@@ -2009,14 +2009,14 @@ Host name to connect to, defaults to the pod IP. You probably want to set
 "Host" in httpHeaders instead.
 "%,
                     httpHeaders | optional | Array {
-                      name | String | doc m%"
+                      name | optional | String | doc m%"
 The header field name.
 This will be canonicalized upon output, so case-variant names will be understood as the same header.
 "%,
-                      value | String | doc "The header field value",
+                      value | optional | String | doc "The header field value",
                     } | doc "Custom headers to set in the request. HTTP allows repeated headers.",
                     path | optional | String | doc "Path to access on the HTTP server.",
-                    port | Number | String | doc m%"
+                    port | optional | Number | String | doc m%"
 Name or number of the port to access on the container.
 Number must be in the range 1 to 65535.
 Name must be an IANA_SVC_NAME.
@@ -2040,7 +2040,7 @@ Defaults to 1. Must be 1 for liveness and startup. Minimum value is 1.
 "%,
                   tcpSocket | optional | {
                     host | optional | String | doc "Optional: Host name to connect to, defaults to the pod IP.",
-                    port | Number | String | doc m%"
+                    port | optional | Number | String | doc m%"
 Number or name of the port to access on the container.
 Number must be in the range 1 to 65535.
 Name must be an IANA_SVC_NAME.
@@ -2109,12 +2109,12 @@ Whether this container should allocate a TTY for itself, also requires 'stdin' t
 Default is false.
 "%,
                 volumeDevices | optional | Array {
-                  devicePath | String | doc m%"
+                  devicePath | optional | String | doc m%"
 devicePath is the path inside of the container that the device will be mapped to.
 "%,
-                  name | String | doc "name must match the name of a persistentVolumeClaim in the pod",
+                  name | optional | String | doc "name must match the name of a persistentVolumeClaim in the pod",
                 } | doc "volumeDevices is the list of block devices to be used by the container.",
-                volumeMounts | optional | Array k8s_io_objectmeta.VolumeMount | doc m%"
+                volumeMounts | optional | Array k8s_io_envvar.VolumeMount | doc m%"
 Pod volumes to mount into the container's filesystem. Subpath mounts are not allowed for ephemeral containers.
 Cannot be updated.
 "%,
@@ -2132,7 +2132,7 @@ ephemeral container to an existing pod, use the pod's ephemeralcontainers subres
 "%,
               hostAliases | optional | Array {
                 hostnames | optional | Array String | doc "Hostnames for the above IP address.",
-                ip | String | doc "IP address of the host file entry.",
+                ip | optional | String | doc "IP address of the host file entry.",
               } | doc m%"
 HostAliases is an optional list of hosts and IPs that will be injected into the pod's hosts
 file if specified.
@@ -2199,11 +2199,11 @@ produce the string literal "$(VAR_NAME)". Escaped references will never be expan
 of whether the variable exists or not. Cannot be updated.
 More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell
 "%,
-                env | optional | Array k8s_io_objectmeta.EnvVar | doc m%"
+                env | optional | Array k8s_io_envvar.EnvVar | doc m%"
 List of environment variables to set in the container.
 Cannot be updated.
 "%,
-                envFrom | optional | Array k8s_io_objectmeta.EnvFromSource | doc m%"
+                envFrom | optional | Array k8s_io_envvar.EnvFromSource | doc m%"
 List of sources to populate environment variables in the container.
 The keys defined within a source must be a C_IDENTIFIER. All invalid keys
 will be reported as an event when the container is starting. When a key exists in multiple
@@ -2241,14 +2241,14 @@ Host name to connect to, defaults to the pod IP. You probably want to set
 "Host" in httpHeaders instead.
 "%,
                       httpHeaders | optional | Array {
-                        name | String | doc m%"
+                        name | optional | String | doc m%"
 The header field name.
 This will be canonicalized upon output, so case-variant names will be understood as the same header.
 "%,
-                        value | String | doc "The header field value",
+                        value | optional | String | doc "The header field value",
                       } | doc "Custom headers to set in the request. HTTP allows repeated headers.",
                       path | optional | String | doc "Path to access on the HTTP server.",
-                      port | Number | String | doc m%"
+                      port | optional | Number | String | doc m%"
 Name or number of the port to access on the container.
 Number must be in the range 1 to 65535.
 Name must be an IANA_SVC_NAME.
@@ -2259,11 +2259,11 @@ Defaults to HTTP.
 "%,
                     } | doc "HTTPGet specifies an HTTP GET request to perform.",
                     sleep | optional | {
-                      seconds | Number | doc "Seconds is the number of seconds to sleep.",
+                      seconds | optional | Number | doc "Seconds is the number of seconds to sleep.",
                     } | doc "Sleep represents a duration that the container should sleep.",
                     tcpSocket | optional | {
                       host | optional | String | doc "Optional: Host name to connect to, defaults to the pod IP.",
-                      port | Number | String | doc m%"
+                      port | optional | Number | String | doc m%"
 Number or name of the port to access on the container.
 Number must be in the range 1 to 65535.
 Name must be an IANA_SVC_NAME.
@@ -2295,14 +2295,14 @@ Host name to connect to, defaults to the pod IP. You probably want to set
 "Host" in httpHeaders instead.
 "%,
                       httpHeaders | optional | Array {
-                        name | String | doc m%"
+                        name | optional | String | doc m%"
 The header field name.
 This will be canonicalized upon output, so case-variant names will be understood as the same header.
 "%,
-                        value | String | doc "The header field value",
+                        value | optional | String | doc "The header field value",
                       } | doc "Custom headers to set in the request. HTTP allows repeated headers.",
                       path | optional | String | doc "Path to access on the HTTP server.",
-                      port | Number | String | doc m%"
+                      port | optional | Number | String | doc m%"
 Name or number of the port to access on the container.
 Number must be in the range 1 to 65535.
 Name must be an IANA_SVC_NAME.
@@ -2313,11 +2313,11 @@ Defaults to HTTP.
 "%,
                     } | doc "HTTPGet specifies an HTTP GET request to perform.",
                     sleep | optional | {
-                      seconds | Number | doc "Seconds is the number of seconds to sleep.",
+                      seconds | optional | Number | doc "Seconds is the number of seconds to sleep.",
                     } | doc "Sleep represents a duration that the container should sleep.",
                     tcpSocket | optional | {
                       host | optional | String | doc "Optional: Host name to connect to, defaults to the pod IP.",
-                      port | Number | String | doc m%"
+                      port | optional | Number | String | doc m%"
 Number or name of the port to access on the container.
 Number must be in the range 1 to 65535.
 Name must be an IANA_SVC_NAME.
@@ -2362,7 +2362,7 @@ Minimum consecutive failures for the probe to be considered failed after having 
 Defaults to 3. Minimum value is 1.
 "%,
                   grpc | optional | {
-                    port | Number | doc "Port number of the gRPC service. Number must be in the range 1 to 65535.",
+                    port | optional | Number | doc "Port number of the gRPC service. Number must be in the range 1 to 65535.",
                     service | String | doc m%"
 Service is the name of the service to place in the gRPC HealthCheckRequest
 (see https://github.com/grpc/grpc/blob/master/doc/health-checking.md).
@@ -2376,14 +2376,14 @@ Host name to connect to, defaults to the pod IP. You probably want to set
 "Host" in httpHeaders instead.
 "%,
                     httpHeaders | optional | Array {
-                      name | String | doc m%"
+                      name | optional | String | doc m%"
 The header field name.
 This will be canonicalized upon output, so case-variant names will be understood as the same header.
 "%,
-                      value | String | doc "The header field value",
+                      value | optional | String | doc "The header field value",
                     } | doc "Custom headers to set in the request. HTTP allows repeated headers.",
                     path | optional | String | doc "Path to access on the HTTP server.",
-                    port | Number | String | doc m%"
+                    port | optional | Number | String | doc m%"
 Name or number of the port to access on the container.
 Number must be in the range 1 to 65535.
 Name must be an IANA_SVC_NAME.
@@ -2407,7 +2407,7 @@ Defaults to 1. Must be 1 for liveness and startup. Minimum value is 1.
 "%,
                   tcpSocket | optional | {
                     host | optional | String | doc "Optional: Host name to connect to, defaults to the pod IP.",
-                    port | Number | String | doc m%"
+                    port | optional | Number | String | doc m%"
 Number or name of the port to access on the container.
 Number must be in the range 1 to 65535.
 Name must be an IANA_SVC_NAME.
@@ -2436,13 +2436,13 @@ Container will be restarted if the probe fails.
 Cannot be updated.
 More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes
 "%,
-                name | String | doc m%"
+                name | optional | String | doc m%"
 Name of the container specified as a DNS_LABEL.
 Each container in a pod must have a unique name (DNS_LABEL).
 Cannot be updated.
 "%,
                 ports | optional | Array {
-                  containerPort | Number | doc m%"
+                  containerPort | optional | Number | doc m%"
 Number of port to expose on the pod's IP address.
 This must be a valid port number, 0 < x < 65536.
 "%,
@@ -2486,7 +2486,7 @@ Minimum consecutive failures for the probe to be considered failed after having 
 Defaults to 3. Minimum value is 1.
 "%,
                   grpc | optional | {
-                    port | Number | doc "Port number of the gRPC service. Number must be in the range 1 to 65535.",
+                    port | optional | Number | doc "Port number of the gRPC service. Number must be in the range 1 to 65535.",
                     service | String | doc m%"
 Service is the name of the service to place in the gRPC HealthCheckRequest
 (see https://github.com/grpc/grpc/blob/master/doc/health-checking.md).
@@ -2500,14 +2500,14 @@ Host name to connect to, defaults to the pod IP. You probably want to set
 "Host" in httpHeaders instead.
 "%,
                     httpHeaders | optional | Array {
-                      name | String | doc m%"
+                      name | optional | String | doc m%"
 The header field name.
 This will be canonicalized upon output, so case-variant names will be understood as the same header.
 "%,
-                      value | String | doc "The header field value",
+                      value | optional | String | doc "The header field value",
                     } | doc "Custom headers to set in the request. HTTP allows repeated headers.",
                     path | optional | String | doc "Path to access on the HTTP server.",
-                    port | Number | String | doc m%"
+                    port | optional | Number | String | doc m%"
 Name or number of the port to access on the container.
 Number must be in the range 1 to 65535.
 Name must be an IANA_SVC_NAME.
@@ -2531,7 +2531,7 @@ Defaults to 1. Must be 1 for liveness and startup. Minimum value is 1.
 "%,
                   tcpSocket | optional | {
                     host | optional | String | doc "Optional: Host name to connect to, defaults to the pod IP.",
-                    port | Number | String | doc m%"
+                    port | optional | Number | String | doc m%"
 Number or name of the port to access on the container.
 Number must be in the range 1 to 65535.
 Name must be an IANA_SVC_NAME.
@@ -2561,18 +2561,18 @@ Cannot be updated.
 More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes
 "%,
                 resizePolicy | optional | Array {
-                  resourceName | String | doc m%"
+                  resourceName | optional | String | doc m%"
 Name of the resource to which this resource resize policy applies.
 Supported values: cpu, memory.
 "%,
-                  restartPolicy | String | doc m%"
+                  restartPolicy | optional | String | doc m%"
 Restart policy to apply when specified resource is resized.
 If not specified, it defaults to NotRequired.
 "%,
                 } | doc "Resources resize policy for the container.",
                 resources | optional | {
                   claims | optional | Array {
-                    name | String | doc m%"
+                    name | optional | String | doc m%"
 Name must match the name of one entry in pod.spec.resourceClaims of
 the Pod where this field is used. It makes that resource available
 inside a container.
@@ -2642,7 +2642,7 @@ The profile must be preconfigured on the node to work.
 Must match the loaded name of the profile.
 Must be set if and only if type is "Localhost".
 "%,
-                    type | String | doc m%"
+                    type | optional | String | doc m%"
 type indicates which kind of AppArmor profile will be applied.
 Valid options are:
   Localhost - a profile pre-loaded on the node.
@@ -2721,7 +2721,7 @@ The profile must be preconfigured on the node to work.
 Must be a descending path, relative to the kubelet's configured seccomp profile location.
 Must be set if type is "Localhost". Must NOT be set for any other type.
 "%,
-                    type | String | doc m%"
+                    type | optional | String | doc m%"
 type indicates which kind of seccomp profile will be applied.
 Valid options are:
 
@@ -2780,7 +2780,7 @@ Minimum consecutive failures for the probe to be considered failed after having 
 Defaults to 3. Minimum value is 1.
 "%,
                   grpc | optional | {
-                    port | Number | doc "Port number of the gRPC service. Number must be in the range 1 to 65535.",
+                    port | optional | Number | doc "Port number of the gRPC service. Number must be in the range 1 to 65535.",
                     service | String | doc m%"
 Service is the name of the service to place in the gRPC HealthCheckRequest
 (see https://github.com/grpc/grpc/blob/master/doc/health-checking.md).
@@ -2794,14 +2794,14 @@ Host name to connect to, defaults to the pod IP. You probably want to set
 "Host" in httpHeaders instead.
 "%,
                     httpHeaders | optional | Array {
-                      name | String | doc m%"
+                      name | optional | String | doc m%"
 The header field name.
 This will be canonicalized upon output, so case-variant names will be understood as the same header.
 "%,
-                      value | String | doc "The header field value",
+                      value | optional | String | doc "The header field value",
                     } | doc "Custom headers to set in the request. HTTP allows repeated headers.",
                     path | optional | String | doc "Path to access on the HTTP server.",
-                    port | Number | String | doc m%"
+                    port | optional | Number | String | doc m%"
 Name or number of the port to access on the container.
 Number must be in the range 1 to 65535.
 Name must be an IANA_SVC_NAME.
@@ -2825,7 +2825,7 @@ Defaults to 1. Must be 1 for liveness and startup. Minimum value is 1.
 "%,
                   tcpSocket | optional | {
                     host | optional | String | doc "Optional: Host name to connect to, defaults to the pod IP.",
-                    port | Number | String | doc m%"
+                    port | optional | Number | String | doc m%"
 Number or name of the port to access on the container.
 Number must be in the range 1 to 65535.
 Name must be an IANA_SVC_NAME.
@@ -2894,12 +2894,12 @@ Whether this container should allocate a TTY for itself, also requires 'stdin' t
 Default is false.
 "%,
                 volumeDevices | optional | Array {
-                  devicePath | String | doc m%"
+                  devicePath | optional | String | doc m%"
 devicePath is the path inside of the container that the device will be mapped to.
 "%,
-                  name | String | doc "name must match the name of a persistentVolumeClaim in the pod",
+                  name | optional | String | doc "name must match the name of a persistentVolumeClaim in the pod",
                 } | doc "volumeDevices is the list of block devices to be used by the container.",
-                volumeMounts | optional | Array k8s_io_objectmeta.VolumeMount | doc m%"
+                volumeMounts | optional | Array k8s_io_envvar.VolumeMount | doc m%"
 Pod volumes to mount into the container's filesystem.
 Cannot be updated.
 "%,
@@ -2938,7 +2938,7 @@ Selector which must match a node's labels for the pod to be scheduled on that no
 More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
 "%,
               os | optional | {
-                name | String | doc m%"
+                name | optional | String | doc m%"
 Name is the name of the operating system. The currently supported values are linux and windows.
 Additional value may be defined in future and can be one of:
 https://github.com/opencontainers/runtime-spec/blob/master/config.md#platform-specific-configuration
@@ -2992,7 +2992,7 @@ PreemptionPolicy is the Policy for preempting pods with lower priority.
 One of Never, PreemptLowerPriority.
 Defaults to PreemptLowerPriority if unset.
 "%,
-              priority | optional | Number | doc m%"
+              "priority" | optional | Number | doc m%"
 The priority value. Various system components use this field to find the
 priority of the pod. When Priority Admission Controller is enabled, it
 prevents users from setting this field. The admission controller populates
@@ -3008,7 +3008,7 @@ If not specified, the pod priority will be default or zero if there is no
 default.
 "%,
               readinessGates | optional | Array {
-                conditionType | String | doc m%"
+                conditionType | optional | String | doc m%"
 ConditionType refers to a condition in the pod's condition list with matching type.
 "%,
               } | doc m%"
@@ -3018,7 +3018,7 @@ all conditions specified in the readiness gates have status equal to "True"
 More info: https://git.k8s.io/enhancements/keps/sig-network/580-pod-readiness-gates
 "%,
               resourceClaims | optional | Array {
-                name | String | doc m%"
+                name | optional | String | doc m%"
 Name uniquely identifies this resource claim inside the pod.
 This must be a DNS_LABEL.
 "%,
@@ -3059,7 +3059,7 @@ This field is immutable.
 "%,
               resources | optional | {
                 claims | optional | Array {
-                  name | String | doc m%"
+                  name | optional | String | doc m%"
 Name must match the name of one entry in pod.spec.resourceClaims of
 the Pod where this field is used. It makes that resource available
 inside a container.
@@ -3119,7 +3119,7 @@ If specified, the pod will be dispatched by specified scheduler.
 If not specified, the pod will be dispatched by default scheduler.
 "%,
               schedulingGates | optional | Array {
-                name | String | doc m%"
+                name | optional | String | doc m%"
 Name of the scheduling gate.
 Each scheduling gate must have a unique name field.
 "%,
@@ -3138,7 +3138,7 @@ The profile must be preconfigured on the node to work.
 Must match the loaded name of the profile.
 Must be set if and only if type is "Localhost".
 "%,
-                  type | String | doc m%"
+                  type | optional | String | doc m%"
 type indicates which kind of AppArmor profile will be applied.
 Valid options are:
   Localhost - a profile pre-loaded on the node.
@@ -3239,7 +3239,7 @@ The profile must be preconfigured on the node to work.
 Must be a descending path, relative to the kubelet's configured seccomp profile location.
 Must be set if type is "Localhost". Must NOT be set for any other type.
 "%,
-                  type | String | doc m%"
+                  type | optional | String | doc m%"
 type indicates which kind of seccomp profile will be applied.
 Valid options are:
 
@@ -3270,8 +3270,8 @@ and the container runtime must implement support for this feature.
 Note that this field cannot be set when spec.os.name is windows.
 "%,
                 sysctls | optional | Array {
-                  name | String | doc "Name of a property to set",
-                  value | String | doc "Value of a property to set",
+                  name | optional | String | doc "Name of a property to set",
+                  value | optional | String | doc "Value of a property to set",
                 } | doc m%"
 Sysctls hold a list of namespaced sysctls used for the pod. Pods with unsupported
 sysctls (by the container runtime) might fail to launch.
@@ -3342,12 +3342,12 @@ a termination signal and the time when the processes are forcibly halted with a 
 Set this value longer than the expected cleanup time for your process.
 Defaults to 30 seconds.
 "%,
-              tolerations | optional | Array k8s_io_objectmeta.Toleration | doc "If specified, the pod's tolerations.",
+              tolerations | optional | Array k8s_io_envvar.Toleration | doc "If specified, the pod's tolerations.",
               topologySpreadConstraints | optional | Array {
                 labelSelector | optional | {
                   matchExpressions | optional | Array {
-                    key | String | doc "key is the label key that the selector applies to.",
-                    operator | String | doc m%"
+                    key | optional | String | doc "key is the label key that the selector applies to.",
+                    operator | optional | String | doc m%"
 operator represents a key's relationship to a set of values.
 Valid operators are In, NotIn, Exists and DoesNotExist.
 "%,
@@ -3383,7 +3383,7 @@ be ignored. A null or empty list means only match against labelSelector.
 
 This is a beta field and requires the MatchLabelKeysInPodTopologySpread feature gate to be enabled (enabled by default).
 "%,
-                maxSkew | Number | doc m%"
+                maxSkew | optional | Number | doc m%"
 MaxSkew describes the degree to which pods may be unevenly distributed.
 When `whenUnsatisfiable=DoNotSchedule`, it is the maximum permitted difference
 between the number of matching pods in the target topology and the global minimum.
@@ -3440,7 +3440,7 @@ has a toleration, are included.
 
 If this value is nil, the behavior is equivalent to the Ignore policy.
 "%,
-                topologyKey | String | doc m%"
+                topologyKey | optional | String | doc m%"
 TopologyKey is the key of node labels. Nodes that have a label with this key
 and identical values are considered to be in the same topology.
 We consider each <key, value> as a "bucket", and try to put balanced number
@@ -3452,7 +3452,7 @@ e.g. If TopologyKey is "kubernetes.io/hostname", each Node is a domain of that t
 And, if TopologyKey is "topology.kubernetes.io/zone", each zone is a domain of that topology.
 It's a required field.
 "%,
-                whenUnsatisfiable | String | doc m%"
+                whenUnsatisfiable | optional | String | doc m%"
 WhenUnsatisfiable indicates how to deal with a pod if it doesn't satisfy
 the spread constraint.
 - DoNotSchedule (default) tells the scheduler not to schedule it.
@@ -3495,7 +3495,7 @@ Similarly, the volume partition for /dev/sda is "0" (or you can leave the proper
 readOnly value true will force the readOnly setting in VolumeMounts.
 More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
 "%,
-                  volumeID | String | doc m%"
+                  volumeID | optional | String | doc m%"
 volumeID is unique ID of the persistent disk resource in AWS (Amazon EBS volume).
 More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
 "%,
@@ -3508,8 +3508,8 @@ More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockst
 "%,
                 azureDisk | optional | {
                   cachingMode | optional | String | doc "cachingMode is the Host Caching mode: None, Read Only, Read Write.",
-                  diskName | String | doc "diskName is the Name of the data disk in the blob storage",
-                  diskURI | String | doc "diskURI is the URI of data disk in the blob storage",
+                  diskName | optional | String | doc "diskName is the Name of the data disk in the blob storage",
+                  diskURI | optional | String | doc "diskURI is the URI of data disk in the blob storage",
                   fsType | String | doc m%"
 fsType is Filesystem type to mount.
 Must be a filesystem type supported by the host operating system.
@@ -3532,17 +3532,17 @@ are redirected to the disk.csi.azure.com CSI driver.
 readOnly defaults to false (read/write). ReadOnly here will force
 the ReadOnly setting in VolumeMounts.
 "%,
-                  secretName | String | doc m%"
+                  secretName | optional | String | doc m%"
 secretName is the  name of secret that contains Azure Storage Account Name and Key
 "%,
-                  shareName | String | doc "shareName is the azure share Name",
+                  shareName | optional | String | doc "shareName is the azure share Name",
                 } | doc m%"
 azureFile represents an Azure File Service mount on the host and bind mount to the pod.
 Deprecated: AzureFile is deprecated. All operations for the in-tree azureFile type
 are redirected to the file.csi.azure.com CSI driver.
 "%,
                 cephfs | optional | {
-                  monitors | Array String | doc m%"
+                  monitors | optional | Array String | doc m%"
 monitors is Required: Monitors is a collection of Ceph monitors
 More info: https://examples.k8s.io/volumes/cephfs/README.md#how-to-use-it
 "%,
@@ -3602,7 +3602,7 @@ More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/nam
 secretRef is optional: points to a secret object containing parameters used to connect
 to OpenStack.
 "%,
-                  volumeID | String | doc m%"
+                  volumeID | optional | String | doc m%"
 volumeID used to identify the volume in cinder.
 More info: https://examples.k8s.io/mysql-cinder-pd/README.md
 "%,
@@ -3623,7 +3623,7 @@ This might be in conflict with other options that affect the file
 mode, like fsGroup, and the result can be other mode bits set.
 "%,
                   items | optional | Array {
-                    key | String | doc "key is the key to project.",
+                    key | optional | String | doc "key is the key to project.",
                     mode | optional | Number | doc m%"
 mode is Optional: mode bits used to set permissions on this file.
 Must be an octal value between 0000 and 0777 or a decimal value between 0 and 511.
@@ -3632,7 +3632,7 @@ If not specified, the volume defaultMode will be used.
 This might be in conflict with other options that affect the file
 mode, like fsGroup, and the result can be other mode bits set.
 "%,
-                    path | String | doc m%"
+                    path | optional | String | doc m%"
 path is the relative path of the file to map the key to.
 May not be an absolute path.
 May not contain the path element '..'.
@@ -3654,10 +3654,10 @@ allowed to be empty. Instances of this type with an empty value here are
 almost certainly wrong.
 More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
 "% | default = "",
-                  optional | optional | Bool | doc "optional specify whether the ConfigMap or its keys must be defined",
+                  "optional" | optional | Bool | doc "optional specify whether the ConfigMap or its keys must be defined",
                 } | doc "configMap represents a configMap that should populate this volume",
                 csi | optional | {
-                  driver | String | doc m%"
+                  driver | optional | String | doc m%"
 driver is the name of the CSI driver that handles this volume.
 Consult with your admin for the correct name as registered in the cluster.
 "%,
@@ -3707,7 +3707,7 @@ mode, like fsGroup, and the result can be other mode bits set.
                   items | optional | Array {
                     fieldRef | optional | {
                       apiVersion | optional | String | doc "Version of the schema the FieldPath is written in terms of, defaults to \"v1\".",
-                      fieldPath | String | doc "Path of the field to select in the specified API version.",
+                      fieldPath | optional | String | doc "Path of the field to select in the specified API version.",
                     } | doc m%"
 Required: Selects a field of the pod: only annotations, labels, name, namespace and uid are supported.
 "%,
@@ -3719,13 +3719,13 @@ If not specified, the volume defaultMode will be used.
 This might be in conflict with other options that affect the file
 mode, like fsGroup, and the result can be other mode bits set.
 "%,
-                    path | String | doc m%"
+                    path | optional | String | doc m%"
 Required: Path is  the relative path name of the file to be created. Must not be absolute or contain the '..' path. Must be utf-8 encoded. The first item of the relative path must not start with '..'
 "%,
                     resourceFieldRef | optional | {
                       containerName | optional | String | doc "Container name: required for volumes, optional for env vars",
                       divisor | optional | Number | String | doc "Specifies the output format of the exposed resources, defaults to \"1\"",
-                      resource | String | doc "Required: resource to select",
+                      resource | optional | String | doc "Required: resource to select",
                     } | doc m%"
 Selects a resource of the container: only resources limits and requests
 (limits.cpu, limits.memory, requests.cpu and requests.memory) are currently supported.
@@ -3768,7 +3768,7 @@ May contain labels and annotations that will be copied into the PVC
 when creating it. No other fields are allowed and will be rejected during
 validation.
 "%,
-                    spec | {
+                    spec | optional | {
                       accessModes | optional | Array String | doc m%"
 accessModes contains the desired access modes the volume should have.
 More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#access-modes-1
@@ -3779,8 +3779,8 @@ APIGroup is the group for the resource being referenced.
 If APIGroup is not specified, the specified Kind must be in the core API group.
 For any other third-party types, APIGroup is required.
 "%,
-                        kind | String | doc "Kind is the type of resource being referenced",
-                        name | String | doc "Name is the name of resource being referenced",
+                        kind | optional | String | doc "Kind is the type of resource being referenced",
+                        name | optional | String | doc "Name is the name of resource being referenced",
                       } | doc m%"
 dataSource field can be used to specify either:
 * An existing VolumeSnapshot object (snapshot.storage.k8s.io/VolumeSnapshot)
@@ -3797,8 +3797,8 @@ APIGroup is the group for the resource being referenced.
 If APIGroup is not specified, the specified Kind must be in the core API group.
 For any other third-party types, APIGroup is required.
 "%,
-                        kind | String | doc "Kind is the type of resource being referenced",
-                        name | String | doc "Name is the name of resource being referenced",
+                        kind | optional | String | doc "Kind is the type of resource being referenced",
+                        name | optional | String | doc "Name is the name of resource being referenced",
                         namespace | optional | String | doc m%"
 Namespace is the namespace of resource being referenced
 Note that when a namespace is specified, a gateway.networking.k8s.io/ReferenceGrant object is required in the referent namespace to allow that namespace's owner to accept the reference. See the ReferenceGrant documentation for details.
@@ -3851,8 +3851,8 @@ More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resour
 "%,
                       selector | optional | {
                         matchExpressions | optional | Array {
-                          key | String | doc "key is the label key that the selector applies to.",
-                          operator | String | doc m%"
+                          key | optional | String | doc "key is the label key that the selector applies to.",
+                          operator | optional | String | doc m%"
 operator represents a key's relationship to a set of values.
 Valid operators are In, NotIn, Exists and DoesNotExist.
 "%,
@@ -3970,7 +3970,7 @@ Either wwids or combination of targetWWNs and lun must be set, but not both simu
 fc represents a Fibre Channel resource that is attached to a kubelet's host machine and then exposed to the pod.
 "%,
                 flexVolume | optional | {
-                  driver | String | doc "driver is the name of the driver to use for this volume.",
+                  driver | optional | String | doc "driver is the name of the driver to use for this volume.",
                   fsType | optional | String | doc m%"
 fsType is the filesystem type to mount.
 Must be a filesystem type supported by the host operating system.
@@ -4028,7 +4028,7 @@ Examples: For volume /dev/sda1, you specify the partition as "1".
 Similarly, the volume partition for /dev/sda is "0" (or you can leave the property empty).
 More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
 "%,
-                  pdName | String | doc m%"
+                  pdName | optional | String | doc m%"
 pdName is unique name of the PD resource in GCE. Used to identify the disk in GCE.
 More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
 "%,
@@ -4051,7 +4051,7 @@ Must not contain or start with '..'.  If '.' is supplied, the volume directory w
 git repository.  Otherwise, if specified, the volume will contain the git repository in
 the subdirectory with the given name.
 "%,
-                  repository | String | doc "repository is the URL",
+                  repository | optional | String | doc "repository is the URL",
                   revision | optional | String | doc "revision is the commit hash for the specified revision.",
                 } | doc m%"
 gitRepo represents a git repository at a particular revision.
@@ -4060,11 +4060,11 @@ EmptyDir into an InitContainer that clones the repo using git, then mount the Em
 into the Pod's container.
 "%,
                 glusterfs | optional | {
-                  endpoints | String | doc m%"
+                  endpoints | optional | String | doc m%"
 endpoints is the endpoint name that details Glusterfs topology.
 More info: https://examples.k8s.io/volumes/glusterfs/README.md#create-a-pod
 "%,
-                  path | String | doc m%"
+                  path | optional | String | doc m%"
 path is the Glusterfs volume path.
 More info: https://examples.k8s.io/volumes/glusterfs/README.md#create-a-pod
 "%,
@@ -4079,7 +4079,7 @@ Deprecated: Glusterfs is deprecated and the in-tree glusterfs type is no longer 
 More info: https://examples.k8s.io/volumes/glusterfs/README.md
 "%,
                 hostPath | optional | {
-                  path | String | doc m%"
+                  path | optional | String | doc m%"
 path of the directory on the host.
 If the path is a symlink, it will follow the link to the real path.
 More info: https://kubernetes.io/docs/concepts/storage/volumes#hostpath
@@ -4142,12 +4142,12 @@ initiatorName is the custom iSCSI Initiator Name.
 If initiatorName is specified with iscsiInterface simultaneously, new iSCSI interface
 <target portal>:<volume name> will be created for the connection.
 "%,
-                  iqn | String | doc "iqn is the target iSCSI Qualified Name.",
+                  iqn | optional | String | doc "iqn is the target iSCSI Qualified Name.",
                   iscsiInterface | String | doc m%"
 iscsiInterface is the interface Name that uses an iSCSI transport.
 Defaults to 'default' (tcp).
 "% | default = "default",
-                  lun | Number | doc "lun represents iSCSI Target Lun number.",
+                  lun | optional | Number | doc "lun represents iSCSI Target Lun number.",
                   portals | optional | Array String | doc m%"
 portals is the iSCSI Target Portal List. The portal is either an IP or ip_addr:port if the port
 is other than default (typically TCP ports 860 and 3260).
@@ -4165,7 +4165,7 @@ almost certainly wrong.
 More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
 "% | default = "",
                   } | doc "secretRef is the CHAP Secret for iSCSI target and initiator authentication",
-                  targetPortal | String | doc m%"
+                  targetPortal | optional | String | doc m%"
 targetPortal is iSCSI Target Portal. The Portal is either an IP or ip_addr:port if the port
 is other than default (typically TCP ports 860 and 3260).
 "%,
@@ -4174,13 +4174,13 @@ iscsi represents an ISCSI Disk resource that is attached to a
 kubelet's host machine and then exposed to the pod.
 More info: https://examples.k8s.io/volumes/iscsi/README.md
 "%,
-                name | String | doc m%"
+                name | optional | String | doc m%"
 name of the volume.
 Must be a DNS_LABEL and unique within the pod.
 More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
 "%,
                 nfs | optional | {
-                  path | String | doc m%"
+                  path | optional | String | doc m%"
 path that is exported by the NFS server.
 More info: https://kubernetes.io/docs/concepts/storage/volumes#nfs
 "%,
@@ -4189,7 +4189,7 @@ readOnly here will force the NFS export to be mounted with read-only permissions
 Defaults to false.
 More info: https://kubernetes.io/docs/concepts/storage/volumes#nfs
 "%,
-                  server | String | doc m%"
+                  server | optional | String | doc m%"
 server is the hostname or IP address of the NFS server.
 More info: https://kubernetes.io/docs/concepts/storage/volumes#nfs
 "%,
@@ -4198,7 +4198,7 @@ nfs represents an NFS mount on the host that shares a pod's lifetime
 More info: https://kubernetes.io/docs/concepts/storage/volumes#nfs
 "%,
                 persistentVolumeClaim | optional | {
-                  claimName | String | doc m%"
+                  claimName | optional | String | doc m%"
 claimName is the name of a PersistentVolumeClaim in the same namespace as the pod using this volume.
 More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#persistentvolumeclaims
 "%,
@@ -4217,7 +4217,7 @@ fsType is the filesystem type to mount.
 Must be a filesystem type supported by the host operating system.
 Ex. "ext4", "xfs", "ntfs". Implicitly inferred to be "ext4" if unspecified.
 "%,
-                  pdID | String | doc "pdID is the ID that identifies Photon Controller persistent disk",
+                  pdID | optional | String | doc "pdID is the ID that identifies Photon Controller persistent disk",
                 } | doc m%"
 photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine.
 Deprecated: PhotonPersistentDisk is deprecated and the in-tree photonPersistentDisk type is no longer supported.
@@ -4232,7 +4232,7 @@ Ex. "ext4", "xfs". Implicitly inferred to be "ext4" if unspecified.
 readOnly defaults to false (read/write). ReadOnly here will force
 the ReadOnly setting in VolumeMounts.
 "%,
-                  volumeID | String | doc "volumeID uniquely identifies a Portworx volume",
+                  volumeID | optional | String | doc "volumeID uniquely identifies a Portworx volume",
                 } | doc m%"
 portworxVolume represents a portworx volume attached and mounted on kubelets host machine.
 Deprecated: PortworxVolume is deprecated. All operations for the in-tree portworxVolume type
@@ -4252,8 +4252,8 @@ mode, like fsGroup, and the result can be other mode bits set.
                     clusterTrustBundle | optional | {
                       labelSelector | optional | {
                         matchExpressions | optional | Array {
-                          key | String | doc "key is the label key that the selector applies to.",
-                          operator | String | doc m%"
+                          key | optional | String | doc "key is the label key that the selector applies to.",
+                          operator | optional | String | doc m%"
 operator represents a key's relationship to a set of values.
 Valid operators are In, NotIn, Exists and DoesNotExist.
 "%,
@@ -4282,14 +4282,14 @@ everything".
 Select a single ClusterTrustBundle by object name.  Mutually-exclusive
 with signerName and labelSelector.
 "%,
-                      optional | optional | Bool | doc m%"
+                      "optional" | optional | Bool | doc m%"
 If true, don't block pod startup if the referenced ClusterTrustBundle(s)
 aren't available.  If using name, then the named ClusterTrustBundle is
 allowed not to exist.  If using signerName, then the combination of
 signerName and labelSelector is allowed to match zero
 ClusterTrustBundles.
 "%,
-                      path | String | doc "Relative path from the volume root to write the bundle.",
+                      path | optional | String | doc "Relative path from the volume root to write the bundle.",
                       signerName | optional | String | doc m%"
 Select all ClusterTrustBundles that match this signer name.
 Mutually-exclusive with name.  The contents of all selected
@@ -4312,7 +4312,7 @@ may change the order over time.
 "%,
                     configMap | optional | {
                       items | optional | Array {
-                        key | String | doc "key is the key to project.",
+                        key | optional | String | doc "key is the key to project.",
                         mode | optional | Number | doc m%"
 mode is Optional: mode bits used to set permissions on this file.
 Must be an octal value between 0000 and 0777 or a decimal value between 0 and 511.
@@ -4321,7 +4321,7 @@ If not specified, the volume defaultMode will be used.
 This might be in conflict with other options that affect the file
 mode, like fsGroup, and the result can be other mode bits set.
 "%,
-                        path | String | doc m%"
+                        path | optional | String | doc m%"
 path is the relative path of the file to map the key to.
 May not be an absolute path.
 May not contain the path element '..'.
@@ -4343,13 +4343,13 @@ allowed to be empty. Instances of this type with an empty value here are
 almost certainly wrong.
 More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
 "% | default = "",
-                      optional | optional | Bool | doc "optional specify whether the ConfigMap or its keys must be defined",
+                      "optional" | optional | Bool | doc "optional specify whether the ConfigMap or its keys must be defined",
                     } | doc "configMap information about the configMap data to project",
                     downwardAPI | optional | {
                       items | optional | Array {
                         fieldRef | optional | {
                           apiVersion | optional | String | doc "Version of the schema the FieldPath is written in terms of, defaults to \"v1\".",
-                          fieldPath | String | doc "Path of the field to select in the specified API version.",
+                          fieldPath | optional | String | doc "Path of the field to select in the specified API version.",
                         } | doc m%"
 Required: Selects a field of the pod: only annotations, labels, name, namespace and uid are supported.
 "%,
@@ -4361,13 +4361,13 @@ If not specified, the volume defaultMode will be used.
 This might be in conflict with other options that affect the file
 mode, like fsGroup, and the result can be other mode bits set.
 "%,
-                        path | String | doc m%"
+                        path | optional | String | doc m%"
 Required: Path is  the relative path name of the file to be created. Must not be absolute or contain the '..' path. Must be utf-8 encoded. The first item of the relative path must not start with '..'
 "%,
                         resourceFieldRef | optional | {
                           containerName | optional | String | doc "Container name: required for volumes, optional for env vars",
                           divisor | optional | Number | String | doc "Specifies the output format of the exposed resources, defaults to \"1\"",
-                          resource | String | doc "Required: resource to select",
+                          resource | optional | String | doc "Required: resource to select",
                         } | doc m%"
 Selects a resource of the container: only resources limits and requests
 (limits.cpu, limits.memory, requests.cpu and requests.memory) are currently supported.
@@ -4376,7 +4376,7 @@ Selects a resource of the container: only resources limits and requests
                     } | doc "downwardAPI information about the downwardAPI data to project",
                     secret | optional | {
                       items | optional | Array {
-                        key | String | doc "key is the key to project.",
+                        key | optional | String | doc "key is the key to project.",
                         mode | optional | Number | doc m%"
 mode is Optional: mode bits used to set permissions on this file.
 Must be an octal value between 0000 and 0777 or a decimal value between 0 and 511.
@@ -4385,7 +4385,7 @@ If not specified, the volume defaultMode will be used.
 This might be in conflict with other options that affect the file
 mode, like fsGroup, and the result can be other mode bits set.
 "%,
-                        path | String | doc m%"
+                        path | optional | String | doc m%"
 path is the relative path of the file to map the key to.
 May not be an absolute path.
 May not contain the path element '..'.
@@ -4407,7 +4407,7 @@ allowed to be empty. Instances of this type with an empty value here are
 almost certainly wrong.
 More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
 "% | default = "",
-                      optional | optional | Bool | doc "optional field specify whether the Secret or its key must be defined",
+                      "optional" | optional | Bool | doc "optional field specify whether the Secret or its key must be defined",
                     } | doc "secret information about the secret data to project",
                     serviceAccountToken | optional | {
                       audience | optional | String | doc m%"
@@ -4424,7 +4424,7 @@ start trying to rotate the token if the token is older than 80 percent of
 its time to live or if the token is older than 24 hours.Defaults to 1 hour
 and must be at least 10 minutes.
 "%,
-                      path | String | doc m%"
+                      path | optional | String | doc m%"
 path is the path relative to the mount point of the file to project the
 token into.
 "%,
@@ -4443,7 +4443,7 @@ Default is no group
 readOnly here will force the Quobyte volume to be mounted with read-only permissions.
 Defaults to false.
 "%,
-                  registry | String | doc m%"
+                  registry | optional | String | doc m%"
 registry represents a single or multiple Quobyte Registry services
 specified as a string as host:port pair (multiple entries are separated with commas)
 which acts as the central registry for volumes
@@ -4456,7 +4456,7 @@ Used with dynamically provisioned Quobyte volumes, value is set by the plugin
 user to map volume access to
 Defaults to serivceaccount user
 "%,
-                  volume | String | doc "volume is a string that references an already created Quobyte volume by name.",
+                  volume | optional | String | doc "volume is a string that references an already created Quobyte volume by name.",
                 } | doc m%"
 quobyte represents a Quobyte mount on the host that shares a pod's lifetime.
 Deprecated: Quobyte is deprecated and the in-tree quobyte type is no longer supported.
@@ -4468,7 +4468,7 @@ Tip: Ensure that the filesystem type is supported by the host operating system.
 Examples: "ext4", "xfs", "ntfs". Implicitly inferred to be "ext4" if unspecified.
 More info: https://kubernetes.io/docs/concepts/storage/volumes#rbd
 "%,
-                  image | String | doc m%"
+                  image | optional | String | doc m%"
 image is the rados image name.
 More info: https://examples.k8s.io/volumes/rbd/README.md#how-to-use-it
 "%,
@@ -4477,7 +4477,7 @@ keyring is the path to key ring for RBDUser.
 Default is /etc/ceph/keyring.
 More info: https://examples.k8s.io/volumes/rbd/README.md#how-to-use-it
 "% | default = "/etc/ceph/keyring",
-                  monitors | Array String | doc m%"
+                  monitors | optional | Array String | doc m%"
 monitors is a collection of Ceph monitors.
 More info: https://examples.k8s.io/volumes/rbd/README.md#how-to-use-it
 "%,
@@ -4522,7 +4522,7 @@ Must be a filesystem type supported by the host operating system.
 Ex. "ext4", "xfs", "ntfs".
 Default is "xfs".
 "% | default = "xfs",
-                  gateway | String | doc "gateway is the host address of the ScaleIO API Gateway.",
+                  gateway | optional | String | doc "gateway is the host address of the ScaleIO API Gateway.",
                   protectionDomain | optional | String | doc m%"
 protectionDomain is the name of the ScaleIO Protection Domain for the configured storage.
 "%,
@@ -4530,7 +4530,7 @@ protectionDomain is the name of the ScaleIO Protection Domain for the configured
 readOnly Defaults to false (read/write). ReadOnly here will force
 the ReadOnly setting in VolumeMounts.
 "%,
-                  secretRef | {
+                  secretRef | optional | {
                     name | String | doc m%"
 Name of the referent.
 This field is effectively required, but due to backwards compatibility is
@@ -4548,7 +4548,7 @@ storageMode indicates whether the storage for a volume should be ThickProvisione
 Default is ThinProvisioned.
 "% | default = "ThinProvisioned",
                   storagePool | optional | String | doc "storagePool is the ScaleIO Storage Pool associated with the protection domain.",
-                  system | String | doc "system is the name of the storage system as configured in ScaleIO.",
+                  system | optional | String | doc "system is the name of the storage system as configured in ScaleIO.",
                   volumeName | optional | String | doc m%"
 volumeName is the name of a volume already created in the ScaleIO system
 that is associated with this volume source.
@@ -4568,7 +4568,7 @@ This might be in conflict with other options that affect the file
 mode, like fsGroup, and the result can be other mode bits set.
 "%,
                   items | optional | Array {
-                    key | String | doc "key is the key to project.",
+                    key | optional | String | doc "key is the key to project.",
                     mode | optional | Number | doc m%"
 mode is Optional: mode bits used to set permissions on this file.
 Must be an octal value between 0000 and 0777 or a decimal value between 0 and 511.
@@ -4577,7 +4577,7 @@ If not specified, the volume defaultMode will be used.
 This might be in conflict with other options that affect the file
 mode, like fsGroup, and the result can be other mode bits set.
 "%,
-                    path | String | doc m%"
+                    path | optional | String | doc m%"
 path is the relative path of the file to map the key to.
 May not be an absolute path.
 May not contain the path element '..'.
@@ -4592,7 +4592,7 @@ present. If a key is specified which is not present in the Secret,
 the volume setup will error unless it is marked optional. Paths must be
 relative and may not contain the '..' path or start with '..'.
 "%,
-                  optional | optional | Bool | doc "optional field specify whether the Secret or its keys must be defined",
+                  "optional" | optional | Bool | doc "optional field specify whether the Secret or its keys must be defined",
                   secretName | optional | String | doc m%"
 secretName is the name of the secret in the pod's namespace to use.
 More info: https://kubernetes.io/docs/concepts/storage/volumes#secret
@@ -4649,7 +4649,7 @@ Ex. "ext4", "xfs", "ntfs". Implicitly inferred to be "ext4" if unspecified.
 storagePolicyID is the storage Policy Based Management (SPBM) profile ID associated with the StoragePolicyName.
 "%,
                   storagePolicyName | optional | String | doc "storagePolicyName is the storage Policy Based Management (SPBM) profile name.",
-                  volumePath | String | doc "volumePath is the path that identifies vSphere volume vmdk",
+                  volumePath | optional | String | doc "volumePath is the path that identifies vSphere volume vmdk",
                 } | doc m%"
 vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine.
 Deprecated: VsphereVolume is deprecated. All operations for the in-tree vsphereVolume type

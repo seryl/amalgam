@@ -1,8 +1,8 @@
 # Module: k8s.io.v1.cronjob
 
+let cronjobspec = import "./cronjobspec.ncl" in
 let cronjobstatus = import "./cronjobstatus.ncl" in
 let objectmeta = import "./objectmeta.ncl" in
-let cronjobspec = import "./cronjobspec.ncl" in
 
 {
   # CronJob represents the configuration of a single cron job.

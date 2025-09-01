@@ -1,8 +1,8 @@
 # Module: k8s.io.v1.statefulset
 
+let objectmeta = import "./objectmeta.ncl" in
 let statefulsetspec = import "./statefulsetspec.ncl" in
 let statefulsetstatus = import "./statefulsetstatus.ncl" in
-let objectmeta = import "./objectmeta.ncl" in
 
 {
   # StatefulSet represents a set of pods with consistent identities. Identities are defined as:

@@ -443,7 +443,7 @@
           echo ""
           echo "📥 Generating Kubernetes core types..."
           ${rustWithComponents}/bin/cargo run --bin amalgam -- import k8s-core \
-            --version v1.31.0 \
+            --version v1.33.4 \
             --output examples/k8s_io
 
           echo ""

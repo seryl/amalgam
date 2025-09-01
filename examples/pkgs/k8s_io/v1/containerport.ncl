@@ -3,7 +3,7 @@
 {
   # ContainerPort represents a network port in a single container.
   ContainerPort = {
-    containerPort | Number | doc m%"
+    containerPort | optional | Number | doc m%"
 Number of port to expose on the pod's IP address. This must be a valid port number, 0 < x < 65536.
 "%,
     hostIP | optional | String | doc "What host IP to bind the external port to.",

@@ -1,11 +1,11 @@
 # Module: k8s.io.v1.statefulsetspec
 
-let labelselector = import "./labelselector.ncl" in
-let podtemplatespec = import "./podtemplatespec.ncl" in
-let statefulsetupdatestrategy = import "./statefulsetupdatestrategy.ncl" in
-let statefulsetordinals = import "./statefulsetordinals.ncl" in
 let statefulsetpersistentvolumeclaimretentionpolicy = import "./statefulsetpersistentvolumeclaimretentionpolicy.ncl" in
+let statefulsetupdatestrategy = import "./statefulsetupdatestrategy.ncl" in
+let podtemplatespec = import "./podtemplatespec.ncl" in
 let persistentvolumeclaim = import "./persistentvolumeclaim.ncl" in
+let statefulsetordinals = import "./statefulsetordinals.ncl" in
+let labelselector = import "./labelselector.ncl" in
 
 {
   # A StatefulSetSpec is the specification of a StatefulSet.
@@ -28,13 +28,13 @@ replicas is the desired number of replicas of the given Template. These are repl
     revisionHistoryLimit | optional | Number | doc m%"
 revisionHistoryLimit is the maximum number of revisions that will be maintained in the StatefulSet's revision history. The revision history consists of all revisions not represented by a currently applied StatefulSetSpec version. The default value is 10.
 "%,
-    selector | labelselector.LabelSelector | doc m%"
+    selector | optional | labelselector.LabelSelector | doc m%"
 selector is a label query over pods that should match the replica count. It must match the pod template's labels. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors
 "%,
     serviceName | optional | String | doc m%"
 serviceName is the name of the service that governs this StatefulSet. This service must exist before the StatefulSet, and is responsible for the network identity of the set. Pods get DNS/hostnames that follow the pattern: pod-specific-string.serviceName.default.svc.cluster.local where "pod-specific-string" is managed by the StatefulSet controller.
 "%,
-    template | podtemplatespec.PodTemplateSpec | doc m%"
+    template | optional | podtemplatespec.PodTemplateSpec | doc m%"
 template is the object that describes the pod that will be created if insufficient replicas are detected. Each pod stamped out by the StatefulSet will fulfill this Template, but have a unique identity from the rest of the StatefulSet. Each pod will be named with the format <statefulsetname>-<podindex>. For example, a pod in a StatefulSet named "web" with index number "3" would be named "web-3". The only allowed template.spec.restartPolicy value is "Always".
 "%,
     updateStrategy | optional | statefulsetupdatestrategy.StatefulSetUpdateStrategy | doc m%"

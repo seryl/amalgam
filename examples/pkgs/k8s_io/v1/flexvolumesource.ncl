@@ -5,7 +5,7 @@ let localobjectreference = import "./localobjectreference.ncl" in
 {
   # FlexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin.
   FlexVolumeSource = {
-    driver | String | doc "driver is the name of the driver to use for this volume.",
+    driver | optional | String | doc "driver is the name of the driver to use for this volume.",
     fsType | optional | String | doc m%"
 fsType is the filesystem type to mount. Must be a filesystem type supported by the host operating system. Ex. "ext4", "xfs", "ntfs". The default filesystem depends on FlexVolume script.
 "%,

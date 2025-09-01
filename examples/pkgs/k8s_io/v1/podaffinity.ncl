@@ -1,7 +1,7 @@
 # Module: k8s.io.v1.podaffinity
 
-let podaffinityterm = import "./podaffinityterm.ncl" in
 let weightedpodaffinityterm = import "./weightedpodaffinityterm.ncl" in
+let podaffinityterm = import "./podaffinityterm.ncl" in
 
 {
   # Pod affinity is a group of inter pod affinity scheduling rules.

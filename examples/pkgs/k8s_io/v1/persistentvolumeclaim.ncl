@@ -1,8 +1,8 @@
 # Module: k8s.io.v1.persistentvolumeclaim
 
-let objectmeta = import "./objectmeta.ncl" in
-let persistentvolumeclaimspec = import "./persistentvolumeclaimspec.ncl" in
 let persistentvolumeclaimstatus = import "./persistentvolumeclaimstatus.ncl" in
+let persistentvolumeclaimspec = import "./persistentvolumeclaimspec.ncl" in
+let objectmeta = import "./objectmeta.ncl" in
 
 {
   # PersistentVolumeClaim is a user's request for and claim to a persistent volume

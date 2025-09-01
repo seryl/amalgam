@@ -3,7 +3,7 @@
 {
   # NodeAddress contains information for the node's address.
   NodeAddress = {
-    address | String | doc "The node address.",
-    type | String | doc "Node address type, one of Hostname, ExternalIP or InternalIP.",
+    address | optional | String | doc "The node address.",
+    type | optional | String | doc "Node address type, one of Hostname, ExternalIP or InternalIP.",
   },
 }

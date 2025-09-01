@@ -3,6 +3,6 @@
 {
   # SleepAction describes a "sleep" action.
   SleepAction = {
-    seconds | Number | doc "Seconds is the number of seconds to sleep.",
+    seconds | optional | Number | doc "Seconds is the number of seconds to sleep.",
   },
 }

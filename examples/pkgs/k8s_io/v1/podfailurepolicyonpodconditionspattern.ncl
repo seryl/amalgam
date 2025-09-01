@@ -3,10 +3,10 @@
 {
   # PodFailurePolicyOnPodConditionsPattern describes a pattern for matching an actual pod condition type.
   PodFailurePolicyOnPodConditionsPattern = {
-    status | String | doc m%"
+    status | optional | String | doc m%"
 Specifies the required Pod condition status. To match a pod condition it is required that the specified status equals the pod condition status. Defaults to True.
 "%,
-    type | String | doc m%"
+    type | optional | String | doc m%"
 Specifies the required Pod condition type. To match a pod condition it is required that specified type equals the pod condition type.
 "%,
   },

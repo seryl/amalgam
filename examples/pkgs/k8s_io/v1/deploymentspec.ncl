@@ -1,8 +1,8 @@
 # Module: k8s.io.v1.deploymentspec
 
-let labelselector = import "./labelselector.ncl" in
-let deploymentstrategy = import "./deploymentstrategy.ncl" in
 let podtemplatespec = import "./podtemplatespec.ncl" in
+let deploymentstrategy = import "./deploymentstrategy.ncl" in
+let labelselector = import "./labelselector.ncl" in
 
 {
   # DeploymentSpec is the specification of the desired behavior of the Deployment.
@@ -20,11 +20,11 @@ Number of desired pods. This is a pointer to distinguish between explicit zero a
     revisionHistoryLimit | optional | Number | doc m%"
 The number of old ReplicaSets to retain to allow rollback. This is a pointer to distinguish between explicit zero and not specified. Defaults to 10.
 "%,
-    selector | labelselector.LabelSelector | doc m%"
+    selector | optional | labelselector.LabelSelector | doc m%"
 Label selector for pods. Existing ReplicaSets whose pods are selected by this will be the ones affected by this deployment. It must match the pod template's labels.
 "%,
     strategy | optional | deploymentstrategy.DeploymentStrategy | doc "The deployment strategy to use to replace existing pods with new ones.",
-    template | podtemplatespec.PodTemplateSpec | doc m%"
+    template | optional | podtemplatespec.PodTemplateSpec | doc m%"
 Template describes the pods that will be created. The only allowed template.spec.restartPolicy value is "Always".
 "%,
   },

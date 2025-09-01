@@ -14,7 +14,7 @@ readOnly is Optional: Defaults to false (read/write). ReadOnly here will force t
     secretRef | optional | secretreference.SecretReference | doc m%"
 secretRef is Optional: points to a secret object containing parameters used to connect to OpenStack.
 "%,
-    volumeID | String | doc m%"
+    volumeID | optional | String | doc m%"
 volumeID used to identify the volume in cinder. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
 "%,
   },

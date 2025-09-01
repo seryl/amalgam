@@ -45,7 +45,7 @@ fn is_core_k8s_type(name: &str) -> bool {
 fn is_unversioned_k8s_type(name: &str) -> bool {
     matches!(
         name,
-        "RawExtension" // runtime.RawExtension and similar unversioned types
+        "RawExtension" | "IntOrString" // runtime.RawExtension and intstr.IntOrString unversioned types
     )
 }
 

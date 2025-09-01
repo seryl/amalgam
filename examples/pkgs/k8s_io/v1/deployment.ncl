@@ -1,8 +1,8 @@
 # Module: k8s.io.v1.deployment
 
-let objectmeta = import "./objectmeta.ncl" in
-let deploymentstatus = import "./deploymentstatus.ncl" in
 let deploymentspec = import "./deploymentspec.ncl" in
+let deploymentstatus = import "./deploymentstatus.ncl" in
+let objectmeta = import "./objectmeta.ncl" in
 
 {
   # Deployment enables declarative updates for Pods and ReplicaSets.

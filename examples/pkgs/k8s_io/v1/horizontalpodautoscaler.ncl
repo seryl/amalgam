@@ -1,8 +1,8 @@
 # Module: k8s.io.v1.horizontalpodautoscaler
 
-let horizontalpodautoscalerspec = import "./horizontalpodautoscalerspec.ncl" in
 let horizontalpodautoscalerstatus = import "./horizontalpodautoscalerstatus.ncl" in
 let objectmeta = import "./objectmeta.ncl" in
+let horizontalpodautoscalerspec = import "./horizontalpodautoscalerspec.ncl" in
 
 {
   # configuration of a horizontal pod autoscaler.

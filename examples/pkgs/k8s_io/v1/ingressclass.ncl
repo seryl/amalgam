@@ -1,7 +1,7 @@
 # Module: k8s.io.v1.ingressclass
 
-let objectmeta = import "./objectmeta.ncl" in
 let ingressclassspec = import "./ingressclassspec.ncl" in
+let objectmeta = import "./objectmeta.ncl" in
 
 {
   # IngressClass represents the class of the Ingress, referenced by the Ingress Spec. The `ingressclass.kubernetes.io/is-default-class` annotation can be used to indicate that an IngressClass should be considered default. When a single IngressClass resource has this annotation set to true, new Ingress resources without a class specified will be assigned this default class.

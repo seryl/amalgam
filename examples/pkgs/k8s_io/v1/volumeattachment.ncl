@@ -18,7 +18,7 @@ Kind is a string value representing the REST resource this object represents. Se
     metadata | optional | objectmeta.ObjectMeta | doc m%"
 Standard object metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
 "%,
-    spec | volumeattachmentspec.VolumeAttachmentSpec | doc m%"
+    spec | optional | volumeattachmentspec.VolumeAttachmentSpec | doc m%"
 spec represents specification of the desired attach/detach volume behavior. Populated by the Kubernetes system.
 "%,
     status | optional | volumeattachmentstatus.VolumeAttachmentStatus | doc m%"

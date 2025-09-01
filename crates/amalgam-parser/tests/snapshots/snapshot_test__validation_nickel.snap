@@ -7,10 +7,10 @@ expression: generated
 {
   Validated = {
     metadata | optional | io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta,
-    spec | {
-      image | String,
+    spec | optional | {
+      image | optional | String,
       port | Number | default = 8080,
-      replicas | Number,
+      replicas | optional | Number,
     },
   },
 }

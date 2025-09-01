@@ -1,35 +1,35 @@
 # Module: k8s.io.v1.volume
 
-let fcvolumesource = import "./fcvolumesource.ncl" in
-let azurefilevolumesource = import "./azurefilevolumesource.ncl" in
-let emptydirvolumesource = import "./emptydirvolumesource.ncl" in
-let gitrepovolumesource = import "./gitrepovolumesource.ncl" in
-let ephemeralvolumesource = import "./ephemeralvolumesource.ncl" in
-let nfsvolumesource = import "./nfsvolumesource.ncl" in
-let storageosvolumesource = import "./storageosvolumesource.ncl" in
-let cephfsvolumesource = import "./cephfsvolumesource.ncl" in
-let flexvolumesource = import "./flexvolumesource.ncl" in
-let quobytevolumesource = import "./quobytevolumesource.ncl" in
-let photonpersistentdiskvolumesource = import "./photonpersistentdiskvolumesource.ncl" in
 let secretvolumesource = import "./secretvolumesource.ncl" in
-let gcepersistentdiskvolumesource = import "./gcepersistentdiskvolumesource.ncl" in
-let vspherevirtualdiskvolumesource = import "./vspherevirtualdiskvolumesource.ncl" in
-let iscsivolumesource = import "./iscsivolumesource.ncl" in
-let hostpathvolumesource = import "./hostpathvolumesource.ncl" in
+let azurediskvolumesource = import "./azurediskvolumesource.ncl" in
+let nfsvolumesource = import "./nfsvolumesource.ncl" in
 let awselasticblockstorevolumesource = import "./awselasticblockstorevolumesource.ncl" in
 let glusterfsvolumesource = import "./glusterfsvolumesource.ncl" in
-let azurediskvolumesource = import "./azurediskvolumesource.ncl" in
-let configmapvolumesource = import "./configmapvolumesource.ncl" in
-let csivolumesource = import "./csivolumesource.ncl" in
-let persistentvolumeclaimvolumesource = import "./persistentvolumeclaimvolumesource.ncl" in
+let cephfsvolumesource = import "./cephfsvolumesource.ncl" in
 let projectedvolumesource = import "./projectedvolumesource.ncl" in
+let quobytevolumesource = import "./quobytevolumesource.ncl" in
 let cindervolumesource = import "./cindervolumesource.ncl" in
-let scaleiovolumesource = import "./scaleiovolumesource.ncl" in
+let flexvolumesource = import "./flexvolumesource.ncl" in
 let portworxvolumesource = import "./portworxvolumesource.ncl" in
-let flockervolumesource = import "./flockervolumesource.ncl" in
-let rbdvolumesource = import "./rbdvolumesource.ncl" in
+let azurefilevolumesource = import "./azurefilevolumesource.ncl" in
+let persistentvolumeclaimvolumesource = import "./persistentvolumeclaimvolumesource.ncl" in
 let downwardapivolumesource = import "./downwardapivolumesource.ncl" in
+let storageosvolumesource = import "./storageosvolumesource.ncl" in
 let imagevolumesource = import "./imagevolumesource.ncl" in
+let configmapvolumesource = import "./configmapvolumesource.ncl" in
+let iscsivolumesource = import "./iscsivolumesource.ncl" in
+let csivolumesource = import "./csivolumesource.ncl" in
+let ephemeralvolumesource = import "./ephemeralvolumesource.ncl" in
+let gitrepovolumesource = import "./gitrepovolumesource.ncl" in
+let flockervolumesource = import "./flockervolumesource.ncl" in
+let hostpathvolumesource = import "./hostpathvolumesource.ncl" in
+let photonpersistentdiskvolumesource = import "./photonpersistentdiskvolumesource.ncl" in
+let emptydirvolumesource = import "./emptydirvolumesource.ncl" in
+let rbdvolumesource = import "./rbdvolumesource.ncl" in
+let gcepersistentdiskvolumesource = import "./gcepersistentdiskvolumesource.ncl" in
+let fcvolumesource = import "./fcvolumesource.ncl" in
+let scaleiovolumesource = import "./scaleiovolumesource.ncl" in
+let vspherevirtualdiskvolumesource = import "./vspherevirtualdiskvolumesource.ncl" in
 
 {
   # Volume represents a named volume in a pod that may be accessed by any container in the pod.
@@ -106,7 +106,7 @@ The volume gets re-resolved if the pod gets deleted and recreated, which means t
     iscsi | optional | iscsivolumesource.ISCSIVolumeSource | doc m%"
 iscsi represents an ISCSI Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://examples.k8s.io/volumes/iscsi/README.md
 "%,
-    name | String | doc m%"
+    name | optional | String | doc m%"
 name of the volume. Must be a DNS_LABEL and unique within the pod. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
 "%,
     nfs | optional | nfsvolumesource.NFSVolumeSource | doc m%"

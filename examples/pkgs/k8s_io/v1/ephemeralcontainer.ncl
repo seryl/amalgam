@@ -1,15 +1,15 @@
 # Module: k8s.io.v1.ephemeralcontainer
 
-let probe = import "./probe.ncl" in
-let resourcerequirements = import "./resourcerequirements.ncl" in
-let volumemount = import "./volumemount.ncl" in
-let containerresizepolicy = import "./containerresizepolicy.ncl" in
-let envfromsource = import "./envfromsource.ncl" in
 let containerport = import "./containerport.ncl" in
-let securitycontext = import "./securitycontext.ncl" in
-let envvar = import "./envvar.ncl" in
-let lifecycle = import "./lifecycle.ncl" in
+let resourcerequirements = import "./resourcerequirements.ncl" in
 let volumedevice = import "./volumedevice.ncl" in
+let volumemount = import "./volumemount.ncl" in
+let envfromsource = import "./envfromsource.ncl" in
+let lifecycle = import "./lifecycle.ncl" in
+let containerresizepolicy = import "./containerresizepolicy.ncl" in
+let securitycontext = import "./securitycontext.ncl" in
+let probe = import "./probe.ncl" in
+let envvar = import "./envvar.ncl" in
 
 {
   # An EphemeralContainer is a temporary container that you may add to an existing Pod for user-initiated activities such as debugging. Ephemeral containers have no resource or scheduling guarantees, and they will not be restarted when they exit or when a Pod is removed or restarted. The kubelet may evict a Pod if an ephemeral container causes the Pod to exceed its resource allocation.
@@ -34,7 +34,7 @@ Image pull policy. One of Always, Never, IfNotPresent. Defaults to Always if :la
 "%,
     lifecycle | optional | lifecycle.Lifecycle | doc "Lifecycle is not allowed for ephemeral containers.",
     livenessProbe | optional | probe.Probe | doc "Probes are not allowed for ephemeral containers.",
-    name | String | doc m%"
+    name | optional | String | doc m%"
 Name of the ephemeral container specified as a DNS_LABEL. This name must be unique among all containers, init containers and ephemeral containers.
 "%,
     ports | optional | Array containerport.ContainerPort | doc "Ports are not allowed for ephemeral containers.",

@@ -1,8 +1,8 @@
 # Module: k8s.io.v1.daemonset
 
+let objectmeta = import "./objectmeta.ncl" in
 let daemonsetstatus = import "./daemonsetstatus.ncl" in
 let daemonsetspec = import "./daemonsetspec.ncl" in
-let objectmeta = import "./objectmeta.ncl" in
 
 {
   # DaemonSet represents the configuration of a daemon set.

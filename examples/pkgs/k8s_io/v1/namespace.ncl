@@ -1,8 +1,8 @@
 # Module: k8s.io.v1.namespace
 
-let namespacespec = import "./namespacespec.ncl" in
-let objectmeta = import "./objectmeta.ncl" in
 let namespacestatus = import "./namespacestatus.ncl" in
+let objectmeta = import "./objectmeta.ncl" in
+let namespacespec = import "./namespacespec.ncl" in
 
 {
   # Namespace provides a scope for Names. Use of multiple namespaces is optional.

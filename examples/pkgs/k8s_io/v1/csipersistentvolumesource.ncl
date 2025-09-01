@@ -11,7 +11,7 @@ controllerExpandSecretRef is a reference to the secret object containing sensiti
     controllerPublishSecretRef | optional | secretreference.SecretReference | doc m%"
 controllerPublishSecretRef is a reference to the secret object containing sensitive information to pass to the CSI driver to complete the CSI ControllerPublishVolume and ControllerUnpublishVolume calls. This field is optional, and may be empty if no secret is required. If the secret object contains more than one secret, all secrets are passed.
 "%,
-    driver | String | doc "driver is the name of the driver to use for this volume. Required.",
+    driver | optional | String | doc "driver is the name of the driver to use for this volume. Required.",
     fsType | optional | String | doc m%"
 fsType to mount. Must be a filesystem type supported by the host operating system. Ex. "ext4", "xfs", "ntfs".
 "%,
@@ -28,7 +28,7 @@ nodeStageSecretRef is a reference to the secret object containing sensitive info
 readOnly value to pass to ControllerPublishVolumeRequest. Defaults to false (read/write).
 "%,
     volumeAttributes | optional | { .. } | doc "volumeAttributes of the volume to publish.",
-    volumeHandle | String | doc m%"
+    volumeHandle | optional | String | doc m%"
 volumeHandle is the unique volume name returned by the CSI volume plugin’s CreateVolume to refer to the volume on all subsequent calls. Required.
 "%,
   },

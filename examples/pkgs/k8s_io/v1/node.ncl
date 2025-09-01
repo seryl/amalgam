@@ -1,8 +1,8 @@
 # Module: k8s.io.v1.node
 
 let objectmeta = import "./objectmeta.ncl" in
-let nodespec = import "./nodespec.ncl" in
 let nodestatus = import "./nodestatus.ncl" in
+let nodespec = import "./nodespec.ncl" in
 
 {
   # Node is a worker node in Kubernetes. Each node will have a unique identifier in the cache (i.e. in etcd).

@@ -1,7 +1,7 @@
 # Module: k8s.io.v1.storageclass
 
-let topologyselectorterm = import "./topologyselectorterm.ncl" in
 let objectmeta = import "./objectmeta.ncl" in
+let topologyselectorterm = import "./topologyselectorterm.ncl" in
 
 {
   # StorageClass describes the parameters for a class of storage for which PersistentVolumes can be dynamically provisioned.
@@ -27,7 +27,7 @@ mountOptions controls the mountOptions for dynamically provisioned PersistentVol
     parameters | optional | { .. } | doc m%"
 parameters holds the parameters for the provisioner that should create volumes of this storage class.
 "%,
-    provisioner | String | doc "provisioner indicates the type of the provisioner.",
+    provisioner | optional | String | doc "provisioner indicates the type of the provisioner.",
     reclaimPolicy | optional | String | doc m%"
 reclaimPolicy controls the reclaimPolicy for dynamically provisioned PersistentVolumes of this storage class. Defaults to Delete.
 "%,

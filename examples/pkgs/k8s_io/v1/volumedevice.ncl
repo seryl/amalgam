@@ -3,9 +3,9 @@
 {
   # volumeDevice describes a mapping of a raw block device within a container.
   VolumeDevice = {
-    devicePath | String | doc m%"
+    devicePath | optional | String | doc m%"
 devicePath is the path inside of the container that the device will be mapped to.
 "%,
-    name | String | doc "name must match the name of a persistentVolumeClaim in the pod",
+    name | optional | String | doc "name must match the name of a persistentVolumeClaim in the pod",
   },
 }

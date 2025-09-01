@@ -1,7 +1,7 @@
 # Module: k8s.io.v1.endpointsubset
 
-let endpointport = import "./endpointport.ncl" in
 let endpointaddress = import "./endpointaddress.ncl" in
+let endpointport = import "./endpointport.ncl" in
 
 {
   # EndpointSubset is a group of addresses with a common set of ports. The expanded set of endpoints is the Cartesian product of Addresses x Ports. For example, given:

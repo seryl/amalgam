@@ -1,7 +1,7 @@
 # Module: k8s.io.v1.objectmeta
 
-let managedfieldsentry = import "./managedfieldsentry.ncl" in
 let ownerreference = import "./ownerreference.ncl" in
+let managedfieldsentry = import "./managedfieldsentry.ncl" in
 
 {
   # ObjectMeta is metadata that all persisted resources must have, which includes all objects users must create.

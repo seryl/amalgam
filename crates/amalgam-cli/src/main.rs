@@ -161,7 +161,7 @@ enum ImportSource {
     /// Import core Kubernetes types from upstream OpenAPI
     K8sCore {
         /// Kubernetes version (e.g., "v1.31.0", "master")
-        #[arg(short, long, default_value = "v1.31.0")]
+        #[arg(short, long, default_value = "v1.33.4")]
         version: String,
 
         /// Output directory for generated types

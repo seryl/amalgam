@@ -5,7 +5,7 @@ let localobjectreference = import "./localobjectreference.ncl" in
 {
   # Represents a Ceph Filesystem mount that lasts the lifetime of a pod Cephfs volumes do not support ownership management or SELinux relabeling.
   CephFSVolumeSource = {
-    monitors | Array String | doc m%"
+    monitors | optional | Array String | doc m%"
 monitors is Required: Monitors is a collection of Ceph monitors More info: https://examples.k8s.io/volumes/cephfs/README.md#how-to-use-it
 "%,
     path | optional | String | doc m%"

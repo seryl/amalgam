@@ -107,28 +107,69 @@ impl K8sTypesFetcher {
         let mut to_process = std::collections::VecDeque::new();
 
         // Seed types that will trigger recursive discovery
+        // Include types from various API versions to ensure comprehensive coverage
         let seed_types = vec![
-            "io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta", // Core metadata
-            "io.k8s.apimachinery.pkg.apis.meta.v1.TypeMeta",   // Type metadata
-            "io.k8s.apimachinery.pkg.apis.meta.v1.ListMeta",   // List metadata
-            "io.k8s.apimachinery.pkg.apis.meta.v1.LabelSelector", // Label selectors
-            "io.k8s.apimachinery.pkg.apis.meta.v1.Time",       // Time representation
-            "io.k8s.apimachinery.pkg.apis.meta.v1.MicroTime",  // Microsecond time
-            "io.k8s.apimachinery.pkg.apis.meta.v1.Status",     // Status responses
-            "io.k8s.apimachinery.pkg.apis.meta.v1.Condition",  // Condition types
-            "io.k8s.apimachinery.pkg.runtime.RawExtension",    // Unversioned runtime types
-            "io.k8s.api.core.v1.Pod",                          // Core workload
-            "io.k8s.api.core.v1.Service",                      // Core networking
-            "io.k8s.api.core.v1.ConfigMap",                    // Core config
-            "io.k8s.api.core.v1.Secret",                       // Core secrets
-            "io.k8s.api.core.v1.PersistentVolume",             // Storage
-            "io.k8s.api.core.v1.PersistentVolumeClaim",        // Storage claims
-            "io.k8s.api.apps.v1.Deployment",                   // Core apps
-            "io.k8s.api.apps.v1.StatefulSet",                  // Stateful apps
-            "io.k8s.api.apps.v1.DaemonSet",                    // Daemon sets
-            "io.k8s.api.batch.v1.Job",                         // Batch jobs
-            "io.k8s.api.batch.v1.CronJob",                     // Scheduled jobs
-            "io.k8s.apimachinery.pkg.api.resource.Quantity",   // Resource quantities
+            // Core metadata types (v1 - stable)
+            "io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta",
+            "io.k8s.apimachinery.pkg.apis.meta.v1.TypeMeta",
+            "io.k8s.apimachinery.pkg.apis.meta.v1.ListMeta",
+            "io.k8s.apimachinery.pkg.apis.meta.v1.LabelSelector",
+            "io.k8s.apimachinery.pkg.apis.meta.v1.Time",
+            "io.k8s.apimachinery.pkg.apis.meta.v1.MicroTime",
+            "io.k8s.apimachinery.pkg.apis.meta.v1.Status",
+            "io.k8s.apimachinery.pkg.apis.meta.v1.Condition",
+            // Unversioned runtime types
+            "io.k8s.apimachinery.pkg.runtime.RawExtension",
+            "io.k8s.apimachinery.pkg.util.intstr.IntOrString",
+            // Core v1 workloads and resources
+            "io.k8s.api.core.v1.Pod",
+            "io.k8s.api.core.v1.Service",
+            "io.k8s.api.core.v1.ConfigMap",
+            "io.k8s.api.core.v1.Secret",
+            "io.k8s.api.core.v1.Node",
+            "io.k8s.api.core.v1.Namespace",
+            "io.k8s.api.core.v1.PersistentVolume",
+            "io.k8s.api.core.v1.PersistentVolumeClaim",
+            "io.k8s.api.core.v1.ServiceAccount",
+            "io.k8s.api.core.v1.Endpoints",
+            "io.k8s.api.core.v1.Event",
+            // Apps v1 (stable)
+            "io.k8s.api.apps.v1.Deployment",
+            "io.k8s.api.apps.v1.StatefulSet",
+            "io.k8s.api.apps.v1.DaemonSet",
+            "io.k8s.api.apps.v1.ReplicaSet",
+            // Batch v1 (stable)
+            "io.k8s.api.batch.v1.Job",
+            "io.k8s.api.batch.v1.CronJob",
+            // Networking v1 (stable)
+            "io.k8s.api.networking.v1.Ingress",
+            "io.k8s.api.networking.v1.NetworkPolicy",
+            "io.k8s.api.networking.v1.IngressClass",
+            // RBAC v1 (stable)
+            "io.k8s.api.rbac.v1.Role",
+            "io.k8s.api.rbac.v1.RoleBinding",
+            "io.k8s.api.rbac.v1.ClusterRole",
+            "io.k8s.api.rbac.v1.ClusterRoleBinding",
+            // Storage v1 (stable)
+            "io.k8s.api.storage.v1.StorageClass",
+            "io.k8s.api.storage.v1.VolumeAttachment",
+            "io.k8s.api.storage.v1.CSIDriver",
+            "io.k8s.api.storage.v1.CSINode",
+            "io.k8s.api.storage.v1.CSIStorageCapacity",
+            // Storage v1alpha1 & v1beta1 (beta/alpha APIs)
+            "io.k8s.api.storage.v1alpha1.VolumeAttributesClass",
+            "io.k8s.api.storage.v1beta1.VolumeAttributesClass",
+            // Policy v1 (stable)
+            "io.k8s.api.policy.v1.PodDisruptionBudget",
+            "io.k8s.api.policy.v1.Eviction",
+            // Autoscaling v1, v2 (stable and versioned)
+            "io.k8s.api.autoscaling.v1.HorizontalPodAutoscaler",
+            "io.k8s.api.autoscaling.v2.HorizontalPodAutoscaler",
+            // Networking v1beta1 (beta APIs for newer features)
+            "io.k8s.api.networking.v1beta1.IPAddress",
+            "io.k8s.api.networking.v1beta1.ServiceCIDR",
+            // Resource quantities and other utilities
+            "io.k8s.apimachinery.pkg.api.resource.Quantity",
         ];
 
         // Initialize with seed types

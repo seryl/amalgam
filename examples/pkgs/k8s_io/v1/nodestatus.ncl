@@ -1,14 +1,14 @@
 # Module: k8s.io.v1.nodestatus
 
-let attachedvolume = import "./attachedvolume.ncl" in
-let nodedaemonendpoints = import "./nodedaemonendpoints.ncl" in
-let nodefeatures = import "./nodefeatures.ncl" in
 let noderuntimehandler = import "./noderuntimehandler.ncl" in
 let nodecondition = import "./nodecondition.ncl" in
-let nodeconfigstatus = import "./nodeconfigstatus.ncl" in
-let nodeaddress = import "./nodeaddress.ncl" in
-let containerimage = import "./containerimage.ncl" in
+let nodedaemonendpoints = import "./nodedaemonendpoints.ncl" in
 let nodesysteminfo = import "./nodesysteminfo.ncl" in
+let nodeaddress = import "./nodeaddress.ncl" in
+let nodeconfigstatus = import "./nodeconfigstatus.ncl" in
+let containerimage = import "./containerimage.ncl" in
+let attachedvolume = import "./attachedvolume.ncl" in
+let nodefeatures = import "./nodefeatures.ncl" in
 
 {
   # NodeStatus is information about the current status of a node.

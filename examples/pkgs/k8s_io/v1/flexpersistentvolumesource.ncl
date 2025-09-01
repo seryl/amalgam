@@ -5,7 +5,7 @@ let secretreference = import "./secretreference.ncl" in
 {
   # FlexPersistentVolumeSource represents a generic persistent volume resource that is provisioned/attached using an exec based plugin.
   FlexPersistentVolumeSource = {
-    driver | String | doc "driver is the name of the driver to use for this volume.",
+    driver | optional | String | doc "driver is the name of the driver to use for this volume.",
     fsType | optional | String | doc m%"
 fsType is the Filesystem type to mount. Must be a filesystem type supported by the host operating system. Ex. "ext4", "xfs", "ntfs". The default filesystem depends on FlexVolume script.
 "%,

@@ -18,7 +18,7 @@ ObservedGeneration reflects the generation of the most recently observed Replica
     readyReplicas | optional | Number | doc m%"
 The number of non-terminating pods targeted by this ReplicaSet with a Ready Condition.
 "%,
-    replicas | Number | doc m%"
+    replicas | optional | Number | doc m%"
 Replicas is the most recently observed number of non-terminating pods. More info: https://kubernetes.io/docs/concepts/workloads/controllers/replicaset
 "%,
     terminatingReplicas | optional | Number | doc m%"

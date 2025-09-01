@@ -1,7 +1,7 @@
 # Module: k8s.io.v1.networkpolicyingressrule
 
-let networkpolicyport = import "./networkpolicyport.ncl" in
 let networkpolicypeer = import "./networkpolicypeer.ncl" in
+let networkpolicyport = import "./networkpolicyport.ncl" in
 
 {
   # NetworkPolicyIngressRule describes a particular set of traffic that is allowed to the pods matched by a NetworkPolicySpec's podSelector. The traffic must match both ports and from.

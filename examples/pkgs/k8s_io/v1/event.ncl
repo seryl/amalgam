@@ -17,13 +17,13 @@ APIVersion defines the versioned schema of this representation of an object. Ser
     firstTimestamp | optional | String | doc m%"
 The time at which the event was first recorded. (Time of server receipt is in TypeMeta.)
 "%,
-    involvedObject | objectreference.ObjectReference | doc "The object that this event is about.",
+    involvedObject | optional | objectreference.ObjectReference | doc "The object that this event is about.",
     kind | optional | String | doc m%"
 Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
 "%,
     lastTimestamp | optional | String | doc "The time at which the most recent occurrence of this event was recorded.",
     message | optional | String | doc "A human-readable description of the status of this operation.",
-    metadata | objectmeta.ObjectMeta | doc m%"
+    metadata | optional | objectmeta.ObjectMeta | doc m%"
 Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
 "%,
     reason | optional | String | doc m%"

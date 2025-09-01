@@ -1,7 +1,7 @@
 # Module: k8s.io.v1.jobstatus
 
-let uncountedterminatedpods = import "./uncountedterminatedpods.ncl" in
 let jobcondition = import "./jobcondition.ncl" in
+let uncountedterminatedpods = import "./uncountedterminatedpods.ncl" in
 
 {
   # JobStatus represents the current state of a Job.

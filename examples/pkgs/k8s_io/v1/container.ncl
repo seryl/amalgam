@@ -1,15 +1,15 @@
 # Module: k8s.io.v1.container
 
-let probe = import "./probe.ncl" in
-let lifecycle = import "./lifecycle.ncl" in
-let envvar = import "./envvar.ncl" in
-let containerresizepolicy = import "./containerresizepolicy.ncl" in
-let resourcerequirements = import "./resourcerequirements.ncl" in
 let securitycontext = import "./securitycontext.ncl" in
-let envfromsource = import "./envfromsource.ncl" in
 let containerport = import "./containerport.ncl" in
+let lifecycle = import "./lifecycle.ncl" in
+let probe = import "./probe.ncl" in
+let resourcerequirements = import "./resourcerequirements.ncl" in
+let containerresizepolicy = import "./containerresizepolicy.ncl" in
+let envvar = import "./envvar.ncl" in
 let volumedevice = import "./volumedevice.ncl" in
 let volumemount = import "./volumemount.ncl" in
+let envfromsource = import "./envfromsource.ncl" in
 
 {
   # A single application container that you want to run within a pod.
@@ -36,7 +36,7 @@ Actions that the management system should take in response to container lifecycl
     livenessProbe | optional | probe.Probe | doc m%"
 Periodic probe of container liveness. Container will be restarted if the probe fails. Cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes
 "%,
-    name | String | doc m%"
+    name | optional | String | doc m%"
 Name of the container specified as a DNS_LABEL. Each container in a pod must have a unique name (DNS_LABEL). Cannot be updated.
 "%,
     ports | optional | Array containerport.ContainerPort | doc m%"

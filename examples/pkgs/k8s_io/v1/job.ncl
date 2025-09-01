@@ -1,7 +1,7 @@
 # Module: k8s.io.v1.job
 
-let objectmeta = import "./objectmeta.ncl" in
 let jobspec = import "./jobspec.ncl" in
+let objectmeta = import "./objectmeta.ncl" in
 let jobstatus = import "./jobstatus.ncl" in
 
 {

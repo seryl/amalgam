@@ -9,8 +9,8 @@ error is to record the problem with the service port The format of the error sha
 - cloud provider specific error values must have names that comply with the
   format foo.example.com/CamelCase.
 "%,
-    port | Number | doc "port is the port number of the ingress port.",
-    protocol | String | doc m%"
+    port | optional | Number | doc "port is the port number of the ingress port.",
+    protocol | optional | String | doc m%"
 protocol is the protocol of the ingress port. The supported values are: "TCP", "UDP", "SCTP"
 "%,
   },

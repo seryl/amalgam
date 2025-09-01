@@ -1,7 +1,7 @@
 # Module: k8s.io.v1.podtemplatespec
 
-let objectmeta = import "./objectmeta.ncl" in
 let podspec = import "./podspec.ncl" in
+let objectmeta = import "./objectmeta.ncl" in
 
 {
   # PodTemplateSpec describes the data a pod should have when created from a template

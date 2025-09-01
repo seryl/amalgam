@@ -1,0 +1,14 @@
+# Module: k8s.io.v2.hpascalingpolicy
+
+{
+  # HPAScalingPolicy is a single policy which must hold true for a specified past interval.
+  HPAScalingPolicy = {
+    periodSeconds | optional | Number | doc m%"
+periodSeconds specifies the window of time for which the policy should hold true. PeriodSeconds must be greater than zero and less than or equal to 1800 (30 min).
+"%,
+    type | optional | String | doc "type is used to specify the scaling policy.",
+    value | optional | Number | doc m%"
+value contains the amount of change which is permitted by the policy. It must be greater than zero
+"%,
+  },
+}

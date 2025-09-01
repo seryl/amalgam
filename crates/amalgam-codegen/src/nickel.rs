@@ -194,8 +194,9 @@ impl NickelCodegen {
         parts.push(format!("{}{}", indent, field_name));
 
         // In Nickel, a field with a default value is implicitly optional
-        // So we only add 'optional' if there's no default value
-        if !field.required && field.default.is_none() {
+        // For Kubernetes types, we make most fields optional to enable gradual construction
+        // Only skip 'optional' if there's an explicit default value
+        if field.default.is_none() {
             parts.push("optional".to_string());
         }
 

@@ -13,8 +13,8 @@ Specifies how to treat concurrent executions of a Job. Valid values are:
     failedJobsHistoryLimit | optional | Number | doc m%"
 The number of failed finished jobs to retain. Value must be non-negative integer. Defaults to 1.
 "%,
-    jobTemplate | jobtemplatespec.JobTemplateSpec | doc "Specifies the job that will be created when executing a CronJob.",
-    schedule | String | doc "The schedule in Cron format, see https://en.wikipedia.org/wiki/Cron.",
+    jobTemplate | optional | jobtemplatespec.JobTemplateSpec | doc "Specifies the job that will be created when executing a CronJob.",
+    schedule | optional | String | doc "The schedule in Cron format, see https://en.wikipedia.org/wiki/Cron.",
     startingDeadlineSeconds | optional | Number | doc m%"
 Optional deadline in seconds for starting the job if it misses scheduled time for any reason.  Missed jobs executions will be counted as failed ones.
 "%,
