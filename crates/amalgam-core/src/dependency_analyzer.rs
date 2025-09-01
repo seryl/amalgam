@@ -360,7 +360,9 @@ mod tests {
 
     #[test]
     fn test_type_reference_detection() {
-        let analyzer = DependencyAnalyzer::new();
+        let mut analyzer = DependencyAnalyzer::new();
+        // Register k8s types for the test
+        analyzer.register_k8s_core_types();
 
         // Test parsing a k8s type reference
         let type_ref = analyzer.parse_type_reference(

@@ -462,13 +462,13 @@ impl Manifest {
             for entry in walkdir::WalkDir::new(output)
                 .into_iter()
                 .filter_map(|e| e.ok())
-                .filter(|e| e.path().extension().map_or(false, |ext| ext == "ncl"))
+                .filter(|e| e.path().extension().is_some_and(|ext| ext == "ncl"))
             {
                 if let Ok(content) = fs::read_to_string(entry.path()) {
                     // Look for imports - could be any package name from our manifest
                     for line in content.lines() {
                         // Check for imports of any known package
-                        for (pkg_output, _pkg_name) in &package_map {
+                        for pkg_output in package_map.keys() {
                             let import_pattern = format!("import \"{}\"", pkg_output);
                             if line.contains(&import_pattern) {
                                 detected_deps.insert(pkg_output.clone());
@@ -504,7 +504,7 @@ impl Manifest {
                         // Use the package's own version as default
                         dep_version
                             .strip_prefix('v')
-                            .unwrap_or(&dep_version)
+                            .unwrap_or(dep_version)
                             .to_string()
                     } else {
                         "*".to_string()

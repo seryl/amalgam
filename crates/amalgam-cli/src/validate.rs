@@ -119,6 +119,7 @@ fn validate_single_file_with_package_path(
 }
 
 /// Validate a Nickel package directory
+#[allow(dead_code)]
 fn validate_package(nickel_binary: &str, dir: &Path) -> Result<()> {
     validate_package_with_package_path(nickel_binary, dir, None)
 }
@@ -191,7 +192,7 @@ fn validate_package_with_package_path(
             let entry = entry?;
             let path = entry.path();
 
-            if path.extension().map_or(false, |ext| ext == "ncl") {
+            if path.extension().is_some_and(|ext| ext == "ncl") {
                 match validate_single_file(nickel_binary, &path) {
                     Ok(()) => validated_count += 1,
                     Err(e) => {

@@ -1,4 +1,5 @@
 //! Vendor package management
+#![allow(dead_code)]
 
 use amalgam_parser::fetch::CRDFetcher;
 use amalgam_parser::package::PackageGenerator;

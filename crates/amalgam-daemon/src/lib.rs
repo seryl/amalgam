@@ -51,7 +51,7 @@ pub mod k8s {
         }
 
         pub async fn watch_crds(&self) -> Result<()> {
-            let crds: Api<CustomResourceDefinition> = Api::all(self.client.clone());
+            let _crds: Api<CustomResourceDefinition> = Api::all(self.client.clone());
 
             // TODO: Implement CRD watching
             // TODO: Generate types when CRDs change

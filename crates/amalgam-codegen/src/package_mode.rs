@@ -19,8 +19,7 @@ pub struct PackageDependency {
 }
 
 /// Determines how imports are generated in the output
-#[derive(Debug, Clone)]
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub enum PackageMode {
     /// Generate relative file imports (default for local development)
     #[default]
@@ -40,7 +39,6 @@ pub enum PackageMode {
         local_paths: HashMap<String, PathBuf>,
     },
 }
-
 
 impl PackageMode {
     /// Create a new package mode with automatic dependency detection

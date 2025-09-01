@@ -18,6 +18,7 @@ mod vendor;
 
 #[derive(Parser)]
 #[command(name = "amalgam")]
+#[command(version = env!("CARGO_PKG_VERSION"))]
 #[command(about = "Generate type-safe Nickel configurations from any schema source", long_about = None)]
 struct Cli {
     /// Enable verbose output
@@ -28,8 +29,12 @@ struct Cli {
     #[arg(short, long)]
     debug: bool,
 
+    /// Print version information
+    #[arg(short = 'V', long)]
+    version: bool,
+
     #[command(subcommand)]
-    command: Commands,
+    command: Option<Commands>,
 }
 
 #[derive(Subcommand)]
@@ -197,6 +202,12 @@ enum ImportSource {
 async fn main() -> Result<()> {
     let cli = Cli::parse();
 
+    // Handle version flag
+    if cli.version {
+        println!("amalgam {}", env!("CARGO_PKG_VERSION"));
+        return Ok(());
+    }
+
     // Initialize tracing
     let level = if cli.debug {
         tracing::Level::TRACE
@@ -212,33 +223,39 @@ async fn main() -> Result<()> {
         .init();
 
     match cli.command {
-        Commands::Import { source } => handle_import(source).await,
-        Commands::Generate {
+        Some(Commands::Import { source }) => handle_import(source).await,
+        Some(Commands::Generate {
             input,
             output,
             target,
-        } => handle_generate(input, output, &target),
-        Commands::Convert {
+        }) => handle_generate(input, output, &target),
+        Some(Commands::Convert {
             input,
             from,
             output,
             to,
-        } => handle_convert(input, &from, output, &to),
-        Commands::Vendor { command } => {
+        }) => handle_convert(input, &from, output, &to),
+        Some(Commands::Vendor { command }) => {
             let project_root = std::env::current_dir()?;
             let manager = vendor::VendorManager::new(project_root);
             manager.execute(command).await
         }
-        Commands::Validate {
+        Some(Commands::Validate {
             path,
             package_path,
             verbose: _,
-        } => validate::run_validation_with_package_path(&path, package_path.as_deref()),
-        Commands::GenerateFromManifest {
+        }) => validate::run_validation_with_package_path(&path, package_path.as_deref()),
+        Some(Commands::GenerateFromManifest {
             manifest,
             packages,
             dry_run,
-        } => handle_manifest_generation(manifest, packages, dry_run).await,
+        }) => handle_manifest_generation(manifest, packages, dry_run).await,
+        None => {
+            // No command provided, show help
+            use clap::CommandFactory;
+            Cli::command().print_help()?;
+            Ok(())
+        }
     }
 }
 
@@ -815,8 +832,8 @@ pub async fn handle_k8s_core_import(
 
         // Convert types to modules for manifest generation
         let modules: Vec<amalgam_core::ir::Module> = types_by_version
-            .iter()
-            .map(|(ver, _)| amalgam_core::ir::Module {
+            .keys()
+            .map(|ver| amalgam_core::ir::Module {
                 name: ver.clone(),
                 imports: Vec::new(),
                 types: Vec::new(),

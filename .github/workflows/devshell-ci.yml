@@ -16,6 +16,8 @@ on:
 
 jobs:
   devshell-ci:
+    # Skip CI if ENABLE_CI is not set to 'true'
+    if: github.event_name == 'workflow_dispatch' || vars.ENABLE_CI == 'true'
     runs-on: ubuntu-latest
     
     steps:
@@ -92,6 +94,8 @@ jobs:
 
   # Simple flake check job
   flake-check:
+    # Skip CI if ENABLE_CI is not set to 'true'
+    if: github.event_name == 'workflow_dispatch' || vars.ENABLE_CI == 'true'
     runs-on: ubuntu-latest
     
     steps:

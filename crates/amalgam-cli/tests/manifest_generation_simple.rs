@@ -3,7 +3,6 @@
 use amalgam::manifest::{DependencySpec, ManifestConfig, PackageDefinition, SourceType};
 use std::collections::HashMap;
 use std::fs;
-use std::path::PathBuf;
 use tempfile::TempDir;
 
 #[test]

@@ -8,7 +8,7 @@
 //! Or set: RUN_INTEGRATION_TESTS=1 cargo test --test package_integration
 
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::Command;
 
 /// Get the project root directory

@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1] - 2025-09-01
+
+### Added
+- `--version` flag to display amalgam version information
+- Workspace metadata for crane to silence warnings
+- CI can now be disabled via GitHub repository variable `ENABLE_CI` (disabled by default)
+
+### Fixed
+- Updated GitHub Actions to use latest versions (upload-artifact v4, install-nix-action v30)
+- Resolved all clippy warnings and formatting issues
+- Added missing k8s-openapi dependency to amalgam-daemon
+- Fixed redundant guards and iterator usage in dependency analyzer
+- Corrected file extension checking to use `is_some_and`
+
+### Changed
+- Made CLI command optional to support version flag without subcommand
+
 ## [0.5.0] - 2025-09-01
 
 ### Added
