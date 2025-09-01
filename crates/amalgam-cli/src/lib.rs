@@ -42,6 +42,13 @@ fn is_core_k8s_type(name: &str) -> bool {
     )
 }
 
+fn is_unversioned_k8s_type(name: &str) -> bool {
+    matches!(
+        name,
+        "RawExtension" // runtime.RawExtension and similar unversioned types
+    )
+}
+
 fn collect_type_references(
     ty: &amalgam_core::types::Type,
     refs: &mut std::collections::HashSet<String>,
@@ -198,6 +205,23 @@ pub async fn handle_k8s_core_import(
 
                             // Store replacement: Type remains as Type (e.g., ObjectMeta remains as ObjectMeta)
                             // No need to qualify since we're importing with the same name
+                        }
+                    } else if is_unversioned_k8s_type(referenced) {
+                        // Check if this is an unversioned k8s type (like RawExtension)
+                        // These types are placed in v0 directory
+                        let source_version = "v0";
+                        if version != source_version {
+                            // Import from v0 directory
+                            let alias = referenced; // Use the actual type name as alias
+                            imports.push(amalgam_core::ir::Import {
+                                path: format!(
+                                    "../{}/{}.ncl",
+                                    source_version,
+                                    referenced.to_lowercase()
+                                ),
+                                alias: Some(alias.to_string()),
+                                items: vec![],
+                            });
                         }
                     }
                 }

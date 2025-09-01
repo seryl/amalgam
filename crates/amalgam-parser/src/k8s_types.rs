@@ -97,36 +97,53 @@ impl K8sTypesFetcher {
         Ok(schema)
     }
 
-    /// Extract all k8s types from specific namespaces dynamically
+    /// Extract all k8s types using recursive discovery from seed types
     pub fn extract_core_types(
         &self,
         openapi: &Value,
     ) -> Result<HashMap<TypeReference, TypeDefinition>, ParserError> {
         let mut types = HashMap::new();
+        let mut processed = std::collections::HashSet::new();
+        let mut to_process = std::collections::VecDeque::new();
 
-        // Namespaces we want to extract - these contain the most commonly used types
-        let target_namespaces = [
-            "io.k8s.apimachinery.pkg.apis.meta.v1", // ObjectMeta, TypeMeta, etc.
-            "io.k8s.api.core.v1",                   // Pod, Service, ConfigMap, etc.
-            "io.k8s.api.apps.v1",                   // Deployment, StatefulSet, etc.
-            "io.k8s.api.batch.v1",                  // Job, CronJob
-            "io.k8s.api.networking.v1",             // Ingress, NetworkPolicy
-            "io.k8s.api.rbac.v1",                   // Role, RoleBinding, etc.
-            "io.k8s.api.storage.v1",                // StorageClass
-            "io.k8s.api.autoscaling.v1",            // HorizontalPodAutoscaler
-            "io.k8s.api.policy.v1",                 // PodDisruptionBudget
-            "io.k8s.apimachinery.pkg.api.resource", // Quantity
+        // Seed types that will trigger recursive discovery
+        let seed_types = vec![
+            "io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta", // Core metadata
+            "io.k8s.apimachinery.pkg.apis.meta.v1.TypeMeta",   // Type metadata
+            "io.k8s.apimachinery.pkg.apis.meta.v1.ListMeta",   // List metadata
+            "io.k8s.apimachinery.pkg.apis.meta.v1.LabelSelector", // Label selectors
+            "io.k8s.apimachinery.pkg.apis.meta.v1.Time",       // Time representation
+            "io.k8s.apimachinery.pkg.apis.meta.v1.MicroTime",  // Microsecond time
+            "io.k8s.apimachinery.pkg.apis.meta.v1.Status",     // Status responses
+            "io.k8s.apimachinery.pkg.apis.meta.v1.Condition",  // Condition types
+            "io.k8s.apimachinery.pkg.runtime.RawExtension",    // Unversioned runtime types
+            "io.k8s.api.core.v1.Pod",                          // Core workload
+            "io.k8s.api.core.v1.Service",                      // Core networking
+            "io.k8s.api.core.v1.ConfigMap",                    // Core config
+            "io.k8s.api.core.v1.Secret",                       // Core secrets
+            "io.k8s.api.core.v1.PersistentVolume",             // Storage
+            "io.k8s.api.core.v1.PersistentVolumeClaim",        // Storage claims
+            "io.k8s.api.apps.v1.Deployment",                   // Core apps
+            "io.k8s.api.apps.v1.StatefulSet",                  // Stateful apps
+            "io.k8s.api.apps.v1.DaemonSet",                    // Daemon sets
+            "io.k8s.api.batch.v1.Job",                         // Batch jobs
+            "io.k8s.api.batch.v1.CronJob",                     // Scheduled jobs
+            "io.k8s.apimachinery.pkg.api.resource.Quantity",   // Resource quantities
         ];
 
-        if let Some(definitions) = openapi.get("definitions").and_then(|d| d.as_object()) {
-            // Iterate through all definitions
-            for (full_name, schema) in definitions {
-                // Check if this type is in one of our target namespaces
-                let should_include = target_namespaces
-                    .iter()
-                    .any(|&namespace| full_name.starts_with(namespace));
+        // Initialize with seed types
+        for seed in seed_types {
+            to_process.push_back(seed.to_string());
+        }
 
-                if should_include {
+        if let Some(definitions) = openapi.get("definitions").and_then(|d| d.as_object()) {
+            while let Some(full_name) = to_process.pop_front() {
+                if processed.contains(&full_name) {
+                    continue;
+                }
+                processed.insert(full_name.clone());
+
+                if let Some(schema) = definitions.get(&full_name) {
                     // Extract the short name from the full type name
                     let short_name = full_name
                         .split('.')
@@ -135,10 +152,23 @@ impl K8sTypesFetcher {
                         .to_string();
 
                     // Try to parse this as a k8s type reference
-                    match self.parse_type_reference(full_name) {
+                    match self.parse_type_reference(&full_name) {
                         Ok(type_ref) => {
                             match self.schema_to_type_definition(&short_name, schema) {
                                 Ok(type_def) => {
+                                    // Collect all type references from this type
+                                    let mut refs = std::collections::HashSet::new();
+                                    Self::collect_schema_references(schema, &mut refs);
+
+                                    // Add referenced types to processing queue
+                                    for ref_name in refs {
+                                        if !processed.contains(&ref_name)
+                                            && definitions.contains_key(&ref_name)
+                                        {
+                                            to_process.push_back(ref_name);
+                                        }
+                                    }
+
                                     types.insert(type_ref, type_def);
                                 }
                                 Err(e) => {
@@ -155,15 +185,47 @@ impl K8sTypesFetcher {
             }
         }
 
-        tracing::info!("Extracted {} k8s types from OpenAPI schema", types.len());
+        tracing::info!(
+            "Extracted {} k8s types from OpenAPI schema using recursive discovery",
+            types.len()
+        );
         Ok(types)
     }
 
+    /// Recursively collect all type references from a JSON schema
+    fn collect_schema_references(schema: &Value, refs: &mut std::collections::HashSet<String>) {
+        match schema {
+            Value::Object(obj) => {
+                // Check for $ref
+                if let Some(ref_val) = obj.get("$ref").and_then(|r| r.as_str()) {
+                    if ref_val.starts_with("#/definitions/") {
+                        let type_name = ref_val.strip_prefix("#/definitions/").unwrap();
+                        refs.insert(type_name.to_string());
+                    }
+                }
+
+                // Recursively check all values in the object
+                for value in obj.values() {
+                    Self::collect_schema_references(value, refs);
+                }
+            }
+            Value::Array(arr) => {
+                // Recursively check all values in the array
+                for value in arr {
+                    Self::collect_schema_references(value, refs);
+                }
+            }
+            _ => {}
+        }
+    }
+
     fn parse_type_reference(&self, full_name: &str) -> Result<TypeReference, ParserError> {
-        // Parse "io.k8s.api.core.v1.Container" format
+        // Parse different k8s type name formats:
+        // - "io.k8s.api.core.v1.Container" (versioned)
+        // - "io.k8s.apimachinery.pkg.runtime.RawExtension" (unversioned)
         let parts: Vec<&str> = full_name.split('.').collect();
 
-        if parts.len() < 5 || parts[0] != "io" || parts[1] != "k8s" {
+        if parts.len() < 4 || parts[0] != "io" || parts[1] != "k8s" {
             return Err(ParserError::Parse(format!(
                 "Invalid k8s type name: {}",
                 full_name
@@ -176,8 +238,25 @@ impl K8sTypesFetcher {
             format!("{}.k8s.io", parts[3])
         };
 
-        let version = parts[parts.len() - 2].to_string();
-        let kind = parts.last().unwrap().to_string();
+        // Check if this is an unversioned type (like runtime.RawExtension)
+        let is_unversioned = parts.contains(&"runtime") || parts.contains(&"util");
+
+        let (version, kind) = if is_unversioned {
+            // For unversioned types, use v0 and the last part as kind
+            ("v0".to_string(), parts.last().unwrap().to_string())
+        } else {
+            // For versioned types, use the standard pattern
+            if parts.len() < 5 {
+                return Err(ParserError::Parse(format!(
+                    "Invalid versioned k8s type name: {}",
+                    full_name
+                )));
+            }
+            (
+                parts[parts.len() - 2].to_string(),
+                parts.last().unwrap().to_string(),
+            )
+        };
 
         Ok(TypeReference::new(group, version, kind))
     }

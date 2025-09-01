@@ -33,6 +33,46 @@ impl NickelCodegen {
         " ".repeat(level * self.indent_size)
     }
 
+    /// Escape field names that are reserved keywords or start with special characters
+    fn escape_field_name(&self, name: &str) -> String {
+        // Fields starting with $ need to be quoted
+        if name.starts_with('$') || self.is_reserved_keyword(name) {
+            format!("\"{}\"", name)
+        } else {
+            name.to_string()
+        }
+    }
+
+    /// Check if a field name is a Nickel reserved keyword
+    fn is_reserved_keyword(&self, name: &str) -> bool {
+        matches!(
+            name,
+            "and"
+                | "or"
+                | "not"
+                | "if"
+                | "then"
+                | "else"
+                | "let"
+                | "in"
+                | "fun"
+                | "import"
+                | "match"
+                | "rec"
+                | "null"
+                | "true"
+                | "false"
+                | "switch"
+                | "default"
+                | "forall"
+                | "doc"
+                | "optional"
+                | "priority"
+                | "force"
+                | "merge"
+        )
+    }
+
     /// Format a documentation string properly
     /// Uses triple quotes for multiline, regular quotes for single line
     fn format_doc(&self, doc: &str) -> String {
@@ -149,8 +189,9 @@ impl NickelCodegen {
 
         let mut parts = Vec::new();
 
-        // Field name
-        parts.push(format!("{}{}", indent, name));
+        // Field name - escape reserved keywords and fields starting with $
+        let field_name = self.escape_field_name(name);
+        parts.push(format!("{}{}", indent, field_name));
 
         // In Nickel, a field with a default value is implicitly optional
         // So we only add 'optional' if there's no default value
@@ -168,7 +209,7 @@ impl NickelCodegen {
 
         // Default value (must come AFTER doc in Nickel)
         if let Some(default) = &field.default {
-            let default_str = format_json_value(default, indent_level);
+            let default_str = format_json_value_impl(default, indent_level, self);
             parts.push(format!("default = {}", default_str));
         }
 
@@ -176,8 +217,12 @@ impl NickelCodegen {
     }
 }
 
-/// Format a JSON value for Nickel
-fn format_json_value(value: &serde_json::Value, indent_level: usize) -> String {
+/// Format a JSON value for Nickel with proper field name escaping
+fn format_json_value_impl(
+    value: &serde_json::Value,
+    indent_level: usize,
+    codegen: &NickelCodegen,
+) -> String {
     match value {
         serde_json::Value::Null => "null".to_string(),
         serde_json::Value::Bool(b) => b.to_string(),
@@ -186,7 +231,7 @@ fn format_json_value(value: &serde_json::Value, indent_level: usize) -> String {
         serde_json::Value::Array(arr) => {
             let items: Vec<String> = arr
                 .iter()
-                .map(|v| format_json_value(v, indent_level))
+                .map(|v| format_json_value_impl(v, indent_level, codegen))
                 .collect();
             format!("[{}]", items.join(", "))
         }
@@ -197,11 +242,12 @@ fn format_json_value(value: &serde_json::Value, indent_level: usize) -> String {
                 let indent = " ".repeat((indent_level + 1) * 2);
                 let mut items = Vec::new();
                 for (k, v) in obj {
+                    let escaped_key = codegen.escape_field_name(k);
                     items.push(format!(
                         "{}{} = {}",
                         indent,
-                        k,
-                        format_json_value(v, indent_level + 1)
+                        escaped_key,
+                        format_json_value_impl(v, indent_level + 1, codegen)
                     ));
                 }
                 format!(
@@ -307,7 +353,7 @@ impl Codegen for NickelCodegen {
                             .map_err(|e| CodegenError::Generation(e.to_string()))?;
                     }
 
-                    let value_str = format_json_value(&constant.value, 1);
+                    let value_str = format_json_value_impl(&constant.value, 1, self);
                     writeln!(output, "  {} = {},", constant.name, value_str)
                         .map_err(|e| CodegenError::Generation(e.to_string()))?;
                 }
