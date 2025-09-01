@@ -523,9 +523,21 @@
           echo "  find examples/k8s_io -name '*.ncl' -exec nickel typecheck {} \;"
         '';
 
+        # Custom source filter that includes test fixtures
+        src = craneLib.cleanCargoSource (craneLib.filterCargoSources ./. (path: type:
+          # Include all Rust source files and Cargo files
+          (craneLib.filterCargoSources ./. path type) ||
+          # Include test fixture files
+          (builtins.match ".*/tests/fixtures/.*\\.yaml$" path != null) ||
+          # Include test snapshot files  
+          (builtins.match ".*/tests/snapshots/.*\\.snap$" path != null) ||
+          # Include any other test resources
+          (builtins.match ".*/tests/.*\\.(toml|json|yaml|ncl)$" path != null)
+        ));
+
         # Build dependencies only
         cargoArtifacts = craneLib.buildDepsOnly {
-          src = craneLib.cleanCargoSource ./.;
+          inherit src;
 
           # Build-time dependencies
           buildInputs = with pkgs; [
@@ -536,8 +548,7 @@
 
         # Build the actual crate
         amalgam = craneLib.buildPackage {
-          inherit cargoArtifacts;
-          src = craneLib.cleanCargoSource ./.;
+          inherit cargoArtifacts src;
 
           buildInputs = with pkgs; [
             openssl
@@ -663,18 +674,16 @@
           inherit amalgam;
 
           amalgam-clippy = craneLib.cargoClippy {
-            inherit cargoArtifacts;
-            src = craneLib.cleanCargoSource ./.;
+            inherit cargoArtifacts src;
             cargoClippyExtraArgs = "--all-targets -- --deny warnings";
           };
 
           amalgam-fmt = craneLib.cargoFmt {
-            src = craneLib.cleanCargoSource ./.;
+            inherit src;
           };
 
           amalgam-tests = craneLib.cargoTest {
-            inherit cargoArtifacts;
-            src = craneLib.cleanCargoSource ./.;
+            inherit cargoArtifacts src;
           };
         };
       });
