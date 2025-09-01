@@ -25,10 +25,11 @@ class DependencyMode(Enum):
     UNKNOWN = "unknown"
 
 
-class SmartError:
+class SmartError(Exception):
     """Smart error handling with actionable suggestions."""
 
     def __init__(self, error: str, context: str, suggestions: List[str]):
+        super().__init__(error)
         self.error = error
         self.context = context
         self.suggestions = suggestions
@@ -282,10 +283,15 @@ class WorkspaceDepsManager:
                     if actual_dep in line and "workspace = true" not in line:
                         # Update the line
                         if isinstance(dep_value, dict):
-                            # Local mode with path
-                            new_line = f'{actual_dep} = {{ version = "{dep_value["version"]}", path = "{dep_value["path"]}" }}\n'
+                            # Check if it has a path (local mode) or just version (remote mode)
+                            if "path" in dep_value:
+                                # Local mode with path
+                                new_line = f'{actual_dep} = {{ version = "{dep_value["version"]}", path = "{dep_value["path"]}" }}\n'
+                            else:
+                                # Remote mode with just version
+                                new_line = f'{actual_dep} = "{dep_value["version"]}"\n'
                         else:
-                            # Remote mode
+                            # Remote mode (simple string version)
                             new_line = f'{actual_dep} = "{dep_value}"\n'
 
                         updated_lines.append(new_line)

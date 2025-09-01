@@ -1,10 +1,10 @@
 # Module: k8s.io.v1.podstatus
 
+let hostip = import "./hostip.ncl" in
 let containerstatus = import "./containerstatus.ncl" in
 let podresourceclaimstatus = import "./podresourceclaimstatus.ncl" in
-let hostip = import "./hostip.ncl" in
-let podcondition = import "./podcondition.ncl" in
 let podip = import "./podip.ncl" in
+let podcondition = import "./podcondition.ncl" in
 
 {
   # PodStatus represents information about the status of a pod. Status may trail the actual state of a system, especially if the node that hosts the pod cannot contact the control plane.

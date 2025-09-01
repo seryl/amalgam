@@ -1,15 +1,15 @@
 # Module: k8s.io.v1.ephemeralcontainer
 
-let containerport = import "./containerport.ncl" in
-let volumedevice = import "./volumedevice.ncl" in
 let probe = import "./probe.ncl" in
-let lifecycle = import "./lifecycle.ncl" in
+let resourcerequirements = import "./resourcerequirements.ncl" in
 let volumemount = import "./volumemount.ncl" in
-let envfromsource = import "./envfromsource.ncl" in
 let containerresizepolicy = import "./containerresizepolicy.ncl" in
+let envfromsource = import "./envfromsource.ncl" in
+let containerport = import "./containerport.ncl" in
 let securitycontext = import "./securitycontext.ncl" in
 let envvar = import "./envvar.ncl" in
-let resourcerequirements = import "./resourcerequirements.ncl" in
+let lifecycle = import "./lifecycle.ncl" in
+let volumedevice = import "./volumedevice.ncl" in
 
 {
   # An EphemeralContainer is a temporary container that you may add to an existing Pod for user-initiated activities such as debugging. Ephemeral containers have no resource or scheduling guarantees, and they will not be restarted when they exit or when a Pod is removed or restarted. The kubelet may evict a Pod if an ephemeral container causes the Pod to exceed its resource allocation.

@@ -1,7 +1,7 @@
 # Module: k8s.io.v1.nodeaffinity
 
-let nodeselector = import "./nodeselector.ncl" in
 let preferredschedulingterm = import "./preferredschedulingterm.ncl" in
+let nodeselector = import "./nodeselector.ncl" in
 
 {
   # Node affinity is a group of node affinity scheduling rules.

@@ -1,8 +1,8 @@
 # Module: k8s.io.v1.ingressspec
 
-let ingressbackend = import "./ingressbackend.ncl" in
-let ingresstls = import "./ingresstls.ncl" in
 let ingressrule = import "./ingressrule.ncl" in
+let ingresstls = import "./ingresstls.ncl" in
+let ingressbackend = import "./ingressbackend.ncl" in
 
 {
   # IngressSpec describes the Ingress the user wishes to exist.

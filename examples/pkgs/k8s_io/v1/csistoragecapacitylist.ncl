@@ -1,7 +1,7 @@
 # Module: k8s.io.v1.csistoragecapacitylist
 
-let listmeta = import "./listmeta.ncl" in
 let csistoragecapacity = import "./csistoragecapacity.ncl" in
+let listmeta = import "./listmeta.ncl" in
 
 {
   # CSIStorageCapacityList is a collection of CSIStorageCapacity objects.

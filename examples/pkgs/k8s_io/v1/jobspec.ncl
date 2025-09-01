@@ -1,9 +1,9 @@
 # Module: k8s.io.v1.jobspec
 
-let labelselector = import "./labelselector.ncl" in
-let podtemplatespec = import "./podtemplatespec.ncl" in
 let podfailurepolicy = import "./podfailurepolicy.ncl" in
 let successpolicy = import "./successpolicy.ncl" in
+let podtemplatespec = import "./podtemplatespec.ncl" in
+let labelselector = import "./labelselector.ncl" in
 
 {
   # JobSpec describes how the job execution will look like.

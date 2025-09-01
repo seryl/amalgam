@@ -1,10 +1,10 @@
 # Module: k8s.io.v1.volumeprojection
 
+let configmapprojection = import "./configmapprojection.ncl" in
 let clustertrustbundleprojection = import "./clustertrustbundleprojection.ncl" in
 let downwardapiprojection = import "./downwardapiprojection.ncl" in
 let secretprojection = import "./secretprojection.ncl" in
 let serviceaccounttokenprojection = import "./serviceaccounttokenprojection.ncl" in
-let configmapprojection = import "./configmapprojection.ncl" in
 
 {
   # Projection that may be projected along with other supported volume types. Exactly one of these fields must be set.

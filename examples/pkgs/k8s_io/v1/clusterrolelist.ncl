@@ -1,7 +1,7 @@
 # Module: k8s.io.v1.clusterrolelist
 
-let listmeta = import "./listmeta.ncl" in
 let clusterrole = import "./clusterrole.ncl" in
+let listmeta = import "./listmeta.ncl" in
 
 {
   # ClusterRoleList is a collection of ClusterRoles

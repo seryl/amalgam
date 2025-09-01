@@ -1,7 +1,7 @@
 # Module: k8s.io.v1.containerstate
 
-let containerstateterminated = import "./containerstateterminated.ncl" in
 let containerstaterunning = import "./containerstaterunning.ncl" in
+let containerstateterminated = import "./containerstateterminated.ncl" in
 let containerstatewaiting = import "./containerstatewaiting.ncl" in
 
 {

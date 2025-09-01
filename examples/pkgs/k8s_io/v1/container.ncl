@@ -1,15 +1,15 @@
 # Module: k8s.io.v1.container
 
-let volumedevice = import "./volumedevice.ncl" in
-let volumemount = import "./volumemount.ncl" in
-let containerresizepolicy = import "./containerresizepolicy.ncl" in
 let probe = import "./probe.ncl" in
-let containerport = import "./containerport.ncl" in
 let lifecycle = import "./lifecycle.ncl" in
 let envvar = import "./envvar.ncl" in
-let envfromsource = import "./envfromsource.ncl" in
+let containerresizepolicy = import "./containerresizepolicy.ncl" in
 let resourcerequirements = import "./resourcerequirements.ncl" in
 let securitycontext = import "./securitycontext.ncl" in
+let envfromsource = import "./envfromsource.ncl" in
+let containerport = import "./containerport.ncl" in
+let volumedevice = import "./volumedevice.ncl" in
+let volumemount = import "./volumemount.ncl" in
 
 {
   # A single application container that you want to run within a pod.

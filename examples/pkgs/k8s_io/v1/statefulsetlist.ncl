@@ -1,7 +1,7 @@
 # Module: k8s.io.v1.statefulsetlist
 
-let statefulset = import "./statefulset.ncl" in
 let listmeta = import "./listmeta.ncl" in
+let statefulset = import "./statefulset.ncl" in
 
 {
   # StatefulSetList is a collection of StatefulSets.

@@ -1,7 +1,7 @@
 # Module: k8s.io.v1.podantiaffinity
 
-let podaffinityterm = import "./podaffinityterm.ncl" in
 let weightedpodaffinityterm = import "./weightedpodaffinityterm.ncl" in
+let podaffinityterm = import "./podaffinityterm.ncl" in
 
 {
   # Pod anti affinity is a group of inter pod anti affinity scheduling rules.

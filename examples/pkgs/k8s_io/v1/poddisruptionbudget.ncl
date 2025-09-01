@@ -1,8 +1,8 @@
 # Module: k8s.io.v1.poddisruptionbudget
 
-let poddisruptionbudgetspec = import "./poddisruptionbudgetspec.ncl" in
-let objectmeta = import "./objectmeta.ncl" in
 let poddisruptionbudgetstatus = import "./poddisruptionbudgetstatus.ncl" in
+let objectmeta = import "./objectmeta.ncl" in
+let poddisruptionbudgetspec = import "./poddisruptionbudgetspec.ncl" in
 
 {
   # PodDisruptionBudget is an object to define the max disruption that can be caused to a collection of pods

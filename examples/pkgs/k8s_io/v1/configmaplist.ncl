@@ -1,7 +1,7 @@
 # Module: k8s.io.v1.configmaplist
 
-let configmap = import "./configmap.ncl" in
 let listmeta = import "./listmeta.ncl" in
+let configmap = import "./configmap.ncl" in
 
 {
   # ConfigMapList is a resource containing a list of ConfigMap objects.

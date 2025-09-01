@@ -1,7 +1,7 @@
 # Module: k8s.io.v1.replicasetlist
 
-let replicaset = import "./replicaset.ncl" in
 let listmeta = import "./listmeta.ncl" in
+let replicaset = import "./replicaset.ncl" in
 
 {
   # ReplicaSetList is a collection of ReplicaSets.

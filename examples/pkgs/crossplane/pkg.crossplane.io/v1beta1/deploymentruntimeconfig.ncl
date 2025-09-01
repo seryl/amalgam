@@ -1,10 +1,10 @@
 # Module: deploymentruntimeconfig.pkg.crossplane.io
 
 let k8s_io_objectmeta = import "k8s_io" in
-let k8s_io_volumemount = import "k8s_io" in
-let k8s_io_envvar = import "k8s_io" in
 let k8s_io_toleration = import "k8s_io" in
+let k8s_io_envvar = import "k8s_io" in
 let k8s_io_envfromsource = import "k8s_io" in
+let k8s_io_volumemount = import "k8s_io" in
 
 {
   DeploymentRuntimeConfig = {

@@ -1,8 +1,8 @@
 # Module: k8s.io.v1.serviceaccount
 
+let objectreference = import "./objectreference.ncl" in
 let localobjectreference = import "./localobjectreference.ncl" in
 let objectmeta = import "./objectmeta.ncl" in
-let objectreference = import "./objectreference.ncl" in
 
 {
   # ServiceAccount binds together: * a name, understood by users, and perhaps by peripheral systems, for an identity * a principal that can be authenticated and authorized * a set of secrets

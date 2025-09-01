@@ -1,7 +1,7 @@
 # Module: k8s.io.v1.limitrangelist
 
-let listmeta = import "./listmeta.ncl" in
 let limitrange = import "./limitrange.ncl" in
+let listmeta = import "./listmeta.ncl" in
 
 {
   # LimitRangeList is a list of LimitRange items.

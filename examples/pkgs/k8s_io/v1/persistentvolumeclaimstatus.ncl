@@ -1,7 +1,7 @@
 # Module: k8s.io.v1.persistentvolumeclaimstatus
 
-let persistentvolumeclaimcondition = import "./persistentvolumeclaimcondition.ncl" in
 let modifyvolumestatus = import "./modifyvolumestatus.ncl" in
+let persistentvolumeclaimcondition = import "./persistentvolumeclaimcondition.ncl" in
 
 {
   # PersistentVolumeClaimStatus is the current status of a persistent volume claim.

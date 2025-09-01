@@ -1,6 +1,7 @@
 # Module: k8s.io.v1alpha1.volumeattributesclasslist
 
 let volumeattributesclass = import "./volumeattributesclass.ncl" in
+let ListMeta = import "../v1/listmeta.ncl" in
 
 {
   # VolumeAttributesClassList is a collection of VolumeAttributesClass objects.

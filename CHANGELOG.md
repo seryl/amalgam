@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.2] - 2025-09-01
+
+### Fixed
+- Fixed missing cross-version imports in k8s_io packages (e.g., v1alpha1/v1beta1 types now properly import ObjectMeta, Condition, etc. from v1)
+- Consolidated duplicate `handle_k8s_core_import` implementations between lib.rs and main.rs
+
+### Added
+- Test suite for cross-version k8s type imports to prevent regression
+
 ## [0.6.1] - 2025-09-01
 
 ### Added

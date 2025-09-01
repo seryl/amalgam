@@ -1,5 +1,7 @@
 # Module: k8s.io.v1beta1.volumeattributesclass
 
+let ObjectMeta = import "../v1/objectmeta.ncl" in
+
 {
   # VolumeAttributesClass represents a specification of mutable volume attributes defined by the CSI driver. The class can be specified during dynamic provisioning of PersistentVolumeClaims, and changed in the PersistentVolumeClaim spec after provisioning.
   VolumeAttributesClass = {
@@ -10,7 +12,7 @@ APIVersion defines the versioned schema of this representation of an object. Ser
     kind | optional | String | doc m%"
 Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
 "%,
-    metadata | optional | ObjectMeta | doc m%"
+    metadata | optional | ObjectMeta.ObjectMeta | doc m%"
 Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
 "%,
     parameters | optional | { .. } | doc m%"

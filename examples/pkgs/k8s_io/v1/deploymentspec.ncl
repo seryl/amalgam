@@ -1,8 +1,8 @@
 # Module: k8s.io.v1.deploymentspec
 
-let podtemplatespec = import "./podtemplatespec.ncl" in
 let labelselector = import "./labelselector.ncl" in
 let deploymentstrategy = import "./deploymentstrategy.ncl" in
+let podtemplatespec = import "./podtemplatespec.ncl" in
 
 {
   # DeploymentSpec is the specification of the desired behavior of the Deployment.

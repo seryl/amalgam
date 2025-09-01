@@ -1,7 +1,7 @@
 # Module: k8s.io.v1.binding
 
-let objectreference = import "./objectreference.ncl" in
 let objectmeta = import "./objectmeta.ncl" in
+let objectreference = import "./objectreference.ncl" in
 
 {
   # Binding ties one object to another; for example, a pod is bound to a node by a scheduler.

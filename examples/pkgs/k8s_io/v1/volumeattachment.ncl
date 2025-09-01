@@ -1,8 +1,8 @@
 # Module: k8s.io.v1.volumeattachment
 
+let volumeattachmentstatus = import "./volumeattachmentstatus.ncl" in
 let volumeattachmentspec = import "./volumeattachmentspec.ncl" in
 let objectmeta = import "./objectmeta.ncl" in
-let volumeattachmentstatus = import "./volumeattachmentstatus.ncl" in
 
 {
   # VolumeAttachment captures the intent to attach or detach the specified volume to/from the specified node.

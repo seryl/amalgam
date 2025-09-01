@@ -1,7 +1,7 @@
 # Module: k8s.io.v1.servicestatus
 
-let condition = import "./condition.ncl" in
 let loadbalancerstatus = import "./loadbalancerstatus.ncl" in
+let condition = import "./condition.ncl" in
 
 {
   # ServiceStatus represents the current status of a service.

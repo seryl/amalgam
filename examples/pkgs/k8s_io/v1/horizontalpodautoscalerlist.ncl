@@ -1,7 +1,7 @@
 # Module: k8s.io.v1.horizontalpodautoscalerlist
 
-let listmeta = import "./listmeta.ncl" in
 let horizontalpodautoscaler = import "./horizontalpodautoscaler.ncl" in
+let listmeta = import "./listmeta.ncl" in
 
 {
   # list of horizontal pod autoscaler objects.

@@ -1,8 +1,8 @@
 # Module: k8s.io.v1.replicationcontroller
 
-let replicationcontrollerstatus = import "./replicationcontrollerstatus.ncl" in
 let objectmeta = import "./objectmeta.ncl" in
 let replicationcontrollerspec = import "./replicationcontrollerspec.ncl" in
+let replicationcontrollerstatus = import "./replicationcontrollerstatus.ncl" in
 
 {
   # ReplicationController represents the configuration of a replication controller.

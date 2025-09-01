@@ -1,7 +1,7 @@
 # Module: k8s.io.v1.componentstatuslist
 
-let componentstatus = import "./componentstatus.ncl" in
 let listmeta = import "./listmeta.ncl" in
+let componentstatus = import "./componentstatus.ncl" in
 
 {
   # Status of all the conditions for the component as a list of ComponentStatus objects. Deprecated: This API is deprecated in v1.19+

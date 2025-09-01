@@ -1,7 +1,7 @@
 # Module: k8s.io.v1.jobtemplatespec
 
-let objectmeta = import "./objectmeta.ncl" in
 let jobspec = import "./jobspec.ncl" in
+let objectmeta = import "./objectmeta.ncl" in
 
 {
   # JobTemplateSpec describes the data a Job should have when created from a template

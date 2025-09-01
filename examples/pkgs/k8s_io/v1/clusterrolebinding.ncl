@@ -1,8 +1,8 @@
 # Module: k8s.io.v1.clusterrolebinding
 
+let roleref = import "./roleref.ncl" in
 let subject = import "./subject.ncl" in
 let objectmeta = import "./objectmeta.ncl" in
-let roleref = import "./roleref.ncl" in
 
 {
   # ClusterRoleBinding references a ClusterRole, but not contain it.  It can reference a ClusterRole in the global namespace, and adds who information via Subject.

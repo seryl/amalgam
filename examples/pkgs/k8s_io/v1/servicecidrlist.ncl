@@ -1,7 +1,7 @@
 # Module: k8s.io.v1.servicecidrlist
 
-let listmeta = import "./listmeta.ncl" in
 let servicecidr = import "./servicecidr.ncl" in
+let listmeta = import "./listmeta.ncl" in
 
 {
   # ServiceCIDRList contains a list of ServiceCIDR objects.

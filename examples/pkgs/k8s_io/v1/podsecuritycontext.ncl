@@ -1,10 +1,10 @@
 # Module: k8s.io.v1.podsecuritycontext
 
-let windowssecuritycontextoptions = import "./windowssecuritycontextoptions.ncl" in
 let selinuxoptions = import "./selinuxoptions.ncl" in
-let sysctl = import "./sysctl.ncl" in
 let apparmorprofile = import "./apparmorprofile.ncl" in
+let windowssecuritycontextoptions = import "./windowssecuritycontextoptions.ncl" in
 let seccompprofile = import "./seccompprofile.ncl" in
+let sysctl = import "./sysctl.ncl" in
 
 {
   # PodSecurityContext holds pod-level security attributes and common container settings. Some fields are also present in container.securityContext.  Field values of container.securityContext take precedence over field values of PodSecurityContext.

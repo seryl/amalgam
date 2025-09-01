@@ -1,7 +1,7 @@
 # Module: k8s.io.v1.scale
 
-let scalespec = import "./scalespec.ncl" in
 let scalestatus = import "./scalestatus.ncl" in
+let scalespec = import "./scalespec.ncl" in
 let objectmeta = import "./objectmeta.ncl" in
 
 {

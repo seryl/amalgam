@@ -1,8 +1,8 @@
 # Module: k8s.io.v1.servicecidr
 
-let objectmeta = import "./objectmeta.ncl" in
-let servicecidrspec = import "./servicecidrspec.ncl" in
 let servicecidrstatus = import "./servicecidrstatus.ncl" in
+let servicecidrspec = import "./servicecidrspec.ncl" in
+let objectmeta = import "./objectmeta.ncl" in
 
 {
   # ServiceCIDR defines a range of IP addresses using CIDR format (e.g. 192.168.0.0/24 or 2001:db2::/64). This range is used to allocate ClusterIPs to Service objects.

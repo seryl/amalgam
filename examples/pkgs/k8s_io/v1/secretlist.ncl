@@ -1,7 +1,7 @@
 # Module: k8s.io.v1.secretlist
 
-let secret = import "./secret.ncl" in
 let listmeta = import "./listmeta.ncl" in
+let secret = import "./secret.ncl" in
 
 {
   # SecretList is a list of Secret.

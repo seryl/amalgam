@@ -1,9 +1,9 @@
 # Module: k8s.io.v1.containerstatus
 
-let containeruser = import "./containeruser.ncl" in
-let resourcerequirements = import "./resourcerequirements.ncl" in
 let containerstate = import "./containerstate.ncl" in
 let resourcestatus = import "./resourcestatus.ncl" in
+let containeruser = import "./containeruser.ncl" in
+let resourcerequirements = import "./resourcerequirements.ncl" in
 let volumemountstatus = import "./volumemountstatus.ncl" in
 
 {

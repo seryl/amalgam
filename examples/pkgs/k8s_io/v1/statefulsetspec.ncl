@@ -1,11 +1,11 @@
 # Module: k8s.io.v1.statefulsetspec
 
 let labelselector = import "./labelselector.ncl" in
-let statefulsetupdatestrategy = import "./statefulsetupdatestrategy.ncl" in
-let persistentvolumeclaim = import "./persistentvolumeclaim.ncl" in
-let statefulsetordinals = import "./statefulsetordinals.ncl" in
 let podtemplatespec = import "./podtemplatespec.ncl" in
+let statefulsetupdatestrategy = import "./statefulsetupdatestrategy.ncl" in
+let statefulsetordinals = import "./statefulsetordinals.ncl" in
 let statefulsetpersistentvolumeclaimretentionpolicy = import "./statefulsetpersistentvolumeclaimretentionpolicy.ncl" in
+let persistentvolumeclaim = import "./persistentvolumeclaim.ncl" in
 
 {
   # A StatefulSetSpec is the specification of a StatefulSet.

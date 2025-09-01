@@ -1,20 +1,20 @@
 # Module: k8s.io.v1.podspec
 
-let podos = import "./podos.ncl" in
-let podsecuritycontext = import "./podsecuritycontext.ncl" in
-let hostalias = import "./hostalias.ncl" in
-let localobjectreference = import "./localobjectreference.ncl" in
-let topologyspreadconstraint = import "./topologyspreadconstraint.ncl" in
-let podschedulinggate = import "./podschedulinggate.ncl" in
-let ephemeralcontainer = import "./ephemeralcontainer.ncl" in
-let container = import "./container.ncl" in
-let toleration = import "./toleration.ncl" in
-let podreadinessgate = import "./podreadinessgate.ncl" in
-let podresourceclaim = import "./podresourceclaim.ncl" in
 let resourcerequirements = import "./resourcerequirements.ncl" in
-let volume = import "./volume.ncl" in
+let podreadinessgate = import "./podreadinessgate.ncl" in
+let toleration = import "./toleration.ncl" in
+let localobjectreference = import "./localobjectreference.ncl" in
+let container = import "./container.ncl" in
+let hostalias = import "./hostalias.ncl" in
+let podschedulinggate = import "./podschedulinggate.ncl" in
+let topologyspreadconstraint = import "./topologyspreadconstraint.ncl" in
 let poddnsconfig = import "./poddnsconfig.ncl" in
+let volume = import "./volume.ncl" in
+let ephemeralcontainer = import "./ephemeralcontainer.ncl" in
 let affinity = import "./affinity.ncl" in
+let podsecuritycontext = import "./podsecuritycontext.ncl" in
+let podos = import "./podos.ncl" in
+let podresourceclaim = import "./podresourceclaim.ncl" in
 
 {
   # PodSpec is a description of a pod.

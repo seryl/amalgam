@@ -1,8 +1,8 @@
 # Module: k8s.io.v1.networkpolicyspec
 
-let labelselector = import "./labelselector.ncl" in
 let networkpolicyegressrule = import "./networkpolicyegressrule.ncl" in
 let networkpolicyingressrule = import "./networkpolicyingressrule.ncl" in
+let labelselector = import "./labelselector.ncl" in
 
 {
   # NetworkPolicySpec provides the specification of a NetworkPolicy

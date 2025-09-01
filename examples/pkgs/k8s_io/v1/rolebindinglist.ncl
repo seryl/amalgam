@@ -1,7 +1,7 @@
 # Module: k8s.io.v1.rolebindinglist
 
-let listmeta = import "./listmeta.ncl" in
 let rolebinding = import "./rolebinding.ncl" in
+let listmeta = import "./listmeta.ncl" in
 
 {
   # RoleBindingList is a collection of RoleBindings

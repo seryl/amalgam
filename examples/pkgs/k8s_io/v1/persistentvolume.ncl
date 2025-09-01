@@ -1,8 +1,8 @@
 # Module: k8s.io.v1.persistentvolume
 
 let objectmeta = import "./objectmeta.ncl" in
-let persistentvolumestatus = import "./persistentvolumestatus.ncl" in
 let persistentvolumespec = import "./persistentvolumespec.ncl" in
+let persistentvolumestatus = import "./persistentvolumestatus.ncl" in
 
 {
   # PersistentVolume (PV) is a storage resource provisioned by an administrator. It is analogous to a node. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes

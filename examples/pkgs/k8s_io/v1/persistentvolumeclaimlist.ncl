@@ -1,7 +1,7 @@
 # Module: k8s.io.v1.persistentvolumeclaimlist
 
-let persistentvolumeclaim = import "./persistentvolumeclaim.ncl" in
 let listmeta = import "./listmeta.ncl" in
+let persistentvolumeclaim = import "./persistentvolumeclaim.ncl" in
 
 {
   # PersistentVolumeClaimList is a list of PersistentVolumeClaim items.

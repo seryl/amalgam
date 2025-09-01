@@ -1,8 +1,8 @@
 # Module: k8s.io.v1.affinity
 
-let podaffinity = import "./podaffinity.ncl" in
 let podantiaffinity = import "./podantiaffinity.ncl" in
 let nodeaffinity = import "./nodeaffinity.ncl" in
+let podaffinity = import "./podaffinity.ncl" in
 
 {
   # Affinity is a group of affinity scheduling rules.

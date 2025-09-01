@@ -1,8 +1,8 @@
 # Module: k8s.io.v1.envvarsource
 
-let objectfieldselector = import "./objectfieldselector.ncl" in
-let resourcefieldselector = import "./resourcefieldselector.ncl" in
 let configmapkeyselector = import "./configmapkeyselector.ncl" in
+let resourcefieldselector = import "./resourcefieldselector.ncl" in
+let objectfieldselector = import "./objectfieldselector.ncl" in
 let secretkeyselector = import "./secretkeyselector.ncl" in
 
 {

@@ -1,7 +1,7 @@
 # Module: k8s.io.v1.joblist
 
-let job = import "./job.ncl" in
 let listmeta = import "./listmeta.ncl" in
+let job = import "./job.ncl" in
 
 {
   # JobList is a collection of jobs.

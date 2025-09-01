@@ -1,7 +1,7 @@
 # Module: k8s.io.v1.rolebinding
 
-let subject = import "./subject.ncl" in
 let roleref = import "./roleref.ncl" in
+let subject = import "./subject.ncl" in
 let objectmeta = import "./objectmeta.ncl" in
 
 {

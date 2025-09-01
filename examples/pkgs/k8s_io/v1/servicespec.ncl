@@ -1,7 +1,7 @@
 # Module: k8s.io.v1.servicespec
 
-let serviceport = import "./serviceport.ncl" in
 let sessionaffinityconfig = import "./sessionaffinityconfig.ncl" in
+let serviceport = import "./serviceport.ncl" in
 
 {
   # ServiceSpec describes the attributes that a user creates on a service.

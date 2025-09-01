@@ -1,5 +1,7 @@
 # Module: k8s.io.v1beta1.servicecidrstatus
 
+let Condition = import "../v1/condition.ncl" in
+
 {
   # ServiceCIDRStatus describes the current state of the ServiceCIDR.
   ServiceCIDRStatus = {

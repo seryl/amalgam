@@ -1,7 +1,7 @@
 # Module: k8s.io.v1.ingressclasslist
 
-let ingressclass = import "./ingressclass.ncl" in
 let listmeta = import "./listmeta.ncl" in
+let ingressclass = import "./ingressclass.ncl" in
 
 {
   # IngressClassList is a collection of IngressClasses.

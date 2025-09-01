@@ -1,7 +1,7 @@
 # Module: k8s.io.v1.apigroup
 
-let groupversionfordiscovery = import "./groupversionfordiscovery.ncl" in
 let serveraddressbyclientcidr = import "./serveraddressbyclientcidr.ncl" in
+let groupversionfordiscovery = import "./groupversionfordiscovery.ncl" in
 
 {
   # APIGroup contains the name, the supported versions, and the preferred version of a group.

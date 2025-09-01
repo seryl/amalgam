@@ -1,7 +1,7 @@
 # Module: k8s.io.v1.replicationcontrollerlist
 
-let replicationcontroller = import "./replicationcontroller.ncl" in
 let listmeta = import "./listmeta.ncl" in
+let replicationcontroller = import "./replicationcontroller.ncl" in
 
 {
   # ReplicationControllerList is a collection of replication controllers.

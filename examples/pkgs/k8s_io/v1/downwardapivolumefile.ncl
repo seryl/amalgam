@@ -1,7 +1,7 @@
 # Module: k8s.io.v1.downwardapivolumefile
 
-let objectfieldselector = import "./objectfieldselector.ncl" in
 let resourcefieldselector = import "./resourcefieldselector.ncl" in
+let objectfieldselector = import "./objectfieldselector.ncl" in
 
 {
   # DownwardAPIVolumeFile represents information to create the file containing the pod field

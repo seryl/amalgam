@@ -1,7 +1,7 @@
 # Module: k8s.io.v1.endpointslist
 
-let endpoints = import "./endpoints.ncl" in
 let listmeta = import "./listmeta.ncl" in
+let endpoints = import "./endpoints.ncl" in
 
 {
   # EndpointsList is a list of endpoints. Deprecated: This API is deprecated in v1.33+.

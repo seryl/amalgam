@@ -1,8 +1,8 @@
 # Module: k8s.io.v1.pod
 
-let objectmeta = import "./objectmeta.ncl" in
 let podspec = import "./podspec.ncl" in
 let podstatus = import "./podstatus.ncl" in
+let objectmeta = import "./objectmeta.ncl" in
 
 {
   # Pod is a collection of containers that can run on a host. This resource is created by clients and scheduled onto hosts.

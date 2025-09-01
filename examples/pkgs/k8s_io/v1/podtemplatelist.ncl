@@ -1,7 +1,7 @@
 # Module: k8s.io.v1.podtemplatelist
 
-let listmeta = import "./listmeta.ncl" in
 let podtemplate = import "./podtemplate.ncl" in
+let listmeta = import "./listmeta.ncl" in
 
 {
   # PodTemplateList is a list of PodTemplates.

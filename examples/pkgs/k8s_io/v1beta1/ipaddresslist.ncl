@@ -1,5 +1,6 @@
 # Module: k8s.io.v1beta1.ipaddresslist
 
+let ListMeta = import "../v1/listmeta.ncl" in
 let ipaddress = import "./ipaddress.ncl" in
 
 {

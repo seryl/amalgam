@@ -1,8 +1,8 @@
 # Module: k8s.io.v1.resourcequota
 
 let resourcequotaspec = import "./resourcequotaspec.ncl" in
-let objectmeta = import "./objectmeta.ncl" in
 let resourcequotastatus = import "./resourcequotastatus.ncl" in
+let objectmeta = import "./objectmeta.ncl" in
 
 {
   # ResourceQuota sets aggregate quota restrictions enforced per namespace

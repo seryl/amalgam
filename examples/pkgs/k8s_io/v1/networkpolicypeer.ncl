@@ -1,7 +1,7 @@
 # Module: k8s.io.v1.networkpolicypeer
 
-let labelselector = import "./labelselector.ncl" in
 let ipblock = import "./ipblock.ncl" in
+let labelselector = import "./labelselector.ncl" in
 
 {
   # NetworkPolicyPeer describes a peer to allow traffic to/from. Only certain combinations of fields are allowed

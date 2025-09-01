@@ -1,8 +1,8 @@
 # Module: k8s.io.v1.clusterrole
 
 let objectmeta = import "./objectmeta.ncl" in
-let policyrule = import "./policyrule.ncl" in
 let aggregationrule = import "./aggregationrule.ncl" in
+let policyrule = import "./policyrule.ncl" in
 
 {
   # ClusterRole is a cluster level, logical grouping of PolicyRules that can be referenced as a unit by a RoleBinding or ClusterRoleBinding.

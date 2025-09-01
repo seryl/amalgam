@@ -1,5 +1,6 @@
 # Module: k8s.io.v1beta1.volumeattributesclasslist
 
+let ListMeta = import "../v1/listmeta.ncl" in
 let volumeattributesclass = import "./volumeattributesclass.ncl" in
 
 {

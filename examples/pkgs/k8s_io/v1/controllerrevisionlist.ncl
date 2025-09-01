@@ -1,7 +1,7 @@
 # Module: k8s.io.v1.controllerrevisionlist
 
-let listmeta = import "./listmeta.ncl" in
 let controllerrevision = import "./controllerrevision.ncl" in
+let listmeta = import "./listmeta.ncl" in
 
 {
   # ControllerRevisionList is a resource containing a list of ControllerRevision objects.

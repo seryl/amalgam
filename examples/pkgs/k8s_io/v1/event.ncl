@@ -1,9 +1,9 @@
 # Module: k8s.io.v1.event
 
-let eventsource = import "./eventsource.ncl" in
-let eventseries = import "./eventseries.ncl" in
 let objectmeta = import "./objectmeta.ncl" in
+let eventseries = import "./eventseries.ncl" in
 let objectreference = import "./objectreference.ncl" in
+let eventsource = import "./eventsource.ncl" in
 
 {
   # Event is a report of an event somewhere in the cluster.  Events have a limited retention time and triggers and messages may evolve with time.  Event consumers should not rely on the timing of an event with a given Reason reflecting a consistent underlying trigger, or the continued existence of events with that Reason.  Events should be treated as informative, best-effort, supplemental data.

@@ -1,8 +1,8 @@
 # Module: k8s.io.v1.service
 
+let objectmeta = import "./objectmeta.ncl" in
 let servicestatus = import "./servicestatus.ncl" in
 let servicespec = import "./servicespec.ncl" in
-let objectmeta = import "./objectmeta.ncl" in
 
 {
   # Service is a named abstraction of software service (for example, mysql) consisting of local port (for example 3306) that the proxy listens on, and the selector that determines which pods will answer requests sent through the proxy.

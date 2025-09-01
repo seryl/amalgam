@@ -1,8 +1,8 @@
 # Module: k8s.io.v1.daemonsetspec
 
-let labelselector = import "./labelselector.ncl" in
 let podtemplatespec = import "./podtemplatespec.ncl" in
 let daemonsetupdatestrategy = import "./daemonsetupdatestrategy.ncl" in
+let labelselector = import "./labelselector.ncl" in
 
 {
   # DaemonSetSpec is the specification of a daemon set.

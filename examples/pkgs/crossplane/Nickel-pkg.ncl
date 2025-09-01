@@ -1,6 +1,6 @@
 # Amalgam Package Manifest
-# Generated: 2025-09-01T17:33:45.791210+00:00
-# Generator: amalgam v0.5.2
+# Generated: 2025-09-01T21:27:24.143225+00:00
+# Generator: amalgam v0.6.1
 # Source: https://github.com/crossplane/crossplane/tree/v2.0.2/cluster/crds
 # Git ref: v2.0.2
 {
@@ -16,7 +16,7 @@
   
   # Dependencies
   dependencies = {
-    k8s_io = 'Index { package = "github:seryl/nickel-pkgs/k8s-io", version = "1.33.4" }
+    k8s_io = 'Index { package = "github:seryl/nickel-pkgs/pkgs/k8s-io", version = "1.33.4" }
   },
   
   # Nickel version requirement
