@@ -61,9 +61,9 @@ fn check_nickel_available() -> bool {
 fn prepare_examples_dir() -> PathBuf {
     let examples = examples_dir();
 
-    // Create packages subdirectory
-    let packages_dir = examples.join("packages");
-    fs::create_dir_all(&packages_dir).expect("Failed to create packages directory");
+    // Create pkgs subdirectory
+    let packages_dir = examples.join("pkgs");
+    fs::create_dir_all(&packages_dir).expect("Failed to create pkgs directory");
 
     // Clean up old test packages
     let _ = fs::remove_dir_all(packages_dir.join("k8s_io"));
@@ -205,13 +205,9 @@ fn test_generate_crossplane_package_with_k8s_dependency() {
         "Manifest missing k8s_io dependency"
     );
 
-    // Fix the dependency path to point to the correct location
-    let fixed_manifest = manifest.replace(
-        r#"k8s_io = 'Path "../k8s_io""#,
-        r#"k8s_io = 'Path "../k8s_io""#,
-    );
-    fs::write(crossplane_dir.join("Nickel-pkg.ncl"), fixed_manifest)
-        .expect("Failed to update manifest");
+    // The manifest should already have the correct dependency path
+    // No need to replace anything since it's already correct
+    fs::write(crossplane_dir.join("Nickel-pkg.ncl"), manifest).expect("Failed to write manifest");
 
     println!("✓ crossplane package generated successfully with k8s_io dependency");
 }
@@ -366,7 +362,7 @@ let crossplane = import crossplane in
     );
     assert!(test_app_dir.join("main.ncl").exists(), "Missing main.ncl");
 
-    println!("\n📦 Package structure created in examples/packages/:");
+    println!("\n📦 Package structure created in examples/pkgs/:");
     println!("  k8s_io/       - Kubernetes v1.31 types");
     println!("  crossplane/   - Crossplane CRD types");
     println!("  test_app/     - Example app using both packages");
@@ -389,5 +385,5 @@ fn test_full_package_workflow() {
     test_create_app_using_packages();
 
     println!("\n✅ All package tests completed successfully!");
-    println!("\nPackages are available in examples/packages/ for manual testing.");
+    println!("\nPackages are available in examples/pkgs/ for manual testing.");
 }

@@ -1,0 +1,21 @@
+{
+  "content_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "metadata_hash": "4b3156e86e266d874cb9d48e18838e0ab54b84d4c0db25fadb54cf9f5027587d",
+  "combined_hash": "07904037fa3f8439a47ca9e340e7ab3ad8cd14774112ead6083d1ba38e715b1f",
+  "created_at": "2025-09-01T17:33:45.791376Z",
+  "source_info": {
+    "UrlCollection": {
+      "base_url": "https://github.com/crossplane/crossplane/tree/v2.0.2/cluster/crds@v2.0.2",
+      "urls": [
+        "https://github.com/crossplane/crossplane/tree/v2.0.2/cluster/crds@v2.0.2"
+      ],
+      "etags": [
+        null
+      ],
+      "last_modified": [
+        null
+      ]
+    }
+  },
+  "amalgam_version": "0.5.2"
+}

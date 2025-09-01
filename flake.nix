@@ -342,35 +342,16 @@
           echo -e "''${YELLOW}Starting release process for $BUMP_TYPE version bump...''${NC}"
           echo ""
           
-          # Step 1: Run all tests
-          echo -e "''${YELLOW}Step 1: Running all tests...''${NC}"
-          if ! ${rustWithComponents}/bin/cargo test --workspace; then
-            echo -e "''${RED}✗ Tests failed! Fix tests before releasing.''${NC}"
+          # Step 1: Run CI checks
+          echo -e "''${YELLOW}Step 1: Running CI checks...''${NC}"
+          if ! ci-runner ci; then
+            echo -e "''${RED}✗ CI checks failed! Fix issues before releasing.''${NC}"
             exit 1
           fi
-          echo -e "''${GREEN}✓ All tests passed''${NC}"
           echo ""
           
-          # Step 2: Check clippy with warnings as errors
-          echo -e "''${YELLOW}Step 2: Running clippy...''${NC}"
-          if ! ${rustWithComponents}/bin/cargo clippy --all-targets -- -D warnings; then
-            echo -e "''${RED}✗ Clippy found issues! Fix them before releasing.''${NC}"
-            exit 1
-          fi
-          echo -e "''${GREEN}✓ Clippy passed with no warnings''${NC}"
-          echo ""
-          
-          # Step 3: Check formatting
-          echo -e "''${YELLOW}Step 3: Checking formatting...''${NC}"
-          if ! ${rustWithComponents}/bin/cargo fmt -- --check; then
-            echo -e "''${RED}✗ Code is not formatted! Run 'cargo fmt' before releasing.''${NC}"
-            exit 1
-          fi
-          echo -e "''${GREEN}✓ Code is properly formatted''${NC}"
-          echo ""
-          
-          # Step 4: Check snapshot tests
-          echo -e "''${YELLOW}Step 4: Checking snapshot tests...''${NC}"
+          # Step 2: Check snapshot tests
+          echo -e "''${YELLOW}Step 2: Checking snapshot tests...''${NC}"
           if ! ${rustWithComponents}/bin/cargo insta test; then
             echo -e "''${RED}✗ Snapshot tests failed! Review with 'cargo insta review'.''${NC}"
             exit 1
@@ -378,12 +359,12 @@
           echo -e "''${GREEN}✓ Snapshot tests passed''${NC}"
           echo ""
           
-          # Step 5: Get current version
+          # Step 3: Get current version
           CURRENT_VERSION=$(${pkgs.toml2json}/bin/toml2json < Cargo.toml | ${pkgs.jq}/bin/jq -r '.workspace.package.version')
           echo -e "''${GREEN}Current version: $CURRENT_VERSION''${NC}"
           
-          # Step 6: Bump version
-          echo -e "''${YELLOW}Step 6: Bumping $BUMP_TYPE version...''${NC}"
+          # Step 4: Bump version
+          echo -e "''${YELLOW}Step 4: Bumping $BUMP_TYPE version...''${NC}"
           if ! ${rustWithComponents}/bin/cargo release version $BUMP_TYPE --execute; then
             echo -e "''${RED}✗ Failed to bump version!''${NC}"
             exit 1
@@ -399,14 +380,14 @@
           echo -e "''${GREEN}✓ Version bumped to $NEW_VERSION''${NC}"
           echo ""
           
-          # Step 7: Update Cargo.lock
-          echo -e "''${YELLOW}Step 7: Updating Cargo.lock...''${NC}"
+          # Step 5: Update Cargo.lock
+          echo -e "''${YELLOW}Step 5: Updating Cargo.lock...''${NC}"
           ${rustWithComponents}/bin/cargo update
           echo -e "''${GREEN}✓ Cargo.lock updated''${NC}"
           echo ""
           
-          # Step 8: Check publish readiness
-          echo -e "''${YELLOW}Step 8: Checking publish readiness...''${NC}"
+          # Step 6: Check publish readiness
+          echo -e "''${YELLOW}Step 6: Checking publish readiness...''${NC}"
           if ! publish check --skip-checks; then
             echo -e "''${RED}✗ Not ready to publish!''${NC}"
             exit 1
@@ -414,15 +395,15 @@
           echo -e "''${GREEN}✓ Ready to publish''${NC}"
           echo ""
           
-          # Step 9: Commit changes
-          echo -e "''${YELLOW}Step 9: Committing version bump...''${NC}"
+          # Step 7: Commit changes
+          echo -e "''${YELLOW}Step 7: Committing version bump...''${NC}"
           ${pkgs.git}/bin/git add -A
           ${pkgs.git}/bin/git commit -m "release: v$NEW_VERSION"
           echo -e "''${GREEN}✓ Changes committed''${NC}"
           echo ""
           
-          # Step 10: Tag the release
-          echo -e "''${YELLOW}Step 10: Creating git tag...''${NC}"
+          # Step 8: Tag the release
+          echo -e "''${YELLOW}Step 8: Creating git tag...''${NC}"
           ${pkgs.git}/bin/git tag "v$NEW_VERSION"
           echo -e "''${GREEN}✓ Tagged as v$NEW_VERSION''${NC}"
           echo ""
@@ -439,33 +420,72 @@
           echo "  git tag -d v$NEW_VERSION"
         '';
 
-        # Quick test runner
-        test-all = pkgs.writeShellScriptBin "test-all" ''
+        # CI runner - the primary test command
+        ci-runner = pkgs.writeShellScriptBin "ci-runner" ''
           set -euo pipefail
 
-          echo "Running complete test suite..."
+          MODE="''${1:-ci}"
+
+          case $MODE in
+            ci)
+              echo "Running CI test suite..."
+              echo ""
+
+              # Ensure we're in local dev mode
+              dev-mode local > /dev/null 2>&1
+
+              echo "1. Running cargo check..."
+              ${rustWithComponents}/bin/cargo check --workspace --all-targets
+
+              echo ""
+              echo "2. Running tests..."
+              ${rustWithComponents}/bin/cargo test --workspace
+
+              echo ""
+              echo "3. Running clippy..."
+              ${rustWithComponents}/bin/cargo clippy --workspace --all-targets -- --deny warnings
+
+              echo ""
+              echo "4. Checking formatting..."
+              ${rustWithComponents}/bin/cargo fmt --check
+
+              echo ""
+              echo "✓ All CI checks passed!"
+              ;;
+            *)
+              echo "Usage: ci-runner ci"
+              echo ""
+              echo "Runs the complete CI test suite"
+              exit 1
+              ;;
+          esac
+        '';
+
+        # Auto-fix command for formatting and clippy
+        fix = pkgs.writeShellScriptBin "fix" ''
+          set -euo pipefail
+
+          echo "🔧 Auto-fixing code issues..."
           echo ""
 
           # Ensure we're in local dev mode
-          dev-mode local > /dev/null
+          dev-mode local > /dev/null 2>&1
 
-          echo "1. Running cargo check..."
-          ${rustWithComponents}/bin/cargo check --workspace --all-targets
-
-          echo ""
-          echo "2. Running tests..."
-          ${rustWithComponents}/bin/cargo test --workspace
+          echo "1. Formatting code..."
+          ${rustWithComponents}/bin/cargo fmt --all
 
           echo ""
-          echo "3. Running clippy..."
-          ${rustWithComponents}/bin/cargo clippy --workspace --all-targets -- --deny warnings
+          echo "2. Applying clippy fixes..."
+          ${rustWithComponents}/bin/cargo clippy --workspace --all-targets --fix --allow-dirty --allow-staged
 
           echo ""
-          echo "4. Checking formatting..."
-          ${rustWithComponents}/bin/cargo fmt --check
-
-          echo ""
-          echo "✓ All checks passed!"
+          echo "3. Checking if everything is fixed..."
+          if ci-runner ci > /dev/null 2>&1; then
+            echo "✓ All issues fixed!"
+          else
+            echo "⚠ Some issues may require manual intervention"
+            echo "Run 'ci-runner ci' to see remaining issues"
+          fi
         '';
 
         # Regenerate examples helper
@@ -549,10 +569,11 @@
             rustWithComponents
 
             # Smart commands
+            ci-runner
+            fix
             release
             publish
             dev-mode
-            test-all
             regenerate-examples
           ] ++ (with pkgs; [
             # Build dependencies
@@ -603,61 +624,28 @@
           shellHook = ''
             echo "🦀 Amalgam Development Environment"
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo ""
-
-            # Check current mode
-            if grep -q "path = " crates/amalgam-parser/Cargo.toml 2>/dev/null; then
-              echo "Mode: LOCAL (using workspace path dependencies)"
-            else
-              echo "Mode: REMOTE (using crates.io dependencies)"
-            fi
-
             VERSION=$(${pkgs.toml2json}/bin/toml2json < Cargo.toml 2>/dev/null | ${pkgs.jq}/bin/jq -r '.workspace.package.version' || echo "unknown")
-            echo "Version: $VERSION"
+            echo "Version $VERSION"
             echo ""
-            echo "Quick Commands:"
-            echo "  release [patch|minor|major] - Complete release workflow (test, bump, tag)"
-            echo "  publish                     - Publish to crates.io (after release)"
-            echo "  test-all                    - Run all tests, clippy, and fmt"
-            echo "  regenerate-examples         - Rebuild and regenerate example CRDs"
-            echo "  dev-mode local              - Switch to local development (path deps)"
-            echo "  dev-mode remote             - Switch to publish mode (crates.io deps)"
+            echo "Essential Commands:"
+            echo "  ci-runner ci         - Run complete test suite (tests, clippy, fmt)"
+            echo "  fix                  - Auto-fix formatting and clippy issues"
+            echo "  regenerate-examples  - Rebuild and regenerate example CRDs"
+            echo "  release patch        - Bump version and create release"
+            echo "  publish              - Publish to crates.io"
             echo ""
-            echo "Nickel Package Support (experimental):"
-            echo "  ✓ Nickel built with package-experimental feature enabled"
-            echo "  amalgam import url --url <URL> --output <DIR> --nickel-package"
-            echo "  amalgam import k8s-core --output <DIR> --nickel-package"
-            echo "    Generates Nickel-pkg.ncl manifest for use with Nickel package manager"
+            echo "Workflow:"
+            echo "  1. fix                           # Auto-fix issues"
+            echo "  2. ci-runner ci                  # Validate everything"
+            echo "  3. release [patch|minor|major]   # Create release"
+            echo "  4. publish                       # Publish to crates.io"
+            echo "  5. git push && git push --tags  # Push to GitHub"
             echo ""
-            echo "  Test packages: nickel eval examples/packages/test_app/main.ncl"
-            echo ""
-            echo "Development Commands:"
-            echo "  cargo build       - Build the project"
-            echo "  cargo test        - Run tests"
-            echo "  cargo watch       - Watch for changes"
-            echo "  cargo clippy      - Run linter"
-            echo "  cargo fmt         - Format code"
-            echo "  cargo insta       - Manage snapshot tests"
-            echo ""
-            echo "Publishing Workflow (Simplified):"
-            echo "  1. release patch     # Validates, bumps version, commits, tags"
-            echo "  2. publish           # Publishes to crates.io"
-            echo "  3. git push && git push --tags  # Push to GitHub"
-            echo ""
-            echo "Release Types:"
-            echo "  release patch  # Bump patch version (x.y.Z)"
-            echo "  release minor  # Bump minor version (x.Y.0)"
-            echo "  release major  # Bump major version (X.0.0)"
-            echo ""
-            echo "What 'release' does:"
-            echo "  - Runs all tests and clippy"
-            echo "  - Checks code formatting"
-            echo "  - Validates snapshot tests"
-            echo "  - Bumps version in all Cargo.toml files"
-            echo "  - Updates internal dependency versions"
-            echo "  - Commits changes with message 'release: vX.Y.Z'"
-            echo "  - Creates git tag vX.Y.Z"
-            echo "  - Verifies publish readiness"
+            echo "Other Commands:"
+            echo "  dev-mode local       - Switch to local development (path deps)"
+            echo "  dev-mode remote      - Switch to publish mode (crates.io deps)"
+            echo "  cargo watch          - Watch for changes"
+            echo "  cargo insta review   - Review snapshot test changes"
             echo ""
 
             # Ensure we're in local dev mode by default

@@ -30,7 +30,7 @@ pub struct ManifestConfig {
     /// Base package ID for dependencies (e.g., "github:seryl/nickel-pkgs")
     pub base_package_id: String,
 
-    /// Local package path prefix for development (e.g., "examples/packages")
+    /// Local package path prefix for development (e.g., "examples/pkgs")
     /// When set, generates Path dependencies instead of Index dependencies
     #[serde(default)]
     pub local_package_prefix: Option<String>,
@@ -248,9 +248,11 @@ impl Manifest {
                     .as_ref()
                     .ok_or_else(|| anyhow::anyhow!("URL required for url type package"))?;
 
-                // Include git ref in the fingerprint URL
+                // Include git ref and version in the fingerprint URL
                 let fingerprint_url = if let Some(ref git_ref) = package.git_ref {
                     format!("{}@{}", url, git_ref)
+                } else if let Some(ref version) = package.version {
+                    format!("{}@{}", url, version)
                 } else {
                     url.clone()
                 };
@@ -297,7 +299,7 @@ impl Manifest {
         let version = package.version.as_deref().unwrap_or("v1.31.0");
 
         info!("Fetching Kubernetes {} core types...", version);
-        handle_k8s_core_import(version, &output.to_path_buf(), true).await?;
+        handle_k8s_core_import(version, output, true).await?;
 
         Ok(output.to_path_buf())
     }

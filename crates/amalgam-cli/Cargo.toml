@@ -34,6 +34,5 @@ openapiv3.workspace = true
 toml = "0.8"
 chrono = "0.4"
 serde.workspace = true
-nickel-lang-core.workspace = true
 tempfile.workspace = true
 walkdir = "2.4"

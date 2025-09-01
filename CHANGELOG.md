@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2025-09-01
+
+### Changed
+- **BREAKING**: Changed package output directory from `packages/` to `pkgs/`
+- **BREAKING**: Updated base package ID to `github:seryl/nickel-pkgs/pkgs` to match nickel-pkgs structure
+- Updated manifest to use latest stable versions: Kubernetes v1.33.4, Crossplane v2.0.2
+- Validation now exclusively uses the Nickel CLI binary, not the library
+- nickel-with-packages is exposed in flake for external users
+
+### Fixed
+- Removed nickel-lang-core dependency to avoid API instability issues
+- Simplified Nickel validation tests to use CLI instead of library API
+- Fixed compilation errors with external projects using amalgam
+- Enhanced fingerprinting to properly detect version changes in manifests
+- URL sources now properly lock to specific versions instead of tracking main branch
+
 ## [0.5.1] - 2025-09-01
 
 ### Added

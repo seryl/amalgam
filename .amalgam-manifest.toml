@@ -3,19 +3,19 @@
 
 [config]
 # Output directory for generated packages
-output_base = "examples/packages"
+output_base = "examples/pkgs"
 # Enable package mode for nickel-mine compatibility
 package_mode = true
 # Base package ID for dependencies
-base_package_id = "github:seryl/nickel-pkgs"
+base_package_id = "github:seryl/nickel-pkgs/pkgs"
 # Local package prefix for development - generates Path dependencies
-local_package_prefix = "examples/packages"
+local_package_prefix = "examples/pkgs"
 
 # Core Kubernetes types - foundation for other packages
 [[packages]]
 name = "k8s-io"
 type = "k8s-core"
-version = "v1.31.0"
+version = "v1.33.4"  # Latest stable Kubernetes as of 2025-09-01
 output = "k8s_io"
 description = "Kubernetes core type definitions including apimachinery"
 keywords = ["kubernetes", "k8s", "types", "api", "core"]
@@ -26,13 +26,13 @@ dependencies = {}
 [[packages]]
 name = "crossplane"
 type = "url"
-url = "https://github.com/crossplane/crossplane/tree/main/cluster/crds"
-git_ref = "v1.17.2"  # Lock to specific version
-version = "1.17.2"   # Package version
+url = "https://github.com/crossplane/crossplane/tree/v2.0.2/cluster/crds"
+git_ref = "v2.0.2"  # Latest stable Crossplane as of 2025-09-01
+version = "2.0.2"   # Package version
 output = "crossplane"
 description = "Crossplane CRD type definitions for infrastructure as code"
 keywords = ["crossplane", "kubernetes", "infrastructure", "gitops"]
 # Explicit dependency constraints (auto-detected dependencies will use these)
 [packages.dependencies]
-k8s_io = { version = "1.31.0" }  # Require k8s 1.31 or higher (Nickel will allow compatible versions)
+k8s_io = { version = "1.33.4" }  # Match the k8s version above
 

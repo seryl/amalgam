@@ -10,12 +10,12 @@ use amalgam_core::ir::Module;
 use amalgam_parser::k8s_types::K8sTypesFetcher;
 use anyhow::Result;
 use std::fs;
-use std::path::PathBuf;
+use std::path::Path;
 use tracing::info;
 
 pub async fn handle_k8s_core_import(
     version: &str,
-    output_dir: &PathBuf,
+    output_dir: &Path,
     nickel_package: bool,
 ) -> Result<()> {
     info!("Fetching Kubernetes {} core types...", version);

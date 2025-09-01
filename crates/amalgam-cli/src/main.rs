@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tracing::info;
 
 use amalgam_codegen::{go::GoCodegen, nickel::NickelCodegen, Codegen};
@@ -28,10 +28,6 @@ struct Cli {
     /// Enable debug output
     #[arg(short, long)]
     debug: bool,
-
-    /// Print version information
-    #[arg(short = 'V', long)]
-    version: bool,
 
     #[command(subcommand)]
     command: Option<Commands>,
@@ -91,7 +87,7 @@ enum Commands {
         #[arg(short, long)]
         path: PathBuf,
 
-        /// Package path prefix for dependency resolution (e.g., examples/packages)
+        /// Package path prefix for dependency resolution (e.g., examples/pkgs)
         #[arg(long)]
         package_path: Option<PathBuf>,
 
@@ -201,12 +197,6 @@ enum ImportSource {
 #[tokio::main]
 async fn main() -> Result<()> {
     let cli = Cli::parse();
-
-    // Handle version flag
-    if cli.version {
-        println!("amalgam {}", env!("CARGO_PKG_VERSION"));
-        return Ok(());
-    }
 
     // Initialize tracing
     let level = if cli.debug {
@@ -677,7 +667,7 @@ async fn handle_manifest_generation(
 
 pub async fn handle_k8s_core_import(
     version: &str,
-    output_dir: &PathBuf,
+    output_dir: &Path,
     nickel_package: bool,
 ) -> Result<()> {
     info!("Fetching Kubernetes {} core types...", version);

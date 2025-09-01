@@ -1,0 +1,14 @@
+{
+  "content_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "metadata_hash": "797c72bfdac5232d9b709d54c6232a2cef5fd497051ace8fb34b38fad6dbed39",
+  "combined_hash": "e8fcacfdb4afb30e0eeee55ed3db022354a0030503a8e621763cb5dc96271f53",
+  "created_at": "2025-09-01T17:33:44.682009Z",
+  "source_info": {
+    "K8sCore": {
+      "version": "v1.33.4",
+      "openapi_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "spec_url": "https://dl.k8s.io/v1.33.4/api/openapi-spec/swagger.json"
+    }
+  },
+  "amalgam_version": "0.5.2"
+}

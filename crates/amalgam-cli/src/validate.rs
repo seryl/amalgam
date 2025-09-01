@@ -6,6 +6,7 @@ use std::process::Command;
 use tracing::{error, info, warn};
 
 /// Run validation on a Nickel package or file
+#[allow(dead_code)]
 pub fn run_validation(path: &Path) -> Result<()> {
     run_validation_with_package_path(path, None)
 }
