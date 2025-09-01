@@ -524,16 +524,18 @@
         '';
 
         # Custom source filter that includes test fixtures
-        src = craneLib.cleanCargoSource (craneLib.filterCargoSources ./. (path: type:
-          # Include all Rust source files and Cargo files
-          (craneLib.filterCargoSources ./. path type) ||
-          # Include test fixture files
-          (builtins.match ".*/tests/fixtures/.*\\.yaml$" path != null) ||
-          # Include test snapshot files  
-          (builtins.match ".*/tests/snapshots/.*\\.snap$" path != null) ||
-          # Include any other test resources
-          (builtins.match ".*/tests/.*\\.(toml|json|yaml|ncl)$" path != null)
-        ));
+        src = pkgs.lib.cleanSourceWith {
+          src = ./.;
+          filter = path: type:
+            # Include standard cargo files
+            (craneLib.filterCargoSources path type) ||
+            # Include test fixture files
+            (builtins.match ".*/tests/fixtures/.*\\.yaml$" path != null) ||
+            # Include test snapshot files  
+            (builtins.match ".*/tests/snapshots/.*\\.snap$" path != null) ||
+            # Include any other test resources
+            (builtins.match ".*/tests/.*\\.(toml|json|yaml|ncl)$" path != null);
+        };
 
         # Build dependencies only
         cargoArtifacts = craneLib.buildDepsOnly {
