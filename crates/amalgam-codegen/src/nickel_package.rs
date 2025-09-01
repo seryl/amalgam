@@ -124,7 +124,7 @@ impl NickelPackageGenerator {
 
         main.push_str("# Main module for ");
         main.push_str(&self.config.name);
-        main.push_str("\n");
+        main.push('\n');
         main.push_str("# This file exports all generated types\n\n");
 
         main.push_str("{\n");

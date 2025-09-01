@@ -323,7 +323,7 @@ impl NamespacedPackage {
                             all_types.push(type_def.ty.clone());
                         }
                     }
-                    package_mode.analyze_and_update_dependencies(&all_types, &group);
+                    package_mode.analyze_and_update_dependencies(&all_types, group);
 
                     let mut codegen = amalgam_codegen::nickel::NickelCodegen::new()
                         .with_package_mode(package_mode);
@@ -434,9 +434,9 @@ impl NamespacedPackage {
 
     /// Check if any types reference k8s.io types
     fn has_k8s_references(&self) -> bool {
-        for (_, versions) in &self.types {
-            for (_, kinds) in versions {
-                for (_, type_def) in kinds {
+        for versions in self.types.values() {
+            for kinds in versions.values() {
+                for type_def in kinds.values() {
                     if needs_k8s_imports(&type_def.ty) {
                         return true;
                     }

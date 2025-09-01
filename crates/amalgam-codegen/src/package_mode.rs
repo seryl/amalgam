@@ -20,8 +20,10 @@ pub struct PackageDependency {
 
 /// Determines how imports are generated in the output
 #[derive(Debug, Clone)]
+#[derive(Default)]
 pub enum PackageMode {
     /// Generate relative file imports (default for local development)
+    #[default]
     Relative,
 
     /// Generate package imports for nickel-mine
@@ -39,11 +41,6 @@ pub enum PackageMode {
     },
 }
 
-impl Default for PackageMode {
-    fn default() -> Self {
-        PackageMode::Relative
-    }
-}
 
 impl PackageMode {
     /// Create a new package mode with automatic dependency detection
@@ -202,7 +199,7 @@ impl PackageMode {
 
                 // Insert dependencies into manifest
                 if content.contains("dependencies = {}") {
-                    content.replace("dependencies = {}", &deps_str.trim_end())
+                    content.replace("dependencies = {}", deps_str.trim_end())
                 } else {
                     content.to_string()
                 }

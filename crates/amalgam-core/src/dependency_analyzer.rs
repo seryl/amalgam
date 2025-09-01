@@ -137,10 +137,10 @@ impl DependencyAnalyzer {
                         (org, _) if org.contains("crossplane") => {
                             vec![format!("apiextensions.{}.io", org), format!("{}.io", org)]
                         }
-                        (org, _repo) if org == "prometheus-operator" => {
+                        ("prometheus-operator", _repo) => {
                             vec!["monitoring.coreos.com".to_string()]
                         }
-                        (org, _repo) if org == "cert-manager" => {
+                        ("cert-manager", _repo) => {
                             vec![
                                 "cert-manager.io".to_string(),
                                 "acme.cert-manager.io".to_string(),
@@ -220,7 +220,7 @@ impl DependencyAnalyzer {
     /// Parse a type reference to determine if it's external
     fn parse_type_reference(&self, name: &str, location: &str) -> Option<TypeReference> {
         // Extract the simple name from potentially qualified name
-        let simple_name = name.split('.').last().unwrap_or(name).to_string();
+        let simple_name = name.split('.').next_back().unwrap_or(name).to_string();
 
         // Check if we know this type
         if self.type_registry.contains_key(&simple_name) {
