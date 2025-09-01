@@ -47,7 +47,7 @@ checksum = "683d7910e743518b0e34f1186f92494becacb047c7b6bf616c96772180fef923"
 
 [[package]]
 name = "amalgam"
-version = "0.6.3"
+version = "0.6.4"
 dependencies = [
  "amalgam-codegen",
  "amalgam-core",
@@ -69,7 +69,7 @@ dependencies = [
 
 [[package]]
 name = "amalgam-codegen"
-version = "0.6.3"
+version = "0.6.4"
 dependencies = [
  "amalgam-core",
  "anyhow",
@@ -85,7 +85,7 @@ dependencies = [
 
 [[package]]
 name = "amalgam-core"
-version = "0.6.3"
+version = "0.6.4"
 dependencies = [
  "chrono",
  "proptest",
@@ -99,7 +99,7 @@ dependencies = [
 
 [[package]]
 name = "amalgam-daemon"
-version = "0.6.3"
+version = "0.6.4"
 dependencies = [
  "amalgam-codegen",
  "amalgam-core",
@@ -114,7 +114,7 @@ dependencies = [
 
 [[package]]
 name = "amalgam-parser"
-version = "0.6.3"
+version = "0.6.4"
 dependencies = [
  "amalgam-codegen",
  "amalgam-core",
