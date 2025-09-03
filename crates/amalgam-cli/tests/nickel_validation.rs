@@ -44,36 +44,37 @@ mod tests {
     /// Test that we can validate simple Nickel files
     /// This test verifies our validation approach works
     #[test]
-    fn test_simple_nickel_validation() {
+    fn test_simple_nickel_validation() -> Result<(), Box<dyn std::error::Error>> {
         if !nickel_cli_available() {
             eprintln!("Skipping test: Nickel CLI not available");
-            return;
+            return Ok(());
         }
 
         // Create a simple test file
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new()?;
         let test_file = temp_dir.path().join("test.ncl");
-        fs::write(&test_file, "{ value = 42 }").unwrap();
+        fs::write(&test_file, "{ value = 42 }")?;
 
         // Validate using CLI
         match validate_nickel_file_cli(&test_file) {
             Ok(()) => println!("✓ Simple validation passed"),
-            Err(e) => panic!("Simple validation failed: {}", e),
+            Err(e) => return Err(format!("Simple validation failed: {}", e).into()),
         }
+        Ok(())
     }
 
     #[test]
-    fn test_validate_k8s_io_package() {
+    fn test_validate_k8s_io_package() -> Result<(), Box<dyn std::error::Error>> {
         if !nickel_cli_available() {
             eprintln!("Skipping test: Nickel CLI not available");
-            return;
+            return Ok(());
         }
 
         let package_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .parent()
-            .unwrap()
+            .ok_or("Failed to get parent directory")?
             .parent()
-            .unwrap()
+            .ok_or("Failed to get parent directory")?
             .join("examples/k8s_io");
 
         if !package_root.exists() {
@@ -81,7 +82,7 @@ mod tests {
                 "Skipping test: k8s_io package not found at {:?}",
                 package_root
             );
-            return;
+            return Ok(());
         }
 
         // Test the main module file
@@ -96,20 +97,21 @@ mod tests {
                 }
             }
         }
+        Ok(())
     }
 
     #[test]
-    fn test_validate_crossplane_package() {
+    fn test_validate_crossplane_package() -> Result<(), Box<dyn std::error::Error>> {
         if !nickel_cli_available() {
             eprintln!("Skipping test: Nickel CLI not available");
-            return;
+            return Ok(());
         }
 
         let package_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .parent()
-            .unwrap()
+            .ok_or("Failed to get parent directory")?
             .parent()
-            .unwrap()
+            .ok_or("Failed to get parent directory")?
             .join("examples/crossplane");
 
         if !package_root.exists() {
@@ -117,7 +119,7 @@ mod tests {
                 "Skipping test: crossplane package not found at {:?}",
                 package_root
             );
-            return;
+            return Ok(());
         }
 
         // Test the main module file
@@ -132,20 +134,21 @@ mod tests {
                 }
             }
         }
+        Ok(())
     }
 
     #[test]
-    fn test_validate_individual_files() {
+    fn test_validate_individual_files() -> Result<(), Box<dyn std::error::Error>> {
         if !nickel_cli_available() {
             eprintln!("Skipping test: Nickel CLI not available");
-            return;
+            return Ok(());
         }
 
         let examples_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .parent()
-            .unwrap()
+            .ok_or("Failed to get parent directory")?
             .parent()
-            .unwrap()
+            .ok_or("Failed to get parent directory")?
             .join("examples");
 
         // Test some individual files
@@ -172,17 +175,18 @@ mod tests {
                 }
             }
         }
+        Ok(())
     }
 
     #[test]
-    fn test_import_resolution() {
+    fn test_import_resolution() -> Result<(), Box<dyn std::error::Error>> {
         if !nickel_cli_available() {
             eprintln!("Skipping test: Nickel CLI not available");
-            return;
+            return Ok(());
         }
 
         // Create a simple test case with imports
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new()?;
         let root = temp_dir.path();
 
         // Create a simple module structure
@@ -192,43 +196,41 @@ mod tests {
   sub = import "./sub/mod.ncl",
   types = import "./types.ncl",
 }"#,
-        )
-        .unwrap();
+        )?;
 
-        fs::create_dir(root.join("sub")).unwrap();
+        fs::create_dir(root.join("sub"))?;
         fs::write(
             root.join("sub/mod.ncl"),
             r#"{
   value = 42,
 }"#,
-        )
-        .unwrap();
+        )?;
 
         fs::write(
             root.join("types.ncl"),
             r#"{
   MyType = { value | Number },
 }"#,
-        )
-        .unwrap();
+        )?;
 
         // Validate the package
         let result = validate_nickel_file_cli(&root.join("mod.ncl"));
         assert!(result.is_ok(), "Simple import test should pass");
+        Ok(())
     }
 
     #[test]
-    fn test_cross_package_imports() {
+    fn test_cross_package_imports() -> Result<(), Box<dyn std::error::Error>> {
         if !nickel_cli_available() {
             eprintln!("Skipping test: Nickel CLI not available");
-            return;
+            return Ok(());
         }
 
         let examples_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .parent()
-            .unwrap()
+            .ok_or("Failed to get parent directory")?
             .parent()
-            .unwrap()
+            .ok_or("Failed to get parent directory")?
             .join("examples");
 
         // Test the test file that imports both k8s and crossplane
@@ -236,7 +238,7 @@ mod tests {
 
         if !test_file.exists() {
             eprintln!("Skipping test: test_with_packages.ncl not found");
-            return;
+            return Ok(());
         }
 
         // This test will likely fail initially because of import resolution issues
@@ -248,5 +250,6 @@ mod tests {
                 eprintln!("{}", e);
             }
         }
+        Ok(())
     }
 }

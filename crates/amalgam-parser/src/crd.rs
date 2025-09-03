@@ -1,6 +1,6 @@
 //! Kubernetes CRD parser
 
-use crate::{imports::ImportResolver, k8s_authoritative::K8sTypePatterns, Parser, ParserError};
+use crate::{k8s_authoritative::K8sTypePatterns, Parser, ParserError};
 use amalgam_core::{
     ir::{IRBuilder, IR},
     types::Type,
@@ -52,7 +52,6 @@ pub struct CRDNames {
 }
 
 pub struct CRDParser {
-    _import_resolver: ImportResolver,
     k8s_patterns: K8sTypePatterns,
 }
 
@@ -101,7 +100,6 @@ impl Parser for CRDParser {
 impl CRDParser {
     pub fn new() -> Self {
         Self {
-            _import_resolver: ImportResolver::new(),
             k8s_patterns: K8sTypePatterns::new(),
         }
     }
@@ -150,9 +148,10 @@ impl CRDParser {
             if let Some(metadata_field) = fields.get_mut("metadata") {
                 if matches!(metadata_field.ty, Type::Record { ref fields, .. } if fields.is_empty())
                 {
-                    metadata_field.ty = Type::Reference(
-                        "io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta".to_string(),
-                    );
+                    metadata_field.ty = Type::Reference {
+                        name: "ObjectMeta".to_string(),
+                        module: Some("io.k8s.apimachinery.pkg.apis.meta.v1".to_string()),
+                    };
                 }
             }
 
@@ -273,7 +272,10 @@ impl CRDParser {
             })
         } else if go_type.contains("/") {
             // Qualified type name - create reference
-            Ok(Type::Reference(go_type.to_string()))
+            Ok(Type::Reference {
+                name: go_type.to_string(),
+                module: None,
+            })
         } else {
             // Basic types or unqualified names
             match go_type {
@@ -281,7 +283,10 @@ impl CRDParser {
                 "int" | "int32" | "int64" => Ok(Type::Integer),
                 "float32" | "float64" => Ok(Type::Number),
                 "bool" => Ok(Type::Bool),
-                _ => Ok(Type::Reference(go_type.to_string())),
+                _ => Ok(Type::Reference {
+                    name: go_type.to_string(),
+                    module: None,
+                }),
             }
         }
     }
@@ -289,6 +294,36 @@ impl CRDParser {
     #[allow(clippy::only_used_in_recursion)]
     fn json_schema_to_type(&self, schema: &serde_json::Value) -> Result<Type, ParserError> {
         use serde_json::Value;
+
+        // Handle $ref first
+        if let Some(ref_str) = schema.get("$ref").and_then(|v| v.as_str()) {
+            // Extract type name from reference, handling #/definitions/ prefix
+            let type_name = ref_str.trim_start_matches("#/definitions/");
+            let type_name = type_name.rsplit('/').next().unwrap_or(type_name);
+
+            // Check if this is a k8s reference
+            let module = if ref_str.contains("io.k8s.") {
+                // Extract k8s module path from the reference
+                let full_name = ref_str.trim_start_matches("#/definitions/");
+                if full_name.starts_with("io.k8s.") {
+                    let parts: Vec<&str> = full_name.split('.').collect();
+                    if parts.len() > 1 {
+                        Some(parts[..parts.len() - 1].join("."))
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
+
+            return Ok(Type::Reference {
+                name: type_name.to_string(),
+                module,
+            });
+        }
 
         let schema_type = schema.get("type").and_then(|v| v.as_str());
 
@@ -351,7 +386,10 @@ impl CRDParser {
                         .iter()
                         .map(|s| self.json_schema_to_type(s))
                         .collect::<Result<Vec<_>, _>>()?;
-                    return Ok(Type::Union(types));
+                    return Ok(Type::Union {
+                        types,
+                        coercion_hint: None,
+                    });
                 }
 
                 if let Some(Value::Array(schemas)) = schema.get("anyOf") {
@@ -359,7 +397,10 @@ impl CRDParser {
                         .iter()
                         .map(|s| self.json_schema_to_type(s))
                         .collect::<Result<Vec<_>, _>>()?;
-                    return Ok(Type::Union(types));
+                    return Ok(Type::Union {
+                        types,
+                        coercion_hint: None,
+                    });
                 }
 
                 Ok(Type::Any)

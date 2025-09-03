@@ -234,6 +234,45 @@ pub fn save_fingerprint(
     Ok(())
 }
 
+/// Save fingerprint with output content tracking after successful generation
+pub fn save_fingerprint_with_output(
+    output_dir: &Path,
+    source: &dyn Fingerprintable,
+    manifest_content: Option<&str>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    use amalgam_core::fingerprint::FingerprintBuilder;
+
+    // Create a new fingerprint that includes output content
+    let source_fingerprint = source.create_fingerprint()?;
+
+    let mut builder = FingerprintBuilder::new();
+
+    // Copy source fingerprint data
+    builder.with_source_info(source_fingerprint.source_info.clone());
+    builder.add_content(source_fingerprint.content_hash.as_bytes());
+
+    // Add output directory content
+    if output_dir.exists() {
+        builder.add_output_directory(output_dir)?;
+    }
+
+    // Add manifest content if provided
+    if let Some(manifest) = manifest_content {
+        builder.with_manifest_content(manifest);
+    }
+
+    let enhanced_fingerprint = builder.build();
+    let fingerprint_path = ContentFingerprint::fingerprint_path(output_dir);
+
+    // Ensure directory exists
+    if let Some(parent) = fingerprint_path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+
+    enhanced_fingerprint.save_to_file(&fingerprint_path)?;
+    Ok(())
+}
+
 /// Check what type of change occurred (for different update strategies)
 #[derive(Debug, Clone)]
 pub enum ChangeType {
@@ -241,8 +280,12 @@ pub enum ChangeType {
     NoChange,
     /// Only metadata changed (version, timestamps) - might update with same content
     MetadataOnly,
-    /// Content changed - full regeneration required
+    /// Source content changed - full regeneration required
     ContentChanged,
+    /// Generated output files were manually modified
+    OutputChanged,
+    /// Manifest changed (packages added/removed/modified)
+    ManifestChanged,
     /// No previous fingerprint - first generation
     FirstGeneration,
 }
@@ -260,11 +303,19 @@ pub fn detect_change_type(
     let last_fingerprint = ContentFingerprint::load_from_file(&fingerprint_path)?;
     let current_fingerprint = source.create_fingerprint()?;
 
+    // Check different types of changes in priority order
     if current_fingerprint.content_matches(&last_fingerprint) {
         Ok(ChangeType::NoChange)
+    } else if current_fingerprint.manifest_changed(&last_fingerprint) {
+        Ok(ChangeType::ManifestChanged)
+    } else if current_fingerprint.content_changed(&last_fingerprint) {
+        Ok(ChangeType::ContentChanged)
+    } else if current_fingerprint.output_changed(&last_fingerprint) {
+        Ok(ChangeType::OutputChanged)
     } else if current_fingerprint.metadata_changed(&last_fingerprint) {
         Ok(ChangeType::MetadataOnly)
     } else {
+        // Shouldn't happen, but default to content changed to be safe
         Ok(ChangeType::ContentChanged)
     }
 }

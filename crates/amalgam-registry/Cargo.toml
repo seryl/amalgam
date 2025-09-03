@@ -1,0 +1,26 @@
+[package]
+name = "amalgam-registry"
+version = "0.7.0"
+edition = "2021"
+authors = ["Amalgam Contributors"]
+description = "Package registry and dependency management for Amalgam"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/txbrown/amalgam"
+
+[dependencies]
+amalgam-core = { path = "../amalgam-core" }
+anyhow = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+semver = "1.0"
+toml = "0.8"
+tracing = "0.1"
+chrono = { version = "0.4", features = ["serde"] }
+sha2 = "0.10"
+hex = "0.4"
+indexmap = { version = "2.0", features = ["serde"] }
+petgraph = "0.6"
+
+[dev-dependencies]
+tempfile = "3.8"
+insta = "1.34"

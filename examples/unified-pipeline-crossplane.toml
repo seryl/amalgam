@@ -1,0 +1,146 @@
+# Unified Pipeline Configuration for CrossPlane Providers
+# Demonstrates multi-provider processing with the unified pipeline
+
+[metadata]
+name = "crossplane-multi-cloud"
+version = "0.1.0"
+description = "Multi-cloud CrossPlane providers using unified pipeline"
+
+# Stage 1: Fetch AWS Provider CRDs
+[[stages]]
+name = "fetch-aws-provider"
+description = "Fetch CrossPlane AWS provider CRDs"
+
+[stages.input]
+type = "crds"
+crd_paths = [
+    "https://raw.githubusercontent.com/crossplane/provider-aws/master/package/crds/ec2.aws.crossplane.io_instances.yaml",
+    "https://raw.githubusercontent.com/crossplane/provider-aws/master/package/crds/s3.aws.crossplane.io_buckets.yaml",
+    "https://raw.githubusercontent.com/crossplane/provider-aws/master/package/crds/rds.aws.crossplane.io_dbinstances.yaml",
+]
+
+[stages.processing]
+import_strategy = "aggressive"
+layout = "crossplane"
+symbol_resolution = "global"
+transforms = ["normalize", "special-cases", "validate"]
+
+[[stages.processing.special_cases]]
+pattern = "aws.crossplane.io"
+action = "provider_naming"
+value = "aws"
+
+[stages.output]
+type = "nickel"
+target_path = "generated/crossplane/aws"
+include_contracts = true
+package_name = "crossplane-aws"
+
+# Stage 2: Fetch GCP Provider CRDs
+[[stages]]
+name = "fetch-gcp-provider"
+description = "Fetch CrossPlane GCP provider CRDs"
+
+[stages.input]
+type = "crds"
+crd_paths = [
+    "https://raw.githubusercontent.com/crossplane/provider-gcp/master/package/crds/compute.gcp.crossplane.io_networks.yaml",
+    "https://raw.githubusercontent.com/crossplane/provider-gcp/master/package/crds/storage.gcp.crossplane.io_buckets.yaml",
+]
+
+[stages.processing]
+import_strategy = "aggressive"
+layout = "crossplane"
+symbol_resolution = "global"
+transforms = ["normalize", "special-cases", "validate"]
+
+[[stages.processing.special_cases]]
+pattern = "gcp.crossplane.io"
+action = "provider_naming"
+value = "gcp"
+
+[stages.output]
+type = "nickel"
+target_path = "generated/crossplane/gcp"
+include_contracts = true
+package_name = "crossplane-gcp"
+
+# Stage 3: Fetch Azure Provider CRDs
+[[stages]]
+name = "fetch-azure-provider"
+description = "Fetch CrossPlane Azure provider CRDs"
+
+[stages.input]
+type = "crds"
+crd_paths = [
+    "https://raw.githubusercontent.com/crossplane/provider-azure/master/package/crds/compute.azure.crossplane.io_virtualnetworks.yaml",
+    "https://raw.githubusercontent.com/crossplane/provider-azure/master/package/crds/database.azure.crossplane.io_postgresqlservers.yaml",
+]
+
+[stages.processing]
+import_strategy = "aggressive"
+layout = "crossplane"
+symbol_resolution = "global"
+transforms = ["normalize", "special-cases", "validate"]
+
+[[stages.processing.special_cases]]
+pattern = "azure.crossplane.io"
+action = "provider_naming"
+value = "azure"
+
+[stages.output]
+type = "nickel"
+target_path = "generated/crossplane/azure"
+include_contracts = true
+package_name = "crossplane-azure"
+
+# Stage 4: Generate unified multi-cloud module
+[[stages]]
+name = "generate-unified-module"
+description = "Create unified multi-cloud module"
+
+[stages.input]
+type = "local"
+crd_paths = [
+    "generated/crossplane/aws",
+    "generated/crossplane/gcp",
+    "generated/crossplane/azure",
+]
+
+[stages.processing]
+import_strategy = "minimal"
+layout = "flat"
+symbol_resolution = "local"
+
+[stages.output]
+type = "nickel"
+target_path = "generated/crossplane/mod.ncl"
+package_name = "crossplane-multi-cloud"
+
+[pipeline]
+error_recovery = "best-effort"
+parallel_stages = true
+export_diagnostics = true
+diagnostic_path = "crossplane-diagnostics.json"
+
+[pipeline.cache]
+enabled = true
+path = ".amalgam-cache/crossplane"
+ttl = 7200
+
+[pipeline.validation]
+strict_mode = false
+allow_unknown_fields = true
+validate_references = true
+
+[pipeline.performance]
+max_parallel_transforms = 8
+memory_limit_mb = 4096
+timeout_seconds = 600
+
+[pipeline.recovery]
+fallback_types = true
+skip_invalid_modules = true
+use_dynamic_types = false
+prompt_for_fixes = false
+suggest_alternatives = true

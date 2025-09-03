@@ -23,16 +23,22 @@ path = "src/main.rs"
 amalgam-core.workspace = true
 amalgam-parser.workspace = true
 amalgam-codegen.workspace = true
+amalgam-registry = { path = "../amalgam-registry" }
+amalgam-daemon = { path = "../amalgam-daemon" }
 clap.workspace = true
 tokio.workspace = true
 anyhow.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
+tracing-forest.workspace = true
+tracing-chrome.workspace = true
 serde_json.workspace = true
 serde_yaml.workspace = true
-openapiv3.workspace = true
+openapiv3.workspace = true  # This now refers to openapiv3-extended
 toml = "0.8"
 chrono = "0.4"
 serde.workspace = true
 tempfile.workspace = true
 walkdir = "2.4"
+reqwest.workspace = true
+uuid = { version = "1.0", features = ["v7", "serde"] }

@@ -1,0 +1,70 @@
+# Unified Pipeline Configuration for K8s Core Types
+# This demonstrates the new unified pipeline architecture
+
+[metadata]
+name = "k8s-core-unified"
+version = "0.1.0"
+description = "Kubernetes core types using unified pipeline"
+
+[[stages]]
+name = "fetch-k8s-core"
+description = "Fetch core Kubernetes types from OpenAPI spec"
+
+[stages.input]
+type = "openapi"
+spec_path = "https://raw.githubusercontent.com/kubernetes/kubernetes/master/api/openapi-spec/swagger.json"
+
+[stages.processing]
+import_strategy = "smart"
+layout = "by-group"
+symbol_resolution = "global"
+transforms = ["normalize", "validate", "optimize"]
+
+[[stages.processing.special_cases]]
+pattern = "io.k8s.*"
+action = "remove_prefix"
+value = "io.k8s."
+
+[stages.output]
+type = "nickel"
+target_path = "generated/k8s-core"
+include_contracts = true
+package_name = "k8s-core"
+
+[[stages]]
+name = "generate-nickel-manifest"
+description = "Generate Nickel package manifest"
+
+[stages.input]
+type = "local"
+crd_paths = ["generated/k8s-core"]
+
+[stages.processing]
+import_strategy = "minimal"
+layout = "flat"
+symbol_resolution = "local"
+
+[stages.output]
+type = "nickel-manifest"
+target_path = "generated/k8s-core/Nickel-pkg.ncl"
+
+[pipeline]
+error_recovery = "best-effort"
+parallel_stages = false
+export_diagnostics = true
+diagnostic_path = "pipeline-diagnostics.json"
+
+[pipeline.cache]
+enabled = true
+path = ".amalgam-cache"
+ttl = 3600
+
+[pipeline.validation]
+strict_mode = false
+allow_unknown_fields = true
+validate_references = true
+
+[pipeline.performance]
+max_parallel_transforms = 4
+memory_limit_mb = 2048
+timeout_seconds = 300

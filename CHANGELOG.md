@@ -5,6 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2025-09-15
+
+### Added
+- **Unified IR Pipeline**: Complete DAG-based compilation pipeline with symbol tables and dependency graphs
+- **Two-Phase Compilation**: Analysis phase builds global symbol table, synthesis phase generates code with full dependency knowledge
+- **Special Case Registry**: TOML-driven configuration system for edge cases, eliminating all hardcoded special logic
+- **Module Registry**: Centralized module resolution with lexical scoping and cross-module dependency tracking
+- **Compilation Unit**: Intermediate representation between analysis and synthesis phases for clean separation of concerns
+- **Pattern-Based Module Aliases**: Intelligent module alias generation (e.g., `metav1`, `corev1`, `storagev1`) to avoid naming conflicts
+- **Consistent mod.ncl Structure**: Every directory now includes a `mod.ncl` file that imports all types in that directory
+
+### Changed
+- **Major Architecture Overhaul**: Migrated from ad-hoc processing to structured two-phase compilation with proper symbol tables
+- **Module System**: Complete rewrite with hierarchical `mod.ncl` generation and proper import hoisting
+- **Import Resolution**: All imports now hoisted to module level, eliminating inline imports throughout generated code
+- **Import Paths**: All import paths now use consistent `mod.ncl` structure (e.g., `../core/v1/mod.ncl` instead of `../core/v1.ncl`)
+- **Module Alias Generation**: Replaced hardcoded if-else chains with pattern-based alias extraction from import paths
+- **Special Cases**: Moved all K8s and Crossplane special handling from code to declarative TOML configuration files
+- **Directory Structure**: Eliminated redundant subdirectories in package generation (e.g., `crossplane/apiextensions.crossplane.io`)
+- **Test Infrastructure**: Moved test package generation to system temporary directory instead of cluttering examples folder
+- **Code Quality**: Removed ~300 lines of legacy code, fixed all compilation warnings and clippy lints
+- **Error Types**: Large PipelineError variants now boxed to reduce stack allocation pressure
+
+### Fixed
+- **K8s Core Type Imports**: Fixed incorrect import paths for TypedLocalObjectReference, PodTemplateSpec, and other core types
+- **Duplicate Module Variables**: Resolved naming conflicts by using unique module aliases (metav1, corev1) instead of duplicate v1Module declarations
+- **Cross-Module References**: Properly resolved through two-phase compilation and dependency analysis
+- **Import Path Consistency**: All imports now use proper relative paths calculated via ModuleRegistry
+- **Circular Dependencies**: Added detection and proper error reporting via petgraph
+- **Test Failures**: Fixed naming convention tests, module registry tests, and snapshot tests
+- **Memory Safety**: Eliminated all `unwrap()`, `expect()`, and `panic!()` calls in favor of proper Result types
+- **Memory Optimization**: Reduced PipelineError stack footprint from 184 bytes to ~16 bytes by boxing large error variants
+- **Clippy Warnings**: Fixed all warnings including `needless_borrow`, `manual_flatten`, `vec_init_then_push`, and function argument count issues
+- **Code Quality**: Fixed all clippy warnings including `result_large_err`, `derivable_impls`, and `should_implement_trait`
+- **Error Handling**: Improved error message formatting and Display implementations for better debugging experience
+
+### Removed
+- **Hardcoded Logic**: Eliminated all hardcoded K8s and Crossplane special cases (now in TOML configuration)
+- **Inline Imports**: All imports now properly hoisted to module level
+- **Hardcoded Module Aliases**: Replaced with pattern-based extraction from import paths
+
 ## [0.6.4] - 2025-09-01
 
 ### Added
@@ -13,7 +54,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support for unversioned k8s types (e.g., `RawExtension`, `IntOrString`) placed in v0 directory to avoid conflicts
 - Reserved keyword escaping for field names starting with `$` (like `$ref`, `$schema`) in generated Nickel code
 
-### Fixed  
+### Fixed
 - **Required Field Usability Issue**: Made all fields optional by default to enable gradual object construction (e.g., `k8s.v1.LabelSelector & {}` now works)
 - **Cross-Package Import Resolution**: Fixed imports to use full package IDs from manifest configuration instead of bare package names
 - Missing type references (e.g., `RawExtension`, `NodeSelector`) now properly discovered and generated
@@ -24,7 +65,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **Breaking**: All generated fields are now optional by default instead of required, enabling practical usage patterns
 - k8s type extraction now uses seed-based recursive discovery instead of fixed namespace lists
-- Updated to Kubernetes v1.33.4 schema version (from v1.31.0)  
+- Updated to Kubernetes v1.33.4 schema version (from v1.31.0)
 - Unversioned types are placed in v0 to distinguish from versioned APIs
 - Enhanced import logic handles both v1 core types and v0 unversioned types
 - Package imports now use full package IDs like `"github:seryl/nickel-pkgs/pkgs/k8s_io"` for consistency
@@ -37,7 +78,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support for unversioned k8s types (e.g., `RawExtension`, `IntOrString`) placed in v0 directory to avoid conflicts
 - Reserved keyword escaping for field names starting with `$` (like `$ref`, `$schema`) in generated Nickel code
 
-### Fixed  
+### Fixed
 - **Required Field Usability Issue**: Made all fields optional by default to enable gradual object construction (e.g., `k8s.v1.LabelSelector & {}` now works)
 - **Cross-Package Import Resolution**: Fixed imports to use full package IDs from manifest configuration instead of bare package names
 - Missing type references (e.g., `RawExtension`, `NodeSelector`) now properly discovered and generated
@@ -48,7 +89,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **Breaking**: All generated fields are now optional by default instead of required, enabling practical usage patterns
 - k8s type extraction now uses seed-based recursive discovery instead of fixed namespace lists
-- Updated to Kubernetes v1.33.4 schema version (from v1.31.0)  
+- Updated to Kubernetes v1.33.4 schema version (from v1.31.0)
 - Unversioned types are placed in v0 to distinguish from versioned APIs
 - Enhanced import logic handles both v1 core types and v0 unversioned types
 - Package imports now use full package IDs like `"github:seryl/nickel-pkgs/pkgs/k8s_io"` for consistency

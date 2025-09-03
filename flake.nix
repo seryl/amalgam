@@ -21,12 +21,12 @@
           inherit system;
           config.allowUnfree = true;
         };
-        
+
         # Build Nickel with package support by overriding the derivation
         nickel-with-packages = pkgs.nickel.overrideAttrs (oldAttrs: {
           # Add package-experimental to the build features
           buildFeatures = (oldAttrs.buildFeatures or [ "default" ]) ++ [ "package-experimental" ];
-          
+
           # Update the pname to distinguish it
           pname = "nickel-with-packages";
         });
@@ -275,26 +275,26 @@
         # Release helper that validates everything before version bump
         release = pkgs.writeShellScriptBin "release" ''
           set -euo pipefail
-          
+
           # Color output
           RED='\033[0;31m'
           GREEN='\033[0;32m'
           YELLOW='\033[1;33m'
           NC='\033[0m' # No Color
-          
+
           BUMP_TYPE="''${1:-patch}"
-          
+
           echo -e "''${YELLOW}Starting release process for $BUMP_TYPE version bump...''${NC}"
           echo ""
-          
+
           # Step 1: Run CI checks
           echo -e "''${YELLOW}Step 1: Running CI checks...''${NC}"
-          if ! ci-runner ci; then
+          if ! ci; then
             echo -e "''${RED}✗ CI checks failed! Fix issues before releasing.''${NC}"
             exit 1
           fi
           echo ""
-          
+
           # Step 2: Check snapshot tests
           echo -e "''${YELLOW}Step 2: Checking snapshot tests...''${NC}"
           if ! ${rustWithComponents}/bin/cargo insta test; then
@@ -303,29 +303,29 @@
           fi
           echo -e "''${GREEN}✓ Snapshot tests passed''${NC}"
           echo ""
-          
+
           # Step 3: Get current version
           CURRENT_VERSION=$(${pkgs.toml2json}/bin/toml2json < Cargo.toml | ${pkgs.jq}/bin/jq -r '.workspace.package.version')
           echo -e "''${GREEN}Current version: $CURRENT_VERSION''${NC}"
-          
+
           # Step 4: Bump version
           echo -e "''${YELLOW}Step 4: Bumping $BUMP_TYPE version...''${NC}"
           if ! version-bump $BUMP_TYPE; then
             echo -e "''${RED}✗ Failed to bump version!''${NC}"
             exit 1
           fi
-          
+
           # Get the new version
           NEW_VERSION=$(${pkgs.toml2json}/bin/toml2json < Cargo.toml | ${pkgs.jq}/bin/jq -r '.workspace.package.version')
           echo -e "''${GREEN}✓ Version bumped to $NEW_VERSION''${NC}"
           echo ""
-          
+
           # Step 5: Update Cargo.lock
           echo -e "''${YELLOW}Step 5: Updating Cargo.lock...''${NC}"
           ${rustWithComponents}/bin/cargo update
           echo -e "''${GREEN}✓ Cargo.lock updated''${NC}"
           echo ""
-          
+
           # Step 6: Check publish readiness
           echo -e "''${YELLOW}Step 6: Checking publish readiness...''${NC}"
           if ! publish check --skip-checks; then
@@ -334,20 +334,20 @@
           fi
           echo -e "''${GREEN}✓ Ready to publish''${NC}"
           echo ""
-          
+
           # Step 7: Commit changes
           echo -e "''${YELLOW}Step 7: Committing version bump...''${NC}"
           ${pkgs.git}/bin/git add -A
           ${pkgs.git}/bin/git commit -m "release: v$NEW_VERSION"
           echo -e "''${GREEN}✓ Changes committed''${NC}"
           echo ""
-          
+
           # Step 8: Tag the release
           echo -e "''${YELLOW}Step 8: Creating git tag...''${NC}"
           ${pkgs.git}/bin/git tag "v$NEW_VERSION"
           echo -e "''${GREEN}✓ Tagged as v$NEW_VERSION''${NC}"
           echo ""
-          
+
           echo -e "''${GREEN}🎉 Release v$NEW_VERSION prepared successfully!''${NC}"
           echo ""
           echo -e "''${YELLOW}Next steps:''${NC}"
@@ -361,44 +361,32 @@
         '';
 
         # CI runner - the primary test command
-        ci-runner = pkgs.writeShellScriptBin "ci-runner" ''
+        ci = pkgs.writeShellScriptBin "ci" ''
           set -euo pipefail
 
-          MODE="''${1:-ci}"
+          echo "Running CI test suite..."
+          echo ""
 
-          case $MODE in
-            ci)
-              echo "Running CI test suite..."
-              echo ""
+          # Ensure we're in local dev mode
+          workspace-deps local > /dev/null 2>&1
 
-              # Ensure we're in local dev mode
-              workspace-deps local > /dev/null 2>&1
+          echo "1. Running cargo check..."
+          ${rustWithComponents}/bin/cargo check --workspace --all-targets
 
-              echo "1. Running cargo check..."
-              ${rustWithComponents}/bin/cargo check --workspace --all-targets
+          echo ""
+          echo "2. Running tests..."
+          ${rustWithComponents}/bin/cargo test --workspace
 
-              echo ""
-              echo "2. Running tests..."
-              ${rustWithComponents}/bin/cargo test --workspace
+          echo ""
+          echo "3. Running clippy..."
+          ${rustWithComponents}/bin/cargo clippy --workspace --all-targets -- --deny warnings
 
-              echo ""
-              echo "3. Running clippy..."
-              ${rustWithComponents}/bin/cargo clippy --workspace --all-targets -- --deny warnings
+          echo ""
+          echo "4. Checking formatting..."
+          ${rustWithComponents}/bin/cargo fmt --check
 
-              echo ""
-              echo "4. Checking formatting..."
-              ${rustWithComponents}/bin/cargo fmt --check
-
-              echo ""
-              echo "✓ All CI checks passed!"
-              ;;
-            *)
-              echo "Usage: ci-runner ci"
-              echo ""
-              echo "Runs the complete CI test suite"
-              exit 1
-              ;;
-          esac
+          echo ""
+          echo "✓ All CI checks passed!"
         '';
 
         # Auto-fix command for formatting and clippy
@@ -420,47 +408,29 @@
 
           echo ""
           echo "3. Checking if everything is fixed..."
-          if ci-runner ci > /dev/null 2>&1; then
+          if ci > /dev/null 2>&1; then
             echo "✓ All issues fixed!"
           else
             echo "⚠ Some issues may require manual intervention"
-            echo "Run 'ci-runner ci' to see remaining issues"
+            echo "Run 'ci' to see remaining issues"
           fi
         '';
 
-        # Regenerate examples helper
+        # Smart manifest-based regeneration
         regenerate-examples = pkgs.writeShellScriptBin "regenerate-examples" ''
           set -euo pipefail
 
-          echo "🔨 Building amalgam..."
-          ${rustWithComponents}/bin/cargo build --release
+          if [ ! -f ".amalgam-manifest.toml" ]; then
+            echo "❌ No .amalgam-manifest.toml found in current directory"
+            echo "Please ensure you're in the amalgam project root."
+            exit 1
+          fi
+
+          echo "🧠 Smart manifest-based regeneration with content tracking..."
+          ${rustWithComponents}/bin/cargo run --release --bin amalgam -- generate-from-manifest
 
           echo ""
-          echo "🧹 Cleaning old examples..."
-          rm -rf examples/crossplane
-          rm -rf examples/k8s_io
-
-          echo ""
-          echo "📥 Generating Kubernetes core types..."
-          ${rustWithComponents}/bin/cargo run --bin amalgam -- import k8s-core \
-            --version v1.33.4 \
-            --output examples/k8s_io
-
-          echo ""
-          echo "📥 Importing Crossplane CRDs..."
-          ${rustWithComponents}/bin/cargo run --bin amalgam -- import url \
-            --url https://github.com/crossplane/crossplane/tree/main/cluster/crds \
-            --output examples/crossplane
-
-          echo ""
-          echo "✅ Regeneration complete!"
-          echo ""
-          echo "To test the generated files:"
-          echo "  nickel export examples/test_crossplane_import.ncl"
-          echo ""
-          echo "To check all files for syntax errors:"
-          echo "  find examples/crossplane -name '*.ncl' -exec nickel typecheck {} \;"
-          echo "  find examples/k8s_io -name '*.ncl' -exec nickel typecheck {} \;"
+          echo "✅ Smart regeneration complete!"
         '';
 
         # Custom source filter that includes test fixtures
@@ -471,7 +441,7 @@
             (craneLib.filterCargoSources path type) ||
             # Include test fixture files
             (builtins.match ".*/tests/fixtures/.*\\.yaml$" path != null) ||
-            # Include test snapshot files  
+            # Include test snapshot files
             (builtins.match ".*/tests/snapshots/.*\\.snap$" path != null) ||
             # Include any other test resources
             (builtins.match ".*/tests/.*\\.(toml|json|yaml|ncl)$" path != null);
@@ -498,13 +468,29 @@
           ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [];
         };
 
+        # Docker/OCI image builders
+        dockerImages = import ./nix/packages/docker-image {
+          inherit pkgs amalgam;
+          lib = pkgs.lib;
+          nickel = nickel-with-packages;
+          generated-packages = null;  # Will be populated by CI
+        };
+
       in
       {
-        # Packages
         packages = {
           default = amalgam;
           amalgam = amalgam;
           nickel-with-packages = nickel-with-packages;
+
+          # Docker images
+          amalgam-image = dockerImages.amalgamImage;
+          packages-image = dockerImages.packagesImage;
+          amalgam-layered = dockerImages.amalgamLayeredImage;
+
+          # Helper scripts for pushing images
+          push-to-registry = dockerImages.pushToRegistry;
+          push-with-skopeo = dockerImages.pushWithSkopeo;
         };
 
         # Apps
@@ -522,7 +508,7 @@
             rustWithComponents
 
             # Smart commands
-            ci-runner
+            ci
             fix
             release
             publish
@@ -570,7 +556,7 @@
             kubectl
             kind
 
-            # For testing generated Nickel files (with package support)
+            # For publishing Nickel packages (experimental)
             nickel-with-packages
 
           ]) ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [];
@@ -582,7 +568,7 @@
             echo "Version $VERSION"
             echo ""
             echo "Essential Commands:"
-            echo "  ci-runner ci         - Run complete test suite (tests, clippy, fmt)"
+            echo "  ci                   - Run complete test suite (tests, clippy, fmt)"
             echo "  fix                  - Auto-fix formatting and clippy issues"
             echo "  regenerate-examples  - Rebuild and regenerate example CRDs"
             echo "  release patch        - Bump version and create release"
@@ -590,7 +576,7 @@
             echo ""
             echo "Workflow:"
             echo "  1. fix                           # Auto-fix issues"
-            echo "  2. ci-runner ci                  # Validate everything"
+            echo "  2. ci                            # Validate everything"
             echo "  3. release [patch|minor|major]   # Create release"
             echo "  4. publish                       # Publish to crates.io"
             echo "  5. git push && git push --tags  # Push to GitHub"

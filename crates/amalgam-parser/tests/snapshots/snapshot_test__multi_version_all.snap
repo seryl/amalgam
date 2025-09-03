@@ -1,36 +1,43 @@
 ---
 source: crates/amalgam-parser/tests/snapshot_test.rs
-assertion_line: 120
 expression: all_versions
 ---
-# Module: Evolving.v1alpha1.test.io
-
 {
-  Evolving = {
-    spec | optional | {
-      field1 | optional | String,
-    },
-  },
+  spec
+     | {
+    field1
+       | String
+       | optional
+  }
+     | optional
 }
-# Module: Evolving.v1beta1.test.io
-
 {
-  Evolving = {
-    spec | optional | {
-      field1 | optional | String,
-      field2 | optional | Number,
-    },
-  },
+  spec
+     | {
+    field1
+       | String
+       | optional,
+    field2
+       | Number
+       | optional
+  }
+     | optional
 }
-# Module: Evolving.v1.test.io
-
 {
-  Evolving = {
-    metadata | optional | io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta,
-    spec | optional | {
-      field1 | optional | String,
-      field2 | optional | Number,
-      field3 | optional | Bool,
-    },
-  },
+  metadata
+     | v1Module.ObjectMeta
+     | optional,
+  spec
+     | {
+    field1
+       | String
+       | optional,
+    field2
+       | Number
+       | optional,
+    field3
+       | Bool
+       | optional
+  }
+     | optional
 }
