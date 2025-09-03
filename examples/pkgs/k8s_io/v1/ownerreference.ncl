@@ -1,21 +1,19 @@
-# Module: k8s.io.v1.ownerreference
+# Module: k8s.io.v1
 
+# OwnerReference contains enough information to let you identify an owning object. An owning object must be in the same namespace as the dependent, or be cluster-scoped, so there is no namespace field.
 {
-  # OwnerReference contains enough information to let you identify an owning object. An owning object must be in the same namespace as the dependent, or be cluster-scoped, so there is no namespace field.
-  OwnerReference = {
-    apiVersion | optional | String | doc "API version of the referent.",
-    blockOwnerDeletion | optional | Bool | doc m%"
+  apiVersion | optional | String | doc "API version of the referent.",
+  blockOwnerDeletion | optional | Bool | doc m%"
 If true, AND if the owner has the "foregroundDeletion" finalizer, then the owner cannot be deleted from the key-value store until this reference is removed. See https://kubernetes.io/docs/concepts/architecture/garbage-collection/#foreground-deletion for how the garbage collector interacts with this field and enforces the foreground deletion. Defaults to false. To set this field, a user needs "delete" permission of the owner, otherwise 422 (Unprocessable Entity) will be returned.
 "%,
-    controller | optional | Bool | doc "If true, this reference points to the managing controller.",
-    kind | optional | String | doc m%"
+  controller | optional | Bool | doc "If true, this reference points to the managing controller.",
+  kind | optional | String | doc m%"
 Kind of the referent. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
 "%,
-    name | optional | String | doc m%"
+  name | optional | String | doc m%"
 Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names
 "%,
-    uid | optional | String | doc m%"
+  uid | optional | String | doc m%"
 UID of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#uids
-"%,
-  },
+"%
 }

@@ -1,13 +1,11 @@
-# Module: k8s.io.v1.volumeresourcerequirements
+# Module: k8s.io.v1
 
+# VolumeResourceRequirements describes the storage resource requirements for a volume.
 {
-  # VolumeResourceRequirements describes the storage resource requirements for a volume.
-  VolumeResourceRequirements = {
-    limits | optional | { .. } | doc m%"
+  limits | optional | { .. } | doc m%"
 Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
 "%,
-    requests | optional | { .. } | doc m%"
+  requests | optional | { .. } | doc m%"
 Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. Requests cannot exceed Limits. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
-"%,
-  },
+"%
 }

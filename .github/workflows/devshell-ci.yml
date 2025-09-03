@@ -19,7 +19,7 @@ jobs:
     # Skip CI if ENABLE_CI is not set to 'true'
     if: github.event_name == 'workflow_dispatch' || vars.ENABLE_CI == 'true'
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -39,13 +39,13 @@ jobs:
         run: |
           # Install direnv
           nix profile install nixpkgs#direnv nixpkgs#nix-direnv
-          
+
           # Configure direnv
           echo "source_url \"https://raw.githubusercontent.com/nix-community/nix-direnv/master/direnvrc\" \"sha256-zelF0vLbEl5uaqrfIzbgNzJWGmLzCmYAkInj/LNxvKs=\"" > ~/.direnvrc
-          
+
           # Allow the .envrc
           direnv allow
-          
+
           # Export direnv hooks for bash
           eval "$(direnv hook bash)"
 
@@ -59,11 +59,11 @@ jobs:
         run: |
           # Load the dev shell via direnv
           eval "$(direnv export bash)"
-          
+
           if [ -n "$ATTIC_TOKEN" ]; then
             attic login "$ATTIC_SERVER" "$ATTIC_TOKEN"
           fi
-          
+
           attic use "$ATTIC_CACHE"
           attic watch-store "$ATTIC_CACHE" &
 
@@ -75,10 +75,10 @@ jobs:
         run: |
           # Load the dev shell environment via direnv
           eval "$(direnv export bash)"
-          
+
           # Now we're in the dev shell with all tools available
           echo "Running CI pipeline with target: ${{ github.event.inputs.target || 'ci' }}"
-          
+
           # Use ci-runner command from the devshell
           ci-runner ${{ github.event.inputs.target || 'ci' }}
 
@@ -97,7 +97,7 @@ jobs:
     # Skip CI if ENABLE_CI is not set to 'true'
     if: github.event_name == 'workflow_dispatch' || vars.ENABLE_CI == 'true'
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

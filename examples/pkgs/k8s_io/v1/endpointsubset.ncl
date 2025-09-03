@@ -1,29 +1,27 @@
-# Module: k8s.io.v1.endpointsubset
-
 let endpointaddress = import "./endpointaddress.ncl" in
 let endpointport = import "./endpointport.ncl" in
 
+# Module: k8s.io.v1
+
+# EndpointSubset is a group of addresses with a common set of ports. The expanded set of endpoints is the Cartesian product of Addresses x Ports. For example, given:
+# 
+# 	{
+# 	  Addresses: [{"ip": "10.10.1.1"}, {"ip": "10.10.2.2"}],
+# 	  Ports:     [{"name": "a", "port": 8675}, {"name": "b", "port": 309}]
+# 	}
+# 
+# The resulting set of endpoints can be viewed as:
+# 
+# 	a: [ 10.10.1.1:8675, 10.10.2.2:8675 ],
+# 	b: [ 10.10.1.1:309, 10.10.2.2:309 ]
+# 
+# Deprecated: This API is deprecated in v1.33+.
 {
-  # EndpointSubset is a group of addresses with a common set of ports. The expanded set of endpoints is the Cartesian product of Addresses x Ports. For example, given:
-  # 
-  # 	{
-  # 	  Addresses: [{"ip": "10.10.1.1"}, {"ip": "10.10.2.2"}],
-  # 	  Ports:     [{"name": "a", "port": 8675}, {"name": "b", "port": 309}]
-  # 	}
-  # 
-  # The resulting set of endpoints can be viewed as:
-  # 
-  # 	a: [ 10.10.1.1:8675, 10.10.2.2:8675 ],
-  # 	b: [ 10.10.1.1:309, 10.10.2.2:309 ]
-  # 
-  # Deprecated: This API is deprecated in v1.33+.
-  EndpointSubset = {
-    addresses | optional | Array endpointaddress.EndpointAddress | doc m%"
+  addresses | optional | Array endpointaddress | doc m%"
 IP addresses which offer the related ports that are marked as ready. These endpoints should be considered safe for load balancers and clients to utilize.
 "%,
-    notReadyAddresses | optional | Array endpointaddress.EndpointAddress | doc m%"
+  notReadyAddresses | optional | Array endpointaddress | doc m%"
 IP addresses which offer the related ports but are not currently marked as ready because they have not yet finished starting, have recently failed a readiness check, or have recently failed a liveness check.
 "%,
-    ports | optional | Array endpointport.EndpointPort | doc "Port numbers available on the related IP addresses.",
-  },
+  ports | optional | Array endpointport | doc "Port numbers available on the related IP addresses."
 }

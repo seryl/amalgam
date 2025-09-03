@@ -24,3 +24,7 @@ chrono = "0.4"
 
 [dev-dependencies]
 proptest.workspace = true
+walkdir = "2.3"
+tracing-chrome = "0.7"
+tracing-forest = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }

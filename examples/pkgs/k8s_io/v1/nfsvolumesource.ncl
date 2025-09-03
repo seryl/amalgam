@@ -1,16 +1,14 @@
-# Module: k8s.io.v1.nfsvolumesource
+# Module: k8s.io.v1
 
+# Represents an NFS mount that lasts the lifetime of a pod. NFS volumes do not support ownership management or SELinux relabeling.
 {
-  # Represents an NFS mount that lasts the lifetime of a pod. NFS volumes do not support ownership management or SELinux relabeling.
-  NFSVolumeSource = {
-    path | optional | String | doc m%"
+  path | optional | String | doc m%"
 path that is exported by the NFS server. More info: https://kubernetes.io/docs/concepts/storage/volumes#nfs
 "%,
-    readOnly | optional | Bool | doc m%"
+  readOnly | optional | Bool | doc m%"
 readOnly here will force the NFS export to be mounted with read-only permissions. Defaults to false. More info: https://kubernetes.io/docs/concepts/storage/volumes#nfs
 "%,
-    server | optional | String | doc m%"
+  server | optional | String | doc m%"
 server is the hostname or IP address of the NFS server. More info: https://kubernetes.io/docs/concepts/storage/volumes#nfs
-"%,
-  },
+"%
 }

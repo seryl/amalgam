@@ -1,0 +1,21 @@
+---
+source: crates/amalgam-parser/tests/practical_usage_snapshot_test.rs
+expression: snapshot_content
+---
+SUCCESS: false
+
+OUTPUT:
+STDERR:
+error: unexpected token
+  ┌─ /Users/jtoft/src/ai/amalgam/examples/pkgs/crossplane/ops.crossplane.io/crossplane/operation.ncl:3:15
+  │
+3 │ CronOperation = {
+  │               ^
+  │
+  ┌─ /Users/jtoft/src/ai/amalgam/examples/pkgs/crossplane/ops.crossplane.io/crossplane/mod.ncl:6:15
+  │
+6 │   Operation = import "./operation.ncl",
+  │               ------------------------ imported here
+
+
+STDOUT:

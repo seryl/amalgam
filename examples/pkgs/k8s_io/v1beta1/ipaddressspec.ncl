@@ -1,12 +1,10 @@
-# Module: k8s.io.v1beta1.ipaddressspec
-
 let parentreference = import "./parentreference.ncl" in
 
+# Module: k8s.io.v1beta1
+
+# IPAddressSpec describe the attributes in an IP Address.
 {
-  # IPAddressSpec describe the attributes in an IP Address.
-  IPAddressSpec = {
-    parentRef | optional | parentreference.ParentReference | doc m%"
+  parentRef | optional | parentreference | doc m%"
 ParentRef references the resource that an IPAddress is attached to. An IPAddress must reference a parent object.
-"%,
-  },
+"%
 }

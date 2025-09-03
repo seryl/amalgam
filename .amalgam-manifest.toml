@@ -35,4 +35,3 @@ keywords = ["crossplane", "kubernetes", "infrastructure", "gitops"]
 # Explicit dependency constraints (auto-detected dependencies will use these)
 [packages.dependencies]
 k8s_io = { version = "1.33.4" }  # Match the k8s version above
-

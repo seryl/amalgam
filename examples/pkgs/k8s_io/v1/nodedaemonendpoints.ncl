@@ -1,10 +1,8 @@
-# Module: k8s.io.v1.nodedaemonendpoints
-
 let daemonendpoint = import "./daemonendpoint.ncl" in
 
+# Module: k8s.io.v1
+
+# NodeDaemonEndpoints lists ports opened by daemons running on the Node.
 {
-  # NodeDaemonEndpoints lists ports opened by daemons running on the Node.
-  NodeDaemonEndpoints = {
-    kubeletEndpoint | optional | daemonendpoint.DaemonEndpoint | doc "Endpoint on which Kubelet is listening.",
-  },
+  kubeletEndpoint | optional | daemonendpoint | doc "Endpoint on which Kubelet is listening."
 }

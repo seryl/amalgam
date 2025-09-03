@@ -1,54 +1,51 @@
-# Module: k8s.io.v1.containerstatus
-
+let resourcestatus = import "./resourcestatus.ncl" in
+let containerstate = import "./containerstate.ncl" in
 let resourcerequirements = import "./resourcerequirements.ncl" in
 let containeruser = import "./containeruser.ncl" in
 let volumemountstatus = import "./volumemountstatus.ncl" in
-let containerstate = import "./containerstate.ncl" in
-let resourcestatus = import "./resourcestatus.ncl" in
 
+# Module: k8s.io.v1
+
+# ContainerStatus contains details for the current status of this container.
 {
-  # ContainerStatus contains details for the current status of this container.
-  ContainerStatus = {
-    allocatedResources | optional | { .. } | doc m%"
+  allocatedResources | optional | { .. } | doc m%"
 AllocatedResources represents the compute resources allocated for this container by the node. Kubelet sets this value to Container.Resources.Requests upon successful pod admission and after successfully admitting desired pod resize.
 "%,
-    allocatedResourcesStatus | optional | Array resourcestatus.ResourceStatus | doc m%"
+  allocatedResourcesStatus | optional | Array resourcestatus | doc m%"
 AllocatedResourcesStatus represents the status of various resources allocated for this Pod.
 "%,
-    containerID | optional | String | doc m%"
+  containerID | optional | String | doc m%"
 ContainerID is the ID of the container in the format '<type>://<container_id>'. Where type is a container runtime identifier, returned from Version call of CRI API (for example "containerd").
 "%,
-    image | optional | String | doc m%"
+  image | optional | String | doc m%"
 Image is the name of container image that the container is running. The container image may not match the image used in the PodSpec, as it may have been resolved by the runtime. More info: https://kubernetes.io/docs/concepts/containers/images.
 "%,
-    imageID | optional | String | doc m%"
+  imageID | optional | String | doc m%"
 ImageID is the image ID of the container's image. The image ID may not match the image ID of the image used in the PodSpec, as it may have been resolved by the runtime.
 "%,
-    lastState | optional | containerstate.ContainerState | doc m%"
+  lastState | optional | containerstate | doc m%"
 LastTerminationState holds the last termination state of the container to help debug container crashes and restarts. This field is not populated if the container is still running and RestartCount is 0.
 "%,
-    name | optional | String | doc m%"
+  name | optional | String | doc m%"
 Name is a DNS_LABEL representing the unique name of the container. Each container in a pod must have a unique name across all container types. Cannot be updated.
 "%,
-    ready | optional | Bool | doc m%"
+  ready | optional | Bool | doc m%"
 Ready specifies whether the container is currently passing its readiness check. The value will change as readiness probes keep executing. If no readiness probes are specified, this field defaults to true once the container is fully started (see Started field).
-
 The value is typically used to determine whether a container is ready to accept traffic.
 "%,
-    resources | optional | resourcerequirements.ResourceRequirements | doc m%"
+  resources | optional | resourcerequirements | doc m%"
 Resources represents the compute resource requests and limits that have been successfully enacted on the running container after it has been started or has been successfully resized.
 "%,
-    restartCount | optional | Number | doc m%"
+  restartCount | optional | Number | doc m%"
 RestartCount holds the number of times the container has been restarted. Kubelet makes an effort to always increment the value, but there are cases when the state may be lost due to node restarts and then the value may be reset to 0. The value is never negative.
 "%,
-    started | optional | Bool | doc m%"
+  started | optional | Bool | doc m%"
 Started indicates whether the container has finished its postStart lifecycle hook and passed its startup probe. Initialized as false, becomes true after startupProbe is considered successful. Resets to false when the container is restarted, or if kubelet loses state temporarily. In both cases, startup probes will run again. Is always true when no startupProbe is defined and container is running and has passed the postStart lifecycle hook. The null value must be treated the same as false.
 "%,
-    state | optional | containerstate.ContainerState | doc "State holds details about the container's current condition.",
-    stopSignal | optional | String | doc "StopSignal reports the effective stop signal for this container",
-    user | optional | containeruser.ContainerUser | doc m%"
+  state | optional | containerstate | doc "State holds details about the container's current condition.",
+  stopSignal | optional | String | doc "StopSignal reports the effective stop signal for this container",
+  user | optional | containeruser | doc m%"
 User represents user identity information initially attached to the first process of the container
 "%,
-    volumeMounts | optional | Array volumemountstatus.VolumeMountStatus | doc "Status of volume mounts.",
-  },
+  volumeMounts | optional | Array volumemountstatus | doc "Status of volume mounts."
 }

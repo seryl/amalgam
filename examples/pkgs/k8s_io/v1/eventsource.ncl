@@ -1,9 +1,7 @@
-# Module: k8s.io.v1.eventsource
+# Module: k8s.io.v1
 
+# EventSource contains information for an event.
 {
-  # EventSource contains information for an event.
-  EventSource = {
-    component | optional | String | doc "Component from which the event is generated.",
-    host | optional | String | doc "Node name on which the event is generated.",
-  },
+  component | optional | String | doc "Component from which the event is generated.",
+  host | optional | String | doc "Node name on which the event is generated."
 }

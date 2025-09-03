@@ -2,10 +2,15 @@
 
 pub mod error;
 pub mod go;
+pub mod import_pipeline_debug;
 pub mod nickel;
+pub mod nickel_manifest;
 pub mod nickel_package;
 pub mod package_mode;
 pub mod resolver;
+
+// Test debug utilities are public for integration tests
+pub mod test_debug;
 
 use amalgam_core::IR;
 

@@ -6,7 +6,7 @@
 mod fixtures;
 
 use amalgam_codegen::{nickel::NickelCodegen, Codegen};
-use amalgam_parser::{crd::CRDParser, package::PackageGenerator, Parser};
+use amalgam_parser::{crd::CRDParser, package::NamespacedPackage, Parser};
 use fixtures::Fixtures;
 use insta::assert_snapshot;
 
@@ -32,25 +32,32 @@ fn test_snapshot_crd_with_k8s_imports() {
     let parser = CRDParser::new();
     let ir = parser.parse(crd.clone()).expect("Failed to parse CRD");
 
-    // Use PackageGenerator to handle imports
-    let mut package = PackageGenerator::new(
-        "test-package".to_string(),
-        std::path::PathBuf::from("/tmp/test"),
-    );
-    package.add_crd(crd);
+    // Use NamespacedPackage to handle imports (unified pipeline)
+    let mut package = NamespacedPackage::new("test-package".to_string());
 
-    let generated_package = package
-        .generate_package()
-        .expect("Failed to generate package");
+    // Add types from the parsed IR to the package
+    for module in &ir.modules {
+        for type_def in &module.types {
+            // Extract version from module name
+            let version = module.name.rsplit('.').next().unwrap_or("v1");
+            package.add_type(
+                crd.spec.group.clone(),
+                version.to_string(),
+                type_def.name.to_lowercase(),
+                type_def.clone(),
+            );
+        }
+    }
 
-    // Get the specific kind file content
-    let content = generated_package
-        .generate_kind_file("test.io", "v1", "simple")
-        .unwrap_or_else(|| {
-            // If no file found, generate from IR directly
-            let mut codegen = NickelCodegen::new();
-            codegen.generate(&ir).expect("Failed to generate")
-        });
+    let generated_package = package;
+
+    // Get the generated content using the new batch generation
+    let version_files = generated_package.generate_version_files("test.io", "v1");
+    let content = version_files.get("simple.ncl").cloned().unwrap_or_else(|| {
+        // If no file found, generate from IR directly
+        let mut codegen = NickelCodegen::new();
+        codegen.generate(&ir).expect("Failed to generate")
+    });
 
     // Snapshot should include imports and resolved references
     assert_snapshot!("simple_with_k8s_imports", content);
@@ -132,20 +139,33 @@ fn test_snapshot_ir_structure() {
 
 #[test]
 fn test_snapshot_package_structure() {
-    let mut package = PackageGenerator::new(
-        "test-package".to_string(),
-        std::path::PathBuf::from("/tmp/test"),
-    );
+    let mut package = NamespacedPackage::new("test-package".to_string());
 
-    // Add multiple CRDs
-    package.add_crd(Fixtures::simple_with_metadata());
-    package.add_crd(Fixtures::with_arrays());
-    package.add_crd(Fixtures::multi_version());
+    // Add multiple CRDs using the unified pipeline
+    for crd in [
+        Fixtures::simple_with_metadata(),
+        Fixtures::with_arrays(),
+        Fixtures::multi_version(),
+    ] {
+        let parser = CRDParser::new();
+        let ir = parser.parse(crd.clone()).expect("Failed to parse CRD");
 
-    // Generate the package
-    let ns_package = package
-        .generate_package()
-        .expect("Failed to generate package");
+        // Add types from the parsed IR to the package
+        for module in &ir.modules {
+            for type_def in &module.types {
+                // Extract version from module name (e.g., "apiextensions.crossplane.io.v1" -> "v1")
+                let version = module.name.rsplit('.').next().unwrap_or("v1");
+                package.add_type(
+                    crd.spec.group.clone(),
+                    version.to_string(),
+                    type_def.name.to_lowercase(),
+                    type_def.clone(),
+                );
+            }
+        }
+    }
+
+    let ns_package = package;
 
     // Get the main module to see structure
     let main_module = ns_package.generate_main_module();

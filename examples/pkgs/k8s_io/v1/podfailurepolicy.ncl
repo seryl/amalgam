@@ -1,12 +1,10 @@
-# Module: k8s.io.v1.podfailurepolicy
-
 let podfailurepolicyrule = import "./podfailurepolicyrule.ncl" in
 
+# Module: k8s.io.v1
+
+# PodFailurePolicy describes how failed pods influence the backoffLimit.
 {
-  # PodFailurePolicy describes how failed pods influence the backoffLimit.
-  PodFailurePolicy = {
-    rules | optional | Array podfailurepolicyrule.PodFailurePolicyRule | doc m%"
+  rules | optional | Array podfailurepolicyrule | doc m%"
 A list of pod failure policy rules. The rules are evaluated in order. Once a rule matches a Pod failure, the remaining of the rules are ignored. When no rule matches the Pod failure, the default handling applies - the counter of pod failures is incremented and it is checked against the backoffLimit. At most 20 elements are allowed.
-"%,
-  },
+"%
 }

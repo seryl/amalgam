@@ -3,8 +3,8 @@
 use amalgam_codegen::nickel_package::{
     NickelPackageConfig, NickelPackageGenerator, PackageDependency,
 };
-use amalgam_parser::crd::{CRDMetadata, CRDNames, CRDSchema, CRDSpec, CRDVersion, CRD};
-use amalgam_parser::package::PackageGenerator;
+use amalgam_parser::crd::{CRDMetadata, CRDNames, CRDParser, CRDSchema, CRDSpec, CRDVersion, CRD};
+use amalgam_parser::{package::NamespacedPackage, Parser};
 use std::path::PathBuf;
 
 fn sample_crd() -> CRD {
@@ -113,11 +113,24 @@ fn test_nickel_manifest_with_dependencies() {
 
 #[test]
 fn test_package_generates_nickel_manifest() {
-    let mut generator =
-        PackageGenerator::new("test-crossplane".to_string(), PathBuf::from("/tmp/test"));
+    // Use unified pipeline with NamespacedPackage
+    let mut package = NamespacedPackage::new("test-crossplane".to_string());
+    let parser = CRDParser::new();
 
-    generator.add_crd(sample_crd());
-    let package = generator.generate_package().unwrap();
+    let crd = sample_crd();
+    let ir = parser.parse(crd.clone()).expect("Failed to parse CRD");
+
+    for module in &ir.modules {
+        for type_def in &module.types {
+            let version = module.name.rsplit('.').next().unwrap_or("v1");
+            package.add_type(
+                crd.spec.group.clone(),
+                version.to_string(),
+                type_def.name.to_lowercase(),
+                type_def.clone(),
+            );
+        }
+    }
 
     let manifest = package.generate_nickel_manifest(None);
 

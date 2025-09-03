@@ -3,7 +3,7 @@
 use amalgam_codegen::Codegen;
 use amalgam_parser::{
     crd::{CRDParser, CRD},
-    package::PackageGenerator,
+    package::NamespacedPackage,
     Parser,
 };
 use tempfile::TempDir;
@@ -78,20 +78,32 @@ spec:
         .expect("Failed to generate Nickel code");
 
     // Verify generated code contains expected elements
-    assert!(nickel_code.contains("Composition"));
-    assert!(nickel_code.contains("spec"));
-    assert!(nickel_code.contains("resources"));
-    assert!(nickel_code.contains("compositeTypeRef"));
+    // With single-type module optimization, the type is exported directly
+    // So we check for the fields rather than the type name wrapper
+    assert!(
+        nickel_code.contains("spec"),
+        "Missing spec in generated code"
+    );
+    assert!(
+        nickel_code.contains("resources"),
+        "Missing resources in generated code"
+    );
+    assert!(
+        nickel_code.contains("compositeTypeRef"),
+        "Missing compositeTypeRef in generated code"
+    );
 }
 
 #[test]
 fn test_package_structure_generation() {
     let temp_dir = TempDir::new().expect("Failed to create temp directory");
-    let output_path = temp_dir.path().to_path_buf();
+    let _output_path = temp_dir.path().to_path_buf();
 
-    let mut generator = PackageGenerator::new("test-package".to_string(), output_path.clone());
+    // Use unified pipeline with NamespacedPackage
+    let mut package = NamespacedPackage::new("test-package".to_string());
+    let parser = CRDParser::new();
 
-    // Add multiple CRDs
+    // CRD definitions
     let crd1_yaml = r#"
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -138,12 +150,25 @@ spec:
         type: object
 "#;
 
-    generator.add_crd(load_test_crd(crd1_yaml));
-    generator.add_crd(load_test_crd(crd2_yaml));
+    // Parse and add CRDs to package
+    for crd_yaml in [crd1_yaml, crd2_yaml] {
+        let crd = load_test_crd(crd_yaml);
+        let ir = parser.parse(crd.clone()).expect("Failed to parse CRD");
 
-    let package = generator
-        .generate_package()
-        .expect("Failed to generate package");
+        for module in &ir.modules {
+            for type_def in &module.types {
+                // Module name format is {Kind}.{version}.{group}, so get the version part
+                let parts: Vec<&str> = module.name.split('.').collect();
+                let version = if parts.len() >= 2 { parts[1] } else { "v1" };
+                package.add_type(
+                    crd.spec.group.clone(),
+                    version.to_string(),
+                    type_def.name.to_lowercase(),
+                    type_def.clone(),
+                );
+            }
+        }
+    }
 
     // Verify package structure
     assert_eq!(package.groups().len(), 1);
@@ -398,15 +423,27 @@ spec:
                 type: boolean
 "#;
 
-    let temp_dir = tempfile::TempDir::new().unwrap();
-    let mut generator =
-        PackageGenerator::new("evolution-test".to_string(), temp_dir.path().to_path_buf());
+    let _temp_dir = tempfile::TempDir::new().unwrap();
+    // Use unified pipeline with NamespacedPackage
+    let mut package = NamespacedPackage::new("evolution-test".to_string());
+    let parser = CRDParser::new();
 
-    generator.add_crd(load_test_crd(crd_yaml));
+    let crd = load_test_crd(crd_yaml);
+    let ir = parser.parse(crd.clone()).expect("Failed to parse CRD");
 
-    let package = generator
-        .generate_package()
-        .expect("Failed to generate package");
+    for module in &ir.modules {
+        for type_def in &module.types {
+            // Module name format is {Kind}.{version}.{group}, so get the version part
+            let parts: Vec<&str> = module.name.split('.').collect();
+            let version = if parts.len() >= 2 { parts[1] } else { "v1" };
+            package.add_type(
+                crd.spec.group.clone(),
+                version.to_string(),
+                type_def.name.to_lowercase(),
+                type_def.clone(),
+            );
+        }
+    }
 
     // Verify all versions are present
     let versions = package.versions("test.io");
@@ -423,15 +460,14 @@ spec:
     }
 
     // Verify we can generate files for each version
-    assert!(package
-        .generate_kind_file("test.io", "v1alpha1", "evolving")
-        .is_some());
-    assert!(package
-        .generate_kind_file("test.io", "v1beta1", "evolving")
-        .is_some());
-    assert!(package
-        .generate_kind_file("test.io", "v1", "evolving")
-        .is_some());
+    let v1alpha1_files = package.generate_version_files("test.io", "v1alpha1");
+    assert!(v1alpha1_files.contains_key("evolving.ncl"));
+
+    let v1beta1_files = package.generate_version_files("test.io", "v1beta1");
+    assert!(v1beta1_files.contains_key("evolving.ncl"));
+
+    let v1_files = package.generate_version_files("test.io", "v1");
+    assert!(v1_files.contains_key("evolving.ncl"));
 }
 
 #[test]

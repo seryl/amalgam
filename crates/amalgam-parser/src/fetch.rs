@@ -53,7 +53,7 @@ impl CRDFetcher {
             if let Some(ref pb) = main_spinner {
                 pb.set_message("Downloading YAML file...".to_string());
             } else {
-                println!("Downloading YAML file from {}", url);
+                tracing::debug!("Downloading YAML file from {}", url);
             }
             let content = self.client.get(url).send().await?.text().await?;
             let crd: CRD = serde_yaml::from_str(&content)?;
@@ -70,7 +70,7 @@ impl CRDFetcher {
                 pb.finish_with_message("✗ Failed to fetch CRDs");
             }
         } else if let Ok(ref crds) = result {
-            println!("Successfully fetched {} CRDs", crds.len());
+            tracing::debug!("Successfully fetched {} CRDs", crds.len());
         }
 
         result
@@ -118,7 +118,7 @@ impl CRDFetcher {
                     pb.set_message(format!("Downloading {}", file_path));
                     Some(pb)
                 } else {
-                    println!("Downloading {}", file_path);
+                    tracing::debug!("Downloading {}", file_path);
                     None
                 };
 
@@ -149,7 +149,7 @@ impl CRDFetcher {
             pb.set_message(format!("Listing files from {}/{}/{}", owner, repo, path));
             Some(pb)
         } else {
-            println!("Listing files from {}/{}/{}", owner, repo, path);
+            tracing::debug!("Listing files from {}/{}/{}", owner, repo, path);
             None
         };
 
@@ -177,7 +177,7 @@ impl CRDFetcher {
         if let Some(pb) = listing_pb {
             pb.finish_with_message(format!("✓ Found {} YAML files", yaml_files.len()));
         } else {
-            println!("Found {} YAML files", yaml_files.len());
+            tracing::debug!("Found {} YAML files", yaml_files.len());
         }
 
         if yaml_files.is_empty() {
@@ -237,7 +237,7 @@ impl CRDFetcher {
 
                     Some(pb)
                 } else {
-                    println!("[{}/{}] Downloading {}", idx + 1, total_files, name);
+                    tracing::debug!("[{}/{}] Downloading {}", idx + 1, total_files, name);
                     None
                 };
 
@@ -252,8 +252,6 @@ impl CRDFetcher {
                         Err(e) => {
                             if let Some(ref pb) = individual_pb {
                                 pb.finish_with_message(format!("✗ {} ({})", name, e));
-                            } else {
-                                eprintln!("Failed to parse {}: {}", name, e);
                             }
                             None
                         }
@@ -298,7 +296,7 @@ impl CRDFetcher {
                 crds.len()
             ));
         } else {
-            println!("Downloaded {} valid CRDs", crds.len());
+            tracing::debug!("Downloaded {} valid CRDs", crds.len());
         }
 
         Ok(crds)

@@ -1,5 +1,6 @@
 //! Manifest-based package generation for CI/CD workflows
 
+use amalgam_parser::package::NamespacedPackage;
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -136,6 +137,13 @@ impl Manifest {
             )
         })?;
 
+        // First, perform smart cleanup of removed packages
+        self.cleanup_removed_packages(&mut report)?;
+
+        // Read manifest content for fingerprinting
+        let manifest_content =
+            std::fs::read_to_string(".amalgam-manifest.toml").unwrap_or_else(|_| String::new());
+
         for package in &self.packages {
             if !package.enabled {
                 info!("Skipping disabled package: {}", package.name);
@@ -145,7 +153,10 @@ impl Manifest {
 
             info!("Generating package: {}", package.name);
 
-            match self.generate_package(package).await {
+            match self
+                .generate_package_with_manifest(package, &manifest_content)
+                .await
+            {
                 Ok(output_path) => {
                     info!(
                         "✓ Successfully generated {} at {:?}",
@@ -163,9 +174,15 @@ impl Manifest {
         Ok(report)
     }
 
-    /// Generate a single package
-    async fn generate_package(&self, package: &PackageDefinition) -> Result<PathBuf> {
-        use amalgam_parser::incremental::{detect_change_type, save_fingerprint, ChangeType};
+    /// Generate a single package with manifest content tracking
+    async fn generate_package_with_manifest(
+        &self,
+        package: &PackageDefinition,
+        manifest_content: &str,
+    ) -> Result<PathBuf> {
+        use amalgam_parser::incremental::{
+            detect_change_type, save_fingerprint_with_output, ChangeType,
+        };
 
         let output_path = self.config.output_base.join(&package.output);
 
@@ -189,7 +206,7 @@ impl Manifest {
                     self.generate_package_manifest(package, &output_path)?;
                 }
                 // Save new fingerprint with updated metadata
-                save_fingerprint(&output_path, source.as_ref())
+                save_fingerprint_with_output(&output_path, source.as_ref(), Some(manifest_content))
                     .map_err(|e| anyhow::anyhow!("Failed to save fingerprint: {}", e))?;
                 return Ok(output_path);
             }
@@ -198,6 +215,15 @@ impl Manifest {
             }
             ChangeType::FirstGeneration => {
                 info!("📦 {} - First generation", package.name);
+            }
+            ChangeType::OutputChanged => {
+                info!(
+                    "📦 {} - Output structure changed, regenerating",
+                    package.name
+                );
+            }
+            ChangeType::ManifestChanged => {
+                info!("📦 {} - Manifest changed, regenerating", package.name);
             }
         }
 
@@ -212,8 +238,8 @@ impl Manifest {
         // Generate package manifest if successful
         if result.is_ok() && self.config.package_mode {
             self.generate_package_manifest(package, &output_path)?;
-            // Save fingerprint after successful generation
-            save_fingerprint(&output_path, source.as_ref())
+            // Save fingerprint with output content tracking after successful generation
+            save_fingerprint_with_output(&output_path, source.as_ref(), Some(manifest_content))
                 .map_err(|e| anyhow::anyhow!("Failed to save fingerprint: {}", e))?;
         }
 
@@ -229,7 +255,12 @@ impl Manifest {
 
         match package.source_type {
             SourceType::K8sCore => {
-                let version = package.version.as_deref().unwrap_or("v1.31.0");
+                let manifest_version = self.get_k8s_version_from_manifest();
+                let version = package
+                    .version
+                    .as_deref()
+                    .or(manifest_version.as_deref())
+                    .unwrap_or(env!("DEFAULT_K8S_VERSION"));
                 // For k8s core, we would fetch the OpenAPI spec and hash it
                 let spec_url = format!(
                     "https://dl.k8s.io/{}/api/openapi-spec/swagger.json",
@@ -296,7 +327,12 @@ impl Manifest {
     ) -> Result<PathBuf> {
         use crate::handle_k8s_core_import;
 
-        let version = package.version.as_deref().unwrap_or("v1.31.0");
+        let manifest_version = self.get_k8s_version_from_manifest();
+        let version = package
+            .version
+            .as_deref()
+            .or(manifest_version.as_deref())
+            .unwrap_or(env!("DEFAULT_K8S_VERSION"));
 
         info!("Fetching Kubernetes {} core types...", version);
         handle_k8s_core_import(version, output, true).await?;
@@ -345,8 +381,10 @@ impl Manifest {
         }
 
         // Use the existing URL import functionality
+        use amalgam_parser::crd::CRDParser;
         use amalgam_parser::fetch::CRDFetcher;
-        use amalgam_parser::package::PackageGenerator;
+        use amalgam_parser::package::NamespacedPackage;
+        use amalgam_parser::Parser as SchemaParser;
 
         let fetcher = CRDFetcher::new()?;
         let crds = fetcher.fetch_from_url(&fetch_url).await?;
@@ -354,47 +392,99 @@ impl Manifest {
 
         info!("Found {} CRDs", crds.len());
 
-        // Generate package structure
-        let mut generator = PackageGenerator::new(package.name.clone(), output.to_path_buf());
-        generator.add_crds(crds);
+        // Use unified pipeline with NamespacedPackage
+        let mut packages_by_group: std::collections::HashMap<String, NamespacedPackage> =
+            std::collections::HashMap::new();
 
-        let package_structure = generator.generate_package()?;
+        for crd in crds {
+            let group = crd.spec.group.clone();
+
+            // Get or create package for this group
+            let package = packages_by_group
+                .entry(group.clone())
+                .or_insert_with(|| NamespacedPackage::new(group.clone()));
+
+            // Parse CRD to get types
+            let parser = CRDParser::new();
+            let temp_ir = parser.parse(crd.clone())?;
+
+            // Add types from the parsed IR to the package
+            for module in &temp_ir.modules {
+                for type_def in &module.types {
+                    // Extract version from module name
+                    let parts: Vec<&str> = module.name.split('.').collect();
+                    let version = if parts.len() > 2 {
+                        parts[parts.len() - 2]
+                    } else {
+                        "v1"
+                    };
+
+                    package.add_type(
+                        group.clone(),
+                        version.to_string(),
+                        type_def.name.clone(),
+                        type_def.clone(),
+                    );
+                }
+            }
+        }
 
         // Create output directory structure
         fs::create_dir_all(output)?;
 
-        // Write main module file
-        let main_module = package_structure.generate_main_module();
-        fs::write(output.join("mod.ncl"), main_module)?;
-
-        // Generate group/version/kind structure
-        for group in package_structure.groups() {
+        // Generate files for each group using unified pipeline
+        let mut all_groups = Vec::new();
+        for (group, package) in packages_by_group {
+            all_groups.push(group.clone());
             let group_dir = output.join(&group);
             fs::create_dir_all(&group_dir)?;
 
-            if let Some(group_mod) = package_structure.generate_group_module(&group) {
-                fs::write(group_dir.join("mod.ncl"), group_mod)?;
-            }
+            // Get all versions for this group
+            let versions = package.versions(&group);
 
-            for version in package_structure.versions(&group) {
+            // Generate version directories and files
+            let mut version_modules = Vec::new();
+            for version in versions {
                 let version_dir = group_dir.join(&version);
                 fs::create_dir_all(&version_dir)?;
 
-                if let Some(version_mod) =
-                    package_structure.generate_version_module(&group, &version)
-                {
-                    fs::write(version_dir.join("mod.ncl"), version_mod)?;
+                // Generate all files for this version using unified pipeline
+                let version_files = package.generate_version_files(&group, &version);
+
+                // Write all generated files
+                for (filename, content) in version_files {
+                    fs::write(version_dir.join(&filename), content)?;
                 }
 
-                for kind in package_structure.kinds(&group, &version) {
-                    if let Some(kind_content) =
-                        package_structure.generate_kind_file(&group, &version, &kind)
-                    {
-                        fs::write(version_dir.join(format!("{}.ncl", kind)), kind_content)?;
-                    }
-                }
+                version_modules.push(format!("  {} = import \"./{}/mod.ncl\",", version, version));
+            }
+
+            // Write group module
+            if !version_modules.is_empty() {
+                let group_mod = format!(
+                    "# Module: {}\n# Generated with unified pipeline\n\n{{\n{}\n}}\n",
+                    group,
+                    version_modules.join("\n")
+                );
+                fs::write(group_dir.join("mod.ncl"), group_mod)?;
             }
         }
+
+        // Write main module file
+        let group_imports: Vec<String> = all_groups
+            .iter()
+            .map(|g| {
+                let sanitized = g.replace(['.', '-'], "_");
+                format!("  {} = import \"./{}/mod.ncl\",", sanitized, g)
+            })
+            .collect();
+
+        let main_module = format!(
+            "# Package: {}\n# Generated with unified pipeline from manifest\n\n{{\n{}\n}}\n",
+            package.name,
+            group_imports.join("\n")
+        );
+        fs::write(output.join("mod.ncl"), main_module)?;
 
         Ok(output.to_path_buf())
     }
@@ -411,8 +501,71 @@ impl Manifest {
 
         info!("Importing CRD from {:?}", file);
 
-        // TODO: Implement CRD file import
-        // This would use the existing CRD import functionality
+        // Read and parse the CRD file
+        use amalgam_parser::crd::{CRDParser, CRD};
+        use amalgam_parser::Parser as SchemaParser;
+
+        let crd_content = fs::read_to_string(file)
+            .with_context(|| format!("Failed to read CRD file: {:?}", file))?;
+
+        let crd: CRD = serde_yaml::from_str(&crd_content)
+            .with_context(|| format!("Failed to parse CRD YAML: {:?}", file))?;
+
+        // Use unified pipeline with NamespacedPackage
+        let mut package = NamespacedPackage::new(crd.spec.group.clone());
+
+        // Parse CRD to get types
+        let parser = CRDParser::new();
+        let ir = parser.parse(crd.clone())?;
+
+        // Add types from the parsed IR to the package
+        for module in &ir.modules {
+            for type_def in &module.types {
+                // Extract version from module name
+                let parts: Vec<&str> = module.name.split('.').collect();
+                let version = if parts.len() > 2 {
+                    parts[parts.len() - 2]
+                } else {
+                    "v1"
+                };
+
+                package.add_type(
+                    crd.spec.group.clone(),
+                    version.to_string(),
+                    type_def.name.clone(),
+                    type_def.clone(),
+                );
+            }
+        }
+
+        // Create output directory structure
+        fs::create_dir_all(output)?;
+
+        // Generate files using unified pipeline
+        let group_dir = output.join(&crd.spec.group);
+        fs::create_dir_all(&group_dir)?;
+
+        for version in package.versions(&crd.spec.group) {
+            let version_dir = group_dir.join(&version);
+            fs::create_dir_all(&version_dir)?;
+
+            // Generate all files for this version
+            let files = package.generate_version_files(&crd.spec.group, &version);
+            for (filename, content) in files {
+                let file_path = version_dir.join(&filename);
+                fs::write(&file_path, content)
+                    .with_context(|| format!("Failed to write file: {:?}", file_path))?;
+            }
+        }
+
+        // Write main module file for the group
+        if let Some(group_module) = package.generate_group_module(&crd.spec.group) {
+            fs::write(group_dir.join("mod.ncl"), group_module)?;
+        }
+
+        // Write main package module
+        let main_module = package.generate_main_module();
+        fs::write(output.join("mod.ncl"), main_module)?;
 
         Ok(output.to_path_buf())
     }
@@ -429,15 +582,76 @@ impl Manifest {
 
         info!("Importing OpenAPI spec from {:?}", file);
 
-        // TODO: Implement OpenAPI import
-        // This would use the existing OpenAPI import functionality
+        // Read and parse the OpenAPI file
+        use amalgam_parser::walkers::openapi::OpenAPIWalker;
+        use amalgam_parser::walkers::SchemaWalker;
+        use openapiv3::OpenAPI;
+
+        let openapi_content = fs::read_to_string(file)
+            .with_context(|| format!("Failed to read OpenAPI file: {:?}", file))?;
+
+        // Try parsing as JSON first, then YAML
+        let openapi: OpenAPI = serde_json::from_str(&openapi_content)
+            .or_else(|_| serde_yaml::from_str(&openapi_content))
+            .with_context(|| format!("Failed to parse OpenAPI spec: {:?}", file))?;
+
+        // Use package name as base module, sanitizing it for filesystem use
+        let base_module = package.name.replace([' ', '-'], "_").to_lowercase();
+
+        // Use OpenAPI walker to generate IR
+        let walker = OpenAPIWalker::new(base_module.clone());
+        let ir = walker.walk(openapi)?;
+
+        // Create NamespacedPackage and add types
+        let mut ns_package = NamespacedPackage::new(base_module.clone());
+
+        for module in &ir.modules {
+            for type_def in &module.types {
+                // For OpenAPI, we use a simpler structure: base_module/v1/types
+                ns_package.add_type(
+                    base_module.clone(),
+                    "v1".to_string(), // OpenAPI doesn't have versions like CRDs
+                    type_def.name.to_lowercase(),
+                    type_def.clone(),
+                );
+            }
+        }
+
+        // Create output directory structure
+        fs::create_dir_all(output)?;
+
+        // Generate files using unified pipeline
+        let group_dir = output.join(&base_module);
+        fs::create_dir_all(&group_dir)?;
+
+        let version_dir = group_dir.join("v1");
+        fs::create_dir_all(&version_dir)?;
+
+        // Generate all files
+        let files = ns_package.generate_version_files(&base_module, "v1");
+        for (filename, content) in files {
+            let file_path = version_dir.join(&filename);
+            fs::write(&file_path, content)
+                .with_context(|| format!("Failed to write file: {:?}", file_path))?;
+        }
+
+        // Write module files
+        if let Some(group_module) = ns_package.generate_group_module(&base_module) {
+            fs::write(group_dir.join("mod.ncl"), group_module)?;
+        }
+
+        let main_module = ns_package.generate_main_module();
+        fs::write(output.join("mod.ncl"), main_module)?;
 
         Ok(output.to_path_buf())
     }
 
     fn generate_package_manifest(&self, package: &PackageDefinition, output: &Path) -> Result<()> {
+        use amalgam_codegen::nickel_manifest::{
+            NickelDependency, NickelManifestConfig, NickelManifestGenerator,
+        };
         use amalgam_codegen::package_mode::PackageMode;
-        use chrono::Utc;
+        use amalgam_core::IR;
         use std::collections::{HashMap, HashSet};
         use std::path::PathBuf;
 
@@ -481,79 +695,135 @@ impl Manifest {
             }
         }
 
-        // Format dependencies for the manifest
-        // Check if package has explicit dependency constraints
-        let deps_str = if detected_deps.is_empty() && package.dependencies.is_empty() {
-            "{}".to_string()
-        } else {
-            let mut dep_entries: Vec<String> = Vec::new();
+        // Fix version format - remove 'v' prefix for Nickel packages
+        let version = package.version.as_deref().unwrap_or("0.1.0");
+        let clean_version = version.strip_prefix('v').unwrap_or(version);
 
-            // Add detected dependencies with constraints from manifest if available
-            for dep_output in &detected_deps {
-                // Find the package definition for this dependency
-                let dep_package = self.packages.iter().find(|p| &p.output == dep_output);
+        // Create NickelManifestConfig based on package definition
+        let config = NickelManifestConfig {
+            name: package.name.clone(),
+            version: clean_version.to_string(),
+            minimal_nickel_version: "1.9.0".to_string(),
+            description: package.description.clone(),
+            authors: vec!["amalgam".to_string()],
+            license: "Apache-2.0".to_string(),
+            keywords: package.keywords.clone(),
+            base_package_id: Some(self.config.base_package_id.clone()),
+            local_dev_mode: self.config.local_package_prefix.is_some(),
+            local_package_prefix: self.config.local_package_prefix.clone(),
+        };
 
-                let dep_entry = if let Some(dep_pkg) = dep_package {
-                    // For production, use Index dependency with version constraints
-                    let version = if let Some(ref constraint) =
-                        package.dependencies.get(dep_output.as_str())
-                    {
+        // Create the generator
+        let generator = NickelManifestGenerator::new(config);
+
+        // Build IR from the package output directory
+        // We need to scan the generated files and build an IR
+        let mut ir = IR::new();
+
+        // Scan the output directory to build modules
+        if output.exists() {
+            // Walk through all generated .ncl files to build the IR
+            for entry in walkdir::WalkDir::new(output)
+                .into_iter()
+                .filter_map(|e| e.ok())
+                .filter(|e| e.path().extension().is_some_and(|ext| ext == "ncl"))
+            {
+                // Extract module name from path
+                if let Ok(rel_path) = entry.path().strip_prefix(output) {
+                    if let Some(parent) = rel_path.parent() {
+                        let module_name = parent
+                            .to_str()
+                            .unwrap_or("")
+                            .replace(std::path::MAIN_SEPARATOR, ".");
+
+                        if !module_name.is_empty() && module_name != "." {
+                            // Create a basic module entry in the IR
+                            let module = amalgam_core::ir::Module {
+                                name: module_name,
+                                imports: Vec::new(),
+                                types: Vec::new(),
+                                constants: Vec::new(),
+                                metadata: Default::default(),
+                            };
+                            ir.add_module(module);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Build dependencies map with the correct type
+        let mut dependencies = HashMap::new();
+
+        // Add detected dependencies
+        for dep_output in &detected_deps {
+            let dep_package = self.packages.iter().find(|p| &p.output == dep_output);
+
+            if self.config.local_package_prefix.is_some() {
+                // Use Path dependency for local development
+                let path = PathBuf::from(format!("../{}", dep_output));
+                dependencies.insert(dep_output.clone(), NickelDependency::Path { path });
+            } else {
+                // Use Index dependency for production
+                let package_id = if let Some(dep_pkg) = dep_package {
+                    format!(
+                        "{}/{}",
+                        self.config.base_package_id.trim_end_matches('/'),
+                        dep_pkg.name
+                    )
+                } else {
+                    format!(
+                        "{}/{}",
+                        self.config.base_package_id.trim_end_matches('/'),
+                        dep_output
+                    )
+                };
+
+                let version = if let Some(dep_pkg) = dep_package {
+                    if let Some(ref constraint) = package.dependencies.get(dep_output.as_str()) {
                         match constraint {
                             DependencySpec::Simple(v) => v.clone(),
                             DependencySpec::Full { version, .. } => version.clone(),
                         }
                     } else if let Some(ref dep_version) = dep_pkg.version {
-                        // Use the package's own version as default
                         dep_version
                             .strip_prefix('v')
                             .unwrap_or(dep_version)
                             .to_string()
                     } else {
                         "*".to_string()
-                    };
-
-                    // Build package ID from base_package_id and package name
-                    let package_id = format!(
-                        "{}/{}",
-                        self.config.base_package_id.trim_end_matches('/'),
-                        dep_pkg.name
-                    );
-
-                    format!(
-                        "    {} = 'Index {{ package = \"{}\", version = \"{}\" }}",
-                        dep_output, package_id, version
-                    )
+                    }
                 } else {
-                    // Fallback for unknown packages - still use Index
-                    let package_id = format!(
-                        "{}/{}",
-                        self.config.base_package_id.trim_end_matches('/'),
-                        dep_output
-                    );
-                    format!(
-                        "    {} = 'Index {{ package = \"{}\", version = \"*\" }}",
-                        dep_output, package_id
-                    )
+                    "*".to_string()
                 };
-                dep_entries.push(dep_entry);
-            }
 
-            // Add any explicit dependencies not auto-detected
-            for (dep_name, dep_spec) in &package.dependencies {
-                if !detected_deps.contains(dep_name.as_str()) {
-                    // Try to find the package in our manifest
+                dependencies.insert(
+                    dep_output.clone(),
+                    NickelDependency::Index {
+                        package: package_id,
+                        version,
+                    },
+                );
+            }
+        }
+
+        // Add explicit dependencies not auto-detected
+        for (dep_name, dep_spec) in &package.dependencies {
+            if !detected_deps.contains(dep_name.as_str()) {
+                let version = match dep_spec {
+                    DependencySpec::Simple(v) => v.clone(),
+                    DependencySpec::Full { version, .. } => version.clone(),
+                };
+
+                if self.config.local_package_prefix.is_some() {
+                    let path = PathBuf::from(format!("../{}", dep_name));
+                    dependencies.insert(dep_name.clone(), NickelDependency::Path { path });
+                } else {
                     let dep_package = self
                         .packages
                         .iter()
                         .find(|p| p.output == *dep_name || p.name == *dep_name);
 
-                    // Always use Index dependencies - packages should reference upstream
-                    let version = match dep_spec {
-                        DependencySpec::Simple(v) => v.clone(),
-                        DependencySpec::Full { version, .. } => version.clone(),
-                    };
-
-                    // Build package ID based on manifest or fallback
                     let package_id = if let Some(dep_pkg) = dep_package {
                         format!(
                             "{}/{}",
@@ -561,7 +831,6 @@ impl Manifest {
                             dep_pkg.name
                         )
                     } else {
-                        // If not in manifest, assume it's an external package
                         format!(
                             "{}/{}",
                             self.config.base_package_id.trim_end_matches('/'),
@@ -569,81 +838,95 @@ impl Manifest {
                         )
                     };
 
-                    let dep_entry = format!(
-                        "    {} = 'Index {{ package = \"{}\", version = \"{}\" }}",
-                        dep_name, package_id, version
+                    dependencies.insert(
+                        dep_name.clone(),
+                        NickelDependency::Index {
+                            package: package_id,
+                            version,
+                        },
                     );
-                    dep_entries.push(dep_entry);
                 }
             }
+        }
 
-            format!("{{\n{}\n  }}", dep_entries.join(",\n"))
-        };
-
-        // Fix version format - remove 'v' prefix for Nickel packages
-        let version = package.version.as_deref().unwrap_or("0.1.0");
-        let clean_version = version.strip_prefix('v').unwrap_or(version);
-
-        // Create enhanced manifest with proper metadata
-        let now = Utc::now();
-
-        // Build header comments with metadata
-        let header = format!(
-            r#"# Amalgam Package Manifest
-# Generated: {}
-# Generator: amalgam v{}
-# Source: {}{}
-"#,
-            now.to_rfc3339(),
-            env!("CARGO_PKG_VERSION"),
-            package
-                .url
-                .as_deref()
-                .unwrap_or(&format!("{} (local)", package.source_type)),
-            if let Some(ref git_ref) = package.git_ref {
-                format!("\n# Git ref: {}", git_ref)
-            } else {
-                String::new()
-            }
-        );
-
-        let manifest_content = format!(
-            r#"{}{{
-  # Package identity
-  name = "{}",
-  version = "{}",
-  
-  # Package information
-  description = "{}",
-  authors = ["amalgam"],
-  keywords = [{}],
-  license = "Apache-2.0",
-  
-  # Dependencies
-  dependencies = {},
-  
-  # Nickel version requirement
-  minimal_nickel_version = "1.9.0",
-}} | std.package.Manifest
-"#,
-            header,
-            package.name,
-            clean_version,
-            package.description,
-            package
-                .keywords
-                .iter()
-                .map(|k| format!("\"{}\"", k))
-                .collect::<Vec<_>>()
-                .join(", "),
-            deps_str
-        );
+        // Generate manifest using the unified IR pipeline
+        let manifest_content = generator
+            .generate_manifest(&ir, Some(dependencies))
+            .with_context(|| "Failed to generate Nickel manifest")?;
 
         // Write manifest file
         let manifest_path = output.join("Nickel-pkg.ncl");
         fs::write(manifest_path, manifest_content)?;
 
         Ok(())
+    }
+
+    /// Clean up packages that are no longer defined in the manifest
+    fn cleanup_removed_packages(&self, report: &mut GenerationReport) -> Result<()> {
+        if !self.config.output_base.exists() {
+            return Ok(());
+        }
+
+        // Get list of current package outputs from manifest
+        let current_outputs: std::collections::HashSet<String> = self
+            .packages
+            .iter()
+            .filter(|p| p.enabled)
+            .map(|p| p.output.clone())
+            .collect();
+
+        // Scan output directory for existing packages
+        let mut packages_to_remove = Vec::new();
+
+        for entry in fs::read_dir(&self.config.output_base)? {
+            let entry = entry?;
+            let path = entry.path();
+
+            if path.is_dir() {
+                let dir_name = path
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("")
+                    .to_string();
+
+                // Check if this directory has a fingerprint file (indicating it's a generated package)
+                let fingerprint_path = path.join(".amalgam-fingerprint.json");
+                if fingerprint_path.exists() && !current_outputs.contains(&dir_name) {
+                    packages_to_remove.push((dir_name.clone(), path.clone()));
+                }
+            }
+        }
+
+        // Remove packages that are no longer in the manifest
+        for (package_name, package_path) in packages_to_remove {
+            info!(
+                "🗑️  Removing package no longer in manifest: {}",
+                package_name
+            );
+
+            match fs::remove_dir_all(&package_path) {
+                Ok(()) => {
+                    info!("✓ Successfully removed {}", package_name);
+                    report.successful.push(format!("REMOVED: {}", package_name));
+                }
+                Err(e) => {
+                    warn!("✗ Failed to remove {}: {}", package_name, e);
+                    report
+                        .failed
+                        .push((format!("REMOVE: {}", package_name), e.to_string()));
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Get the k8s version from the manifest (looks for k8s-core type packages)
+    fn get_k8s_version_from_manifest(&self) -> Option<String> {
+        self.packages
+            .iter()
+            .find(|p| p.source_type == SourceType::K8sCore)
+            .and_then(|p| p.version.clone())
     }
 }
 

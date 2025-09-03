@@ -1,16 +1,14 @@
-# Module: k8s.io.v1.glusterfsvolumesource
+# Module: k8s.io.v1
 
+# Represents a Glusterfs mount that lasts the lifetime of a pod. Glusterfs volumes do not support ownership management or SELinux relabeling.
 {
-  # Represents a Glusterfs mount that lasts the lifetime of a pod. Glusterfs volumes do not support ownership management or SELinux relabeling.
-  GlusterfsVolumeSource = {
-    endpoints | optional | String | doc m%"
+  endpoints | optional | String | doc m%"
 endpoints is the endpoint name that details Glusterfs topology. More info: https://examples.k8s.io/volumes/glusterfs/README.md#create-a-pod
 "%,
-    path | optional | String | doc m%"
+  path | optional | String | doc m%"
 path is the Glusterfs volume path. More info: https://examples.k8s.io/volumes/glusterfs/README.md#create-a-pod
 "%,
-    readOnly | optional | Bool | doc m%"
+  readOnly | optional | Bool | doc m%"
 readOnly here will force the Glusterfs volume to be mounted with read-only permissions. Defaults to false. More info: https://examples.k8s.io/volumes/glusterfs/README.md#create-a-pod
-"%,
-  },
+"%
 }

@@ -428,39 +428,21 @@
           fi
         '';
 
-        # Regenerate examples helper
+        # Smart manifest-based regeneration
         regenerate-examples = pkgs.writeShellScriptBin "regenerate-examples" ''
           set -euo pipefail
 
-          echo "🔨 Building amalgam..."
-          ${rustWithComponents}/bin/cargo build --release
+          if [ ! -f ".amalgam-manifest.toml" ]; then
+            echo "❌ No .amalgam-manifest.toml found in current directory"
+            echo "Please ensure you're in the amalgam project root."
+            exit 1
+          fi
+
+          echo "🧠 Smart manifest-based regeneration with content tracking..."
+          ${rustWithComponents}/bin/cargo run --release --bin amalgam -- generate-from-manifest
 
           echo ""
-          echo "🧹 Cleaning old examples..."
-          rm -rf examples/crossplane
-          rm -rf examples/k8s_io
-
-          echo ""
-          echo "📥 Generating Kubernetes core types..."
-          ${rustWithComponents}/bin/cargo run --bin amalgam -- import k8s-core \
-            --version v1.33.4 \
-            --output examples/k8s_io
-
-          echo ""
-          echo "📥 Importing Crossplane CRDs..."
-          ${rustWithComponents}/bin/cargo run --bin amalgam -- import url \
-            --url https://github.com/crossplane/crossplane/tree/main/cluster/crds \
-            --output examples/crossplane
-
-          echo ""
-          echo "✅ Regeneration complete!"
-          echo ""
-          echo "To test the generated files:"
-          echo "  nickel export examples/test_crossplane_import.ncl"
-          echo ""
-          echo "To check all files for syntax errors:"
-          echo "  find examples/crossplane -name '*.ncl' -exec nickel typecheck {} \;"
-          echo "  find examples/k8s_io -name '*.ncl' -exec nickel typecheck {} \;"
+          echo "✅ Smart regeneration complete!"
         '';
 
         # Custom source filter that includes test fixtures
@@ -498,13 +480,29 @@
           ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [];
         };
 
+        # Docker/OCI image builders
+        dockerImages = import ./nix/packages/docker-image {
+          inherit pkgs amalgam;
+          lib = pkgs.lib;
+          nickel = nickel-with-packages;
+          generated-packages = null;  # Will be populated by CI
+        };
+
       in
       {
-        # Packages
         packages = {
           default = amalgam;
           amalgam = amalgam;
           nickel-with-packages = nickel-with-packages;
+          
+          # Docker images
+          amalgam-image = dockerImages.amalgamImage;
+          packages-image = dockerImages.packagesImage;
+          amalgam-layered = dockerImages.amalgamLayeredImage;
+          
+          # Helper scripts for pushing images
+          push-to-registry = dockerImages.pushToRegistry;
+          push-with-skopeo = dockerImages.pushWithSkopeo;
         };
 
         # Apps

@@ -1,17 +1,15 @@
-# Module: k8s.io.v1.portstatus
+# Module: k8s.io.v1
 
+# PortStatus represents the error condition of a service port
 {
-  # PortStatus represents the error condition of a service port
-  PortStatus = {
-    error | optional | String | doc m%"
+  error | optional | String | doc m%"
 Error is to record the problem with the service port The format of the error shall comply with the following rules: - built-in error values shall be specified in this file and those shall use
   CamelCase names
 - cloud provider specific error values must have names that comply with the
   format foo.example.com/CamelCase.
 "%,
-    port | optional | Number | doc "Port is the port number of the service port of which status is recorded here",
-    protocol | optional | String | doc m%"
+  port | optional | Number | doc "Port is the port number of the service port of which status is recorded here",
+  protocol | optional | String | doc m%"
 Protocol is the protocol of the service port of which status is recorded here The supported values are: "TCP", "UDP", "SCTP"
-"%,
-  },
+"%
 }

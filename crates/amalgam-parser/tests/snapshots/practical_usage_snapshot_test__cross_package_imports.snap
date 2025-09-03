@@ -1,0 +1,21 @@
+---
+source: crates/amalgam-parser/tests/practical_usage_snapshot_test.rs
+expression: snapshot_content
+---
+SUCCESS: false
+
+OUTPUT:
+STDERR:
+error: unexpected token
+  ┌─ /Users/jtoft/src/ai/amalgam/examples/pkgs/k8s_io/v1alpha3/allocationresult.ncl:4:31
+  │
+4 │ DeviceRequestAllocationResult = {
+  │                               ^
+  │
+  ┌─ /Users/jtoft/src/ai/amalgam/examples/pkgs/k8s_io/v1alpha3/mod.ncl:6:22
+  │
+6 │   AllocationResult = import "./allocationresult.ncl",
+  │                      ------------------------------- imported here
+
+
+STDOUT:

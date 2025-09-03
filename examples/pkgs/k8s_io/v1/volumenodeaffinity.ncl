@@ -1,10 +1,8 @@
-# Module: k8s.io.v1.volumenodeaffinity
-
 let nodeselector = import "./nodeselector.ncl" in
 
+# Module: k8s.io.v1
+
+# VolumeNodeAffinity defines constraints that limit what nodes this volume can be accessed from.
 {
-  # VolumeNodeAffinity defines constraints that limit what nodes this volume can be accessed from.
-  VolumeNodeAffinity = {
-    required | optional | nodeselector.NodeSelector | doc "required specifies hard node constraints that must be met.",
-  },
+  required | optional | nodeselector | doc "required specifies hard node constraints that must be met."
 }

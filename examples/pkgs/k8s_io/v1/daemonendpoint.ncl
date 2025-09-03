@@ -1,8 +1,6 @@
-# Module: k8s.io.v1.daemonendpoint
+# Module: k8s.io.v1
 
+# DaemonEndpoint contains information about a single Daemon endpoint.
 {
-  # DaemonEndpoint contains information about a single Daemon endpoint.
-  DaemonEndpoint = {
-    Port | optional | Number | doc "Port number of the given endpoint.",
-  },
+  Port | optional | Number | doc "Port number of the given endpoint."
 }

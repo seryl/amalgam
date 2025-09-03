@@ -1,8 +1,6 @@
-# Module: k8s.io.v1.nodeswapstatus
+# Module: k8s.io.v1
 
+# NodeSwapStatus represents swap memory information.
 {
-  # NodeSwapStatus represents swap memory information.
-  NodeSwapStatus = {
-    capacity | optional | Number | doc "Total amount of swap memory in bytes.",
-  },
+  capacity | optional | Number | doc "Total amount of swap memory in bytes."
 }

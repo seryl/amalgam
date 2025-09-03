@@ -1,6 +1,4 @@
-# Module: k8s.io.v1.microtime
+# Module: k8s.io.v1
 
-{
-  # MicroTime is version of Time with microsecond level precision.
-  MicroTime = String,
-}
+# MicroTime is version of Time with microsecond level precision.
+String

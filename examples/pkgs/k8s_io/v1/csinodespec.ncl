@@ -1,12 +1,10 @@
-# Module: k8s.io.v1.csinodespec
-
 let csinodedriver = import "./csinodedriver.ncl" in
 
+# Module: k8s.io.v1
+
+# CSINodeSpec holds information about the specification of all CSI drivers installed on a node
 {
-  # CSINodeSpec holds information about the specification of all CSI drivers installed on a node
-  CSINodeSpec = {
-    drivers | optional | Array csinodedriver.CSINodeDriver | doc m%"
+  drivers | optional | Array csinodedriver | doc m%"
 drivers is a list of information of all CSI Drivers existing on a node. If all drivers in the list are uninstalled, this can become empty.
-"%,
-  },
+"%
 }

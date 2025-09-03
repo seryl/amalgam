@@ -1,0 +1,16 @@
+---
+source: crates/amalgam-parser/tests/practical_usage_snapshot_test.rs
+expression: snapshot_content
+---
+SUCCESS: false
+
+OUTPUT:
+STDERR:
+error: import of ./quantity.ncl failed: could not find import (looked in [/Users/jtoft/src/ai/amalgam/examples/pkgs/k8s_io/resource])
+  ┌─ /Users/jtoft/src/ai/amalgam/examples/pkgs/k8s_io/resource/mod.ncl:5:14
+  │
+5 │   Quantity = import "./quantity.ncl",
+  │              ----------------------- imported here
+
+
+STDOUT:

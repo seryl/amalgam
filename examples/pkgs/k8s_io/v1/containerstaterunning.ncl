@@ -1,8 +1,6 @@
-# Module: k8s.io.v1.containerstaterunning
+# Module: k8s.io.v1
 
+# ContainerStateRunning is a running state of a container.
 {
-  # ContainerStateRunning is a running state of a container.
-  ContainerStateRunning = {
-    startedAt | optional | String | doc "Time at which the container was last (re-)started",
-  },
+  startedAt | optional | String | doc "Time at which the container was last (re-)started"
 }

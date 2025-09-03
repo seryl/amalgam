@@ -1,0 +1,21 @@
+---
+source: crates/amalgam-parser/tests/practical_usage_snapshot_test.rs
+expression: snapshot_content
+---
+SUCCESS: false
+
+OUTPUT:
+STDERR:
+error: unexpected token
+  ┌─ /Users/jtoft/src/ai/amalgam/examples/pkgs/k8s_io/v1/affinity.ncl:5:13
+  │
+5 │ PodAffinity = {
+  │             ^
+  │
+  ┌─ /Users/jtoft/src/ai/amalgam/examples/pkgs/k8s_io/v1/mod.ncl:6:14
+  │
+6 │   Affinity = import "./affinity.ncl",
+  │              ----------------------- imported here
+
+
+STDOUT:
