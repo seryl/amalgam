@@ -781,7 +781,7 @@ impl NickelCodegen {
                     } else {
                         // Symbol not found in table - but we should still try to generate import
                         // for same-package references
-                        let (current_group, current_version) = Self::parse_module_name(&module.name);
+                        let (_current_group, _current_version) = Self::parse_module_name(&module.name);
                         
                         // For same-package references, assume they exist and generate import
                         // This handles cases where the symbol table might be incomplete
@@ -843,9 +843,9 @@ impl NickelCodegen {
         parts.push(format!("{}{}", indent, field_name));
 
         // In Nickel, a field with a default value is implicitly optional
-        // For Kubernetes types, we make most fields optional to enable gradual construction
-        // Only skip 'optional' if there's an explicit default value
-        if field.default.is_none() {
+        // For required fields, don't add 'optional' marker
+        // For optional fields without defaults, add 'optional' marker
+        if !field.required && field.default.is_none() {
             parts.push("optional".to_string());
         }
 

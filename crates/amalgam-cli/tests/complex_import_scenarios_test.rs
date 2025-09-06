@@ -590,13 +590,13 @@ fn test_optional_and_array_references() {
         output.contains("Volume"),
         "Should reference Volume type"
     );
-    // Check for array and optional handling
+    // Check for array and optional handling (using qualified references)
     assert!(
-        output.contains("Array Volume"),
-        "Should have Array of Volume"
+        output.contains("Array volume.Volume"),
+        "Should have Array of volume.Volume"
     );
     assert!(
-        output.contains("Container | Null") || output.contains("optional | Container"),
-        "Should have optional Container"
+        output.contains("optional | container.Container"),
+        "Should have optional container.Container"
     );
 }

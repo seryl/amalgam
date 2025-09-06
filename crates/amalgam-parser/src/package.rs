@@ -684,8 +684,6 @@ fn extract_single_type_from_module(
     let lines: Vec<&str> = module_content.lines().collect();
     let mut result = Vec::new();
     let mut imports = Vec::new();
-    let mut in_type = false;
-    let mut brace_count = 0;
 
     let mut imports_from_map = Vec::new();
     let mut imports_from_content = Vec::new();
