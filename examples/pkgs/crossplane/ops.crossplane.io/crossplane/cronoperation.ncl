@@ -1,4 +1,4 @@
-let objectMeta = import "../../../../k8s_io/v1/ObjectMeta.ncl" in
+let objectMeta = import "../../k8s_io/v1/ObjectMeta.ncl" in
 let k8s_io_apimachinery_pkg_apis_meta_v1_ObjectMeta = import "./k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta.ncl" in
 
 

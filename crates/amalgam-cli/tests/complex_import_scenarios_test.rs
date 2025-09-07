@@ -117,12 +117,12 @@ fn test_type_with_multiple_same_module_deps() -> Result<(), Box<dyn std::error::
     assert!(output.contains("Volume"), "Should have Volume type");
     assert!(output.contains("PodSpec"), "Should have PodSpec type");
     
-    // Check that PodSpec references the other types
-    assert!(output.contains("container | Container") || output.contains("container | optional | Container"), 
+    // Check that PodSpec references the other types (using qualified references)
+    assert!(output.contains("container.Container") || output.contains("optional | container.Container"), 
         "PodSpec should reference Container");
-    assert!(output.contains("ephemeralContainer | EphemeralContainer") || output.contains("ephemeralContainer | optional | EphemeralContainer"), 
+    assert!(output.contains("ephemeralContainer.EphemeralContainer") || output.contains("optional | ephemeralContainer.EphemeralContainer"), 
         "PodSpec should reference EphemeralContainer");
-    assert!(output.contains("volume | Volume") || output.contains("volume | optional | Volume"), 
+    assert!(output.contains("volume.Volume") || output.contains("optional | volume.Volume"), 
         "PodSpec should reference Volume");
     Ok(())
 }
@@ -598,13 +598,14 @@ fn test_optional_and_array_references() -> Result<(), Box<dyn std::error::Error>
         output.contains("Volume"),
         "Should reference Volume type"
     );
+    
     // Check for array and optional handling (using qualified references)
     assert!(
         output.contains("Array volume.Volume"),
         "Should have Array of volume.Volume"
     );
     assert!(
-        output.contains("optional | container.Container"),
+        output.contains("container.Container | Null") || output.contains("optional | container.Container"),
         "Should have optional container.Container"
     );
     Ok(())

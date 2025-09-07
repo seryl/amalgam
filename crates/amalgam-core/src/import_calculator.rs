@@ -136,6 +136,13 @@ impl ImportPathCalculator {
         match group {
             "k8s.io" => PathBuf::from("k8s_io"),
             "" => PathBuf::from("core"), // Core API group
+            // CrossPlane has a deeper directory structure: crossplane/domain/crossplane
+            "apiextensions.crossplane.io" => {
+                let mut path = PathBuf::from("crossplane");
+                path.push("apiextensions.crossplane.io");
+                path.push("crossplane");
+                path
+            }
             g if g.contains('.') => {
                 // Convert dots to underscores for filesystem compatibility
                 PathBuf::from(g.replace('.', "_"))

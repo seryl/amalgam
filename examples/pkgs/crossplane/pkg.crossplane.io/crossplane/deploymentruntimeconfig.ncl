@@ -1,4 +1,4 @@
-let objectMeta = import "../../../../k8s_io/v1/ObjectMeta.ncl" in
+let objectMeta = import "../../k8s_io/v1/ObjectMeta.ncl" in
 let k8s_io_api_core_v1_EnvVar = import "./k8s.io/api/core/v1.EnvVar.ncl" in
 let k8s_io_api_core_v1_EnvFromSource = import "./k8s.io/api/core/v1.EnvFromSource.ncl" in
 let k8s_io_api_core_v1_VolumeMount = import "./k8s.io/api/core/v1.VolumeMount.ncl" in
