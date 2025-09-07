@@ -1,5 +1,5 @@
-let endpointaddress = import "./endpointaddress.ncl" in
-let endpointport = import "./endpointport.ncl" in
+let endpointAddress = import "./EndpointAddress.ncl" in
+let endpointPort = import "./EndpointPort.ncl" in
 
 # Module: k8s.io.v1
 
@@ -17,11 +17,11 @@ let endpointport = import "./endpointport.ncl" in
 # 
 # Deprecated: This API is deprecated in v1.33+.
 {
-  addresses | optional | Array endpointaddress | doc m%"
+  addresses | optional | Array endpointAddress | doc m%"
 IP addresses which offer the related ports that are marked as ready. These endpoints should be considered safe for load balancers and clients to utilize.
 "%,
-  notReadyAddresses | optional | Array endpointaddress | doc m%"
+  notReadyAddresses | optional | Array endpointAddress | doc m%"
 IP addresses which offer the related ports but are not currently marked as ready because they have not yet finished starting, have recently failed a readiness check, or have recently failed a liveness check.
 "%,
-  ports | optional | Array endpointport | doc "Port numbers available on the related IP addresses."
+  ports | optional | Array endpointPort | doc "Port numbers available on the related IP addresses."
 }

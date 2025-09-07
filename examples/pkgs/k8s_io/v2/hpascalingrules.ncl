@@ -1,4 +1,4 @@
-let hpascalingpolicy = import "./hpascalingpolicy.ncl" in
+let hPAScalingPolicy = import "./HPAScalingPolicy.ncl" in
 
 # Module: k8s.io.v2
 
@@ -8,7 +8,7 @@ let hpascalingpolicy = import "./hpascalingpolicy.ncl" in
 # 
 # The tolerance is applied to the metric values and prevents scaling too eagerly for small metric variations. (Note that setting a tolerance requires enabling the alpha HPAConfigurableTolerance feature gate.)
 {
-  policies | optional | Array hpascalingpolicy | doc m%"
+  policies | optional | Array hPAScalingPolicy | doc m%"
 policies is a list of potential scaling polices which can be used during scaling. If not set, use the default values: - For scale up: allow doubling the number of pods, or an absolute change of 4 pods in a 15s window. - For scale down: allow all pods to be removed in a 15s window.
 "%,
   selectPolicy | optional | String | doc m%"

@@ -1,29 +1,29 @@
-let podcondition = import "./podcondition.ncl" in
-let containerstatus = import "./containerstatus.ncl" in
-let hostip = import "./hostip.ncl" in
-let podip = import "./podip.ncl" in
-let podresourceclaimstatus = import "./podresourceclaimstatus.ncl" in
+let podCondition = import "./PodCondition.ncl" in
+let containerStatus = import "./ContainerStatus.ncl" in
+let hostIP = import "./HostIP.ncl" in
+let podIP = import "./PodIP.ncl" in
+let podResourceClaimStatus = import "./PodResourceClaimStatus.ncl" in
 
 # Module: k8s.io.v1
 
 # PodStatus represents information about the status of a pod. Status may trail the actual state of a system, especially if the node that hosts the pod cannot contact the control plane.
 {
-  conditions | optional | Array podcondition | doc m%"
+  conditions | optional | Array podCondition | doc m%"
 Current service state of pod. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#pod-conditions
 "%,
-  containerStatuses | optional | Array containerstatus | doc m%"
+  containerStatuses | optional | Array containerStatus | doc m%"
 Statuses of containers in this pod. Each container in the pod should have at most one status in this list, and all statuses should be for containers in the pod. However this is not enforced. If a status for a non-existent container is present in the list, or the list has duplicate names, the behavior of various Kubernetes components is not defined and those statuses might be ignored. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#pod-and-container-status
 "%,
-  ephemeralContainerStatuses | optional | Array containerstatus | doc m%"
+  ephemeralContainerStatuses | optional | Array containerStatus | doc m%"
 Statuses for any ephemeral containers that have run in this pod. Each ephemeral container in the pod should have at most one status in this list, and all statuses should be for containers in the pod. However this is not enforced. If a status for a non-existent container is present in the list, or the list has duplicate names, the behavior of various Kubernetes components is not defined and those statuses might be ignored. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#pod-and-container-status
 "%,
   hostIP | optional | String | doc m%"
 hostIP holds the IP address of the host to which the pod is assigned. Empty if the pod has not started yet. A pod can be assigned to a node that has a problem in kubelet which in turns mean that HostIP will not be updated even if there is a node is assigned to pod
 "%,
-  hostIPs | optional | Array hostip | doc m%"
+  hostIPs | optional | Array hostIP | doc m%"
 hostIPs holds the IP addresses allocated to the host. If this field is specified, the first entry must match the hostIP field. This list is empty if the pod has not started yet. A pod can be assigned to a node that has a problem in kubelet which in turns means that HostIPs will not be updated even if there is a node is assigned to this pod.
 "%,
-  initContainerStatuses | optional | Array containerstatus | doc m%"
+  initContainerStatuses | optional | Array containerStatus | doc m%"
 Statuses of init containers in this pod. The most recent successful non-restartable init container will have ready = true, the most recently started container will have startTime set. Each init container in the pod should have at most one status in this list, and all statuses should be for containers in the pod. However this is not enforced. If a status for a non-existent container is present in the list, or the list has duplicate names, the behavior of various Kubernetes components is not defined and those statuses might be ignored. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-and-container-status
 "%,
   message | optional | String | doc m%"
@@ -43,7 +43,7 @@ More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#pod-
   podIP | optional | String | doc m%"
 podIP address allocated to the pod. Routable at least within the cluster. Empty if not yet allocated.
 "%,
-  podIPs | optional | Array podip | doc m%"
+  podIPs | optional | Array podIP | doc m%"
 podIPs holds the IP addresses allocated to the pod. If this field is specified, the 0th entry must match the podIP field. Pods may be allocated at most 1 value for each of IPv4 and IPv6. This list is empty if no IPs have been allocated yet.
 "%,
   qosClass | optional | String | doc m%"
@@ -55,7 +55,7 @@ A brief CamelCase message indicating details about why the pod is in this state.
   resize | optional | String | doc m%"
 Status of resources resize desired for pod's containers. It is empty if no resources resize is pending. Any changes to container resources will automatically set this to "Proposed" Deprecated: Resize status is moved to two pod conditions PodResizePending and PodResizeInProgress. PodResizePending will track states where the spec has been resized, but the Kubelet has not yet allocated the resources. PodResizeInProgress will track in-progress resizes, and should be present whenever allocated resources != acknowledged resources.
 "%,
-  resourceClaimStatuses | optional | Array podresourceclaimstatus | doc "Status of resource claims.",
+  resourceClaimStatuses | optional | Array podResourceClaimStatus | doc "Status of resource claims.",
   startTime | optional | String | doc m%"
 RFC 3339 date and time at which the object was acknowledged by the Kubelet. This is before the Kubelet pulled the container image(s) for the pod.
 "%

@@ -1,11 +1,11 @@
-let podfailurepolicyonexitcodesrequirement = import "./podfailurepolicyonexitcodesrequirement.ncl" in
-let podfailurepolicyonpodconditionspattern = import "./podfailurepolicyonpodconditionspattern.ncl" in
+let podFailurePolicyOnExitCodesRequirement = import "./PodFailurePolicyOnExitCodesRequirement.ncl" in
+let podFailurePolicyOnPodConditionsPattern = import "./PodFailurePolicyOnPodConditionsPattern.ncl" in
 
 # Module: k8s.io.v1
 
 # PodFailurePolicyRule describes how a pod failure is handled when the requirements are met. One of onExitCodes and onPodConditions, but not both, can be used in each rule.
 {
-  action | optional | String | doc m%"
+  action | String | doc m%"
 Specifies the action taken on a pod failure when the requirements are satisfied. Possible values are:
 - FailJob: indicates that the pod's job is marked as Failed and all
   running pods are terminated.
@@ -17,8 +17,8 @@ Specifies the action taken on a pod failure when the requirements are satisfied.
   counter towards the .backoffLimit is incremented.
 Additional values are considered to be added in the future. Clients should react to an unknown action by skipping the rule.
 "%,
-  onExitCodes | optional | podfailurepolicyonexitcodesrequirement | doc "Represents the requirement on the container exit codes.",
-  onPodConditions | optional | Array podfailurepolicyonpodconditionspattern | doc m%"
+  onExitCodes | optional | podFailurePolicyOnExitCodesRequirement | doc "Represents the requirement on the container exit codes.",
+  onPodConditions | optional | Array podFailurePolicyOnPodConditionsPattern | doc m%"
 Represents the requirement on the pod conditions. The requirement is represented as a list of pod condition patterns. The requirement is satisfied if at least one pattern matches an actual pod condition. At most 20 elements are allowed.
 "%
 }

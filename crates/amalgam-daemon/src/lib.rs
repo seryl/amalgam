@@ -171,7 +171,7 @@ impl Daemon {
             let ir = parser.parse(crd)?;
 
             // Generate Nickel code
-            let mut codegen = NickelCodegen::new();
+            let mut codegen = NickelCodegen::from_ir(&ir);
             let generated = codegen.generate(&ir)?;
 
             // Write output
@@ -289,7 +289,7 @@ pub mod k8s {
             let parser = CRDParser::new();
             let ir = parser.parse(amalgam_crd)?;
 
-            let mut codegen = NickelCodegen::new();
+            let mut codegen = NickelCodegen::from_ir(&ir);
             let generated = codegen.generate(&ir)?;
 
             // Write to output directory

@@ -702,7 +702,7 @@ fn handle_generate(input: PathBuf, output: PathBuf, target: &str) -> Result<()> 
 
     let code = match target {
         "nickel" => {
-            let mut codegen = NickelCodegen::new();
+            let mut codegen = NickelCodegen::from_ir(&ir);
             codegen.generate(&ir)?
         }
         "go" => {
@@ -752,7 +752,7 @@ fn handle_convert(input: PathBuf, from: &str, output: PathBuf, to: &str) -> Resu
     // Generate output
     let output_content = match to {
         "nickel" => {
-            let mut codegen = NickelCodegen::new();
+            let mut codegen = NickelCodegen::from_ir(&ir);
             codegen.generate(&ir)?
         }
         "go" => {

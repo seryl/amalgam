@@ -1,8 +1,8 @@
-let apparmorprofile = import "./apparmorprofile.ncl" in
-let capabilities = import "./capabilities.ncl" in
-let selinuxoptions = import "./selinuxoptions.ncl" in
-let seccompprofile = import "./seccompprofile.ncl" in
-let windowssecuritycontextoptions = import "./windowssecuritycontextoptions.ncl" in
+let appArmorProfile = import "./AppArmorProfile.ncl" in
+let capabilities = import "./Capabilities.ncl" in
+let sELinuxOptions = import "./SELinuxOptions.ncl" in
+let seccompProfile = import "./SeccompProfile.ncl" in
+let windowsSecurityContextOptions = import "./WindowsSecurityContextOptions.ncl" in
 
 # Module: k8s.io.v1
 
@@ -11,7 +11,7 @@ let windowssecuritycontextoptions = import "./windowssecuritycontextoptions.ncl"
   allowPrivilegeEscalation | optional | Bool | doc m%"
 AllowPrivilegeEscalation controls whether a process can gain more privileges than its parent process. This bool directly controls if the no_new_privs flag will be set on the container process. AllowPrivilegeEscalation is true always when the container is: 1) run as Privileged 2) has CAP_SYS_ADMIN Note that this field cannot be set when spec.os.name is windows.
 "%,
-  appArmorProfile | optional | apparmorprofile | doc m%"
+  appArmorProfile | optional | appArmorProfile | doc m%"
 appArmorProfile is the AppArmor options to use by this container. If set, this profile overrides the pod's appArmorProfile. Note that this field cannot be set when spec.os.name is windows.
 "%,
   capabilities | optional | capabilities | doc m%"
@@ -35,13 +35,13 @@ Indicates that the container must run as a non-root user. If true, the Kubelet w
   runAsUser | optional | Number | doc m%"
 The UID to run the entrypoint of the container process. Defaults to user specified in image metadata if unspecified. May also be set in PodSecurityContext.  If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence. Note that this field cannot be set when spec.os.name is windows.
 "%,
-  seLinuxOptions | optional | selinuxoptions | doc m%"
+  seLinuxOptions | optional | sELinuxOptions | doc m%"
 The SELinux context to be applied to the container. If unspecified, the container runtime will allocate a random SELinux context for each container.  May also be set in PodSecurityContext.  If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence. Note that this field cannot be set when spec.os.name is windows.
 "%,
-  seccompProfile | optional | seccompprofile | doc m%"
+  seccompProfile | optional | seccompProfile | doc m%"
 The seccomp options to use by this container. If seccomp options are provided at both the pod & container level, the container options override the pod options. Note that this field cannot be set when spec.os.name is windows.
 "%,
-  windowsOptions | optional | windowssecuritycontextoptions | doc m%"
+  windowsOptions | optional | windowsSecurityContextOptions | doc m%"
 The Windows specific settings applied to all containers. If unspecified, the options from the PodSecurityContext will be used. If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence. Note that this field cannot be set when spec.os.name is linux.
 "%
 }

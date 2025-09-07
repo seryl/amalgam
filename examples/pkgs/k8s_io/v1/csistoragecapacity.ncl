@@ -1,5 +1,5 @@
-let objectmeta = import "./objectmeta.ncl" in
-let labelselector = import "./labelselector.ncl" in
+let objectMeta = import "./ObjectMeta.ncl" in
+let labelSelector = import "./LabelSelector.ncl" in
 
 # Module: k8s.io.v1
 
@@ -27,15 +27,15 @@ Kind is a string value representing the REST resource this object represents. Se
 maximumVolumeSize is the value reported by the CSI driver in its GetCapacityResponse for a GetCapacityRequest with topology and parameters that match the previous fields.
 This is defined since CSI spec 1.4.0 as the largest size that may be used in a CreateVolumeRequest.capacity_range.required_bytes field to create a volume with the same parameters as those in GetCapacityRequest. The corresponding value in the Kubernetes API is ResourceRequirements.Requests in a volume claim.
 "%,
-  metadata | optional | objectmeta | doc m%"
+  metadata | optional | objectMeta | doc m%"
 Standard object's metadata. The name has no particular meaning. It must be a DNS subdomain (dots allowed, 253 characters). To ensure that there are no conflicts with other CSI drivers on the cluster, the recommendation is to use csisc-<uuid>, a generated name, or a reverse-domain name which ends with the unique CSI driver name.
 Objects are namespaced.
 More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
 "%,
-  nodeTopology | optional | labelselector | doc m%"
+  nodeTopology | optional | labelSelector | doc m%"
 nodeTopology defines which nodes have access to the storage for which capacity was reported. If not set, the storage is not accessible from any node in the cluster. If empty, the storage is accessible from all nodes. This field is immutable.
 "%,
-  storageClassName | optional | String | doc m%"
+  storageClassName | String | doc m%"
 storageClassName represents the name of the StorageClass that the reported capacity applies to. It must meet the same requirements as the name of a StorageClass object (non-empty, DNS subdomain). If that object no longer exists, the CSIStorageCapacity object is obsolete and should be removed by its creator. This field is immutable.
 "%
 }

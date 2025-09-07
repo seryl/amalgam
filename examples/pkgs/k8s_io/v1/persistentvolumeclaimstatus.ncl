@@ -1,5 +1,5 @@
-let persistentvolumeclaimcondition = import "./persistentvolumeclaimcondition.ncl" in
-let modifyvolumestatus = import "./modifyvolumestatus.ncl" in
+let persistentVolumeClaimCondition = import "./PersistentVolumeClaimCondition.ncl" in
+let modifyVolumeStatus = import "./ModifyVolumeStatus.ncl" in
 
 # Module: k8s.io.v1
 
@@ -48,13 +48,13 @@ A controller that receives PVC update with previously unknown resourceName shoul
 This is an alpha field and requires enabling RecoverVolumeExpansionFailure feature.
 "%,
   capacity | optional | { .. } | doc "capacity represents the actual resources of the underlying volume.",
-  conditions | optional | Array persistentvolumeclaimcondition | doc m%"
+  conditions | optional | Array persistentVolumeClaimCondition | doc m%"
 conditions is the current Condition of persistent volume claim. If underlying persistent volume is being resized then the Condition will be set to 'Resizing'.
 "%,
   currentVolumeAttributesClassName | optional | String | doc m%"
 currentVolumeAttributesClassName is the current name of the VolumeAttributesClass the PVC is using. When unset, there is no VolumeAttributeClass applied to this PersistentVolumeClaim This is a beta field and requires enabling VolumeAttributesClass feature (off by default).
 "%,
-  modifyVolumeStatus | optional | modifyvolumestatus | doc m%"
+  modifyVolumeStatus | optional | modifyVolumeStatus | doc m%"
 ModifyVolumeStatus represents the status object of ControllerModifyVolume operation. When this is unset, there is no ModifyVolume operation being attempted. This is a beta field and requires enabling VolumeAttributesClass feature (off by default).
 "%,
   phase | optional | String | doc "phase represents the current phase of PersistentVolumeClaim."

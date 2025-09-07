@@ -1,4 +1,4 @@
-let secretreference = import "./secretreference.ncl" in
+let secretReference = import "./SecretReference.ncl" in
 
 # Module: k8s.io.v1
 
@@ -10,10 +10,10 @@ fsType Filesystem type to mount. Must be a filesystem type supported by the host
   readOnly | optional | Bool | doc m%"
 readOnly is Optional: Defaults to false (read/write). ReadOnly here will force the ReadOnly setting in VolumeMounts. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
 "%,
-  secretRef | optional | secretreference | doc m%"
+  secretRef | optional | secretReference | doc m%"
 secretRef is Optional: points to a secret object containing parameters used to connect to OpenStack.
 "%,
-  volumeID | optional | String | doc m%"
+  volumeID | String | doc m%"
 volumeID used to identify the volume in cinder. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
 "%
 }

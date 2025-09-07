@@ -1,4 +1,4 @@
-let objectmeta = import "../../../k8s_io/v1/objectmeta.ncl" in
+let objectMeta = import "../../../../k8s_io/v1/ObjectMeta.ncl" in
 
 
 {
@@ -15,8 +15,8 @@ Cannot be updated.
 In CamelCase.
 More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
 "%,
-  metadata | optional | objectmeta.ObjectMeta,
-  spec | optional | {
+  metadata | optional | objectMeta.ObjectMeta,
+  spec | {
     by | optional | {
       apiVersion | optional | String | doc "API version of the referent.",
       kind | optional | String | doc m%"
@@ -24,7 +24,7 @@ Kind of the referent.
 More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
 "%,
       resourceRef | optional | {
-        name | optional | String | doc "Name of the referent."
+        name | String | doc "Name of the referent."
       } | doc "Reference to the resource.",
       resourceSelector | optional | {
         matchControllerRef | optional | Bool | doc m%"
@@ -38,14 +38,14 @@ Selector to the resource.
 This field will be ignored if ResourceRef is set.
 "%
     } | doc "By is the resource that is \"using the other resource\".",
-    of | optional | {
+    of | {
       apiVersion | optional | String | doc "API version of the referent.",
       kind | optional | String | doc m%"
 Kind of the referent.
 More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
 "%,
       resourceRef | optional | {
-        name | optional | String | doc "Name of the referent."
+        name | String | doc "Name of the referent."
       } | doc "Reference to the resource.",
       resourceSelector | optional | {
         matchControllerRef | optional | Bool | doc m%"
@@ -66,7 +66,7 @@ ReplayDeletion will trigger a deletion on the used resource during the deletion 
   } | doc "ClusterUsageSpec defines the desired state of a ClusterUsage.",
   status | optional | {
     conditions | optional | Array {
-      lastTransitionTime | optional | String | doc m%"
+      lastTransitionTime | String | doc m%"
 LastTransitionTime is the last time this condition transitioned from one
 status to another.
 "%,
@@ -79,9 +79,9 @@ ObservedGeneration represents the .metadata.generation that the condition was se
 For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
 with respect to the current state of the instance.
 "%,
-      reason | optional | String | doc "A Reason for this condition's last transition from one status to another.",
-      status | optional | String | doc "Status of this condition; is it currently True, False, or Unknown?",
-      type | optional | String | doc m%"
+      reason | String | doc "A Reason for this condition's last transition from one status to another.",
+      status | String | doc "Status of this condition; is it currently True, False, or Unknown?",
+      type | String | doc m%"
 Type of this condition. At most one of each condition type may apply to
 a resource at any point in time.
 "%

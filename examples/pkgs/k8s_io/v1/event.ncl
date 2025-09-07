@@ -1,7 +1,7 @@
-let objectreference = import "./objectreference.ncl" in
-let objectmeta = import "./objectmeta.ncl" in
-let eventseries = import "./eventseries.ncl" in
-let eventsource = import "./eventsource.ncl" in
+let objectReference = import "./ObjectReference.ncl" in
+let objectMeta = import "./ObjectMeta.ncl" in
+let eventSeries = import "./EventSeries.ncl" in
+let eventSource = import "./EventSource.ncl" in
 
 # Module: k8s.io.v1
 
@@ -16,25 +16,25 @@ APIVersion defines the versioned schema of this representation of an object. Ser
   firstTimestamp | optional | String | doc m%"
 The time at which the event was first recorded. (Time of server receipt is in TypeMeta.)
 "%,
-  involvedObject | optional | objectreference | doc "The object that this event is about.",
+  involvedObject | objectReference | doc "The object that this event is about.",
   kind | optional | String | doc m%"
 Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
 "%,
   lastTimestamp | optional | String | doc "The time at which the most recent occurrence of this event was recorded.",
   message | optional | String | doc "A human-readable description of the status of this operation.",
-  metadata | optional | objectmeta | doc m%"
+  metadata | objectMeta | doc m%"
 Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
 "%,
   reason | optional | String | doc m%"
 This should be a short, machine understandable string that gives the reason for the transition into the object's current status.
 "%,
-  related | optional | objectreference | doc "Optional secondary object for more complex actions.",
+  related | optional | objectReference | doc "Optional secondary object for more complex actions.",
   reportingComponent | optional | String | doc "Name of the controller that emitted this Event, e.g. `kubernetes.io/kubelet`.",
   reportingInstance | optional | String | doc "ID of the controller instance, e.g. `kubelet-xyzf`.",
-  series | optional | eventseries | doc m%"
+  series | optional | eventSeries | doc m%"
 Data about the Event series this event represents or nil if it's a singleton Event.
 "%,
-  source | optional | eventsource | doc m%"
+  source | optional | eventSource | doc m%"
 The component reporting this event. Should be a short machine understandable string.
 "%,
   type | optional | String | doc "Type of this event (Normal, Warning), new types could be added in the future"

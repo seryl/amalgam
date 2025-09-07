@@ -1,5 +1,5 @@
-let managedfieldsentry = import "./managedfieldsentry.ncl" in
-let ownerreference = import "./ownerreference.ncl" in
+let managedFieldsEntry = import "./ManagedFieldsEntry.ncl" in
+let ownerReference = import "./OwnerReference.ncl" in
 
 # Module: k8s.io.v1
 
@@ -33,7 +33,7 @@ A sequence number representing a specific generation of the desired state. Popul
   labels | optional | { .. } | doc m%"
 Map of string keys and values that can be used to organize and categorize (scope and select) objects. May match selectors of replication controllers and services. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
 "%,
-  managedFields | optional | Array managedfieldsentry | doc m%"
+  managedFields | optional | Array managedFieldsEntry | doc m%"
 ManagedFields maps workflow-id and version to the set of fields that are managed by that workflow. This is mostly for internal housekeeping, and users typically shouldn't need to set or understand this field. A workflow can be the user's name, a controller's name, or the name of a specific apply path like "ci-cd". The set of fields is always in the version that the workflow used when modifying the object.
 "%,
   name | optional | String | doc m%"
@@ -43,7 +43,7 @@ Name must be unique within a namespace. Is required when creating resources, alt
 Namespace defines the space within which each name must be unique. An empty namespace is equivalent to the "default" namespace, but "default" is the canonical representation. Not all objects are required to be scoped to a namespace - the value of this field for those objects will be empty.
 Must be a DNS_LABEL. Cannot be updated. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces
 "%,
-  ownerReferences | optional | Array ownerreference | doc m%"
+  ownerReferences | optional | Array ownerReference | doc m%"
 List of objects depended by this object. If ALL objects in the list have been deleted, this object will be garbage collected. If this object is managed by a controller, then an entry in this list will point to this controller, with the controller field set to true. There cannot be more than one managing controller.
 "%,
   resourceVersion | optional | String | doc m%"

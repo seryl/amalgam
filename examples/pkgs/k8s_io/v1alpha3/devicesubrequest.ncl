@@ -1,5 +1,5 @@
-let deviceselector = import "./deviceselector.ncl" in
-let devicetoleration = import "./devicetoleration.ncl" in
+let deviceSelector = import "./DeviceSelector.ncl" in
+let deviceToleration = import "./DeviceToleration.ncl" in
 
 # Module: k8s.io.v1alpha3
 
@@ -21,19 +21,19 @@ More modes may get added in the future. Clients must refuse to handle requests w
   count | optional | Number | doc m%"
 Count is used only when the count mode is "ExactCount". Must be greater than zero. If AllocationMode is ExactCount and this field is not specified, the default is one.
 "%,
-  deviceClassName | optional | String | doc m%"
+  deviceClassName | String | doc m%"
 DeviceClassName references a specific DeviceClass, which can define additional configuration and selectors to be inherited by this subrequest.
 A class is required. Which classes are available depends on the cluster.
 Administrators may use this to restrict which devices may get requested by only installing classes with selectors for permitted devices. If users are free to request anything without restrictions, then administrators can create an empty DeviceClass for users to reference.
 "%,
-  name | optional | String | doc m%"
+  name | String | doc m%"
 Name can be used to reference this subrequest in the list of constraints or the list of configurations for the claim. References must use the format <main request>/<subrequest>.
 Must be a DNS label.
 "%,
-  selectors | optional | Array deviceselector | doc m%"
+  selectors | optional | Array deviceSelector | doc m%"
 Selectors define criteria which must be satisfied by a specific device in order for that device to be considered for this request. All selectors must be satisfied for a device to be considered.
 "%,
-  tolerations | optional | Array devicetoleration | doc m%"
+  tolerations | optional | Array deviceToleration | doc m%"
 If specified, the request's tolerations.
 Tolerations for NoSchedule are required to allocate a device which has a taint with that effect. The same applies to NoExecute.
 In addition, should any of the allocated devices get tainted with NoExecute after allocation and that effect is not tolerated, then all pods consuming the ResourceClaim get deleted to evict them. The scheduler will not let new pods reserve the claim while it has these tainted devices. Once all pods are evicted, the claim will get deallocated.

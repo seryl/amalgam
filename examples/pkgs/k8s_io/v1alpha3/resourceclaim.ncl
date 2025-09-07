@@ -1,6 +1,6 @@
-let objectmeta = import "../v1/objectmeta.ncl" in
-let resourceclaimspec = import "./resourceclaimspec.ncl" in
-let resourceclaimstatus = import "./resourceclaimstatus.ncl" in
+let objectMeta = import "../v1/ObjectMeta.ncl" in
+let resourceClaimSpec = import "./ResourceClaimSpec.ncl" in
+let resourceClaimStatus = import "./ResourceClaimStatus.ncl" in
 
 # Module: k8s.io.v1alpha3
 
@@ -14,9 +14,9 @@ APIVersion defines the versioned schema of this representation of an object. Ser
   kind | optional | String | doc m%"
 Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
 "%,
-  metadata | optional | objectmeta | doc "Standard object metadata",
-  spec | optional | resourceclaimspec | doc m%"
+  metadata | optional | objectMeta | doc "Standard object metadata",
+  spec | resourceClaimSpec | doc m%"
 Spec describes what is being requested and how to configure it. The spec is immutable.
 "%,
-  status | optional | resourceclaimstatus | doc "Status describes whether the claim is ready to use and what has been allocated."
+  status | optional | resourceClaimStatus | doc "Status describes whether the claim is ready to use and what has been allocated."
 }

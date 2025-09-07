@@ -1,10 +1,10 @@
-let statuscause = import "./statuscause.ncl" in
+let statusCause = import "./StatusCause.ncl" in
 
 # Module: k8s.io.v1
 
 # StatusDetails is a set of additional properties that MAY be set by the server to provide additional information about a response. The Reason field of a Status object defines what attributes will be set. Clients must ignore fields that do not match the defined type of each attribute, and should assume that any attribute may be empty, invalid, or under defined.
 {
-  causes | optional | Array statuscause | doc m%"
+  causes | optional | Array statusCause | doc m%"
 The Causes array includes more details associated with the StatusReason failure. Not all StatusReasons may provide detailed causes.
 "%,
   group | optional | String | doc "The group attribute of the resource associated with the status StatusReason.",

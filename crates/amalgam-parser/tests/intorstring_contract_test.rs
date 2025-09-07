@@ -30,7 +30,7 @@ fn test_intorstring_exports_directly_as_contract() {
     ir.add_module(module);
 
     // Generate Nickel code
-    let mut codegen = NickelCodegen::new();
+    let mut codegen = NickelCodegen::from_ir(&ir);
     let result = codegen.generate(&ir).expect("Failed to generate code");
 
     // The generated code should be just the type, not wrapped in a record
@@ -74,7 +74,7 @@ fn test_rawextension_exports_directly() {
     ir.add_module(module);
 
     // Generate Nickel code
-    let mut codegen = NickelCodegen::new();
+    let mut codegen = NickelCodegen::from_ir(&ir);
     let result = codegen.generate(&ir).expect("Failed to generate code");
 
     // Should export the record type directly, not wrapped in another record
@@ -121,7 +121,7 @@ fn test_multi_type_module_uses_record_wrapper() {
     ir.add_module(module);
 
     // Generate Nickel code
-    let mut codegen = NickelCodegen::new();
+    let mut codegen = NickelCodegen::from_ir(&ir);
     let result = codegen.generate(&ir).expect("Failed to generate code");
 
     // Multi-type modules should be wrapped in a record
@@ -159,7 +159,7 @@ fn test_intorstring_contract_can_merge_with_string() {
     };
     ir.add_module(module);
 
-    let mut codegen = NickelCodegen::new();
+    let mut codegen = NickelCodegen::from_ir(&ir);
     let intorstring_content = codegen
         .generate(&ir)
         .expect("Failed to generate IntOrString");
@@ -239,7 +239,7 @@ fn test_module_with_constants_uses_record_wrapper() {
     };
     ir.add_module(module);
 
-    let mut codegen = NickelCodegen::new();
+    let mut codegen = NickelCodegen::from_ir(&ir);
     let result = codegen.generate(&ir).expect("Failed to generate code");
 
     // Should be wrapped because it has constants
@@ -290,7 +290,7 @@ fn test_regression_prevention_intorstring_bug() {
         let mut single_ir = IR::new();
         single_ir.add_module(module);
 
-        let mut codegen = NickelCodegen::new();
+        let mut codegen = NickelCodegen::from_ir(&single_ir);
         let result = codegen
             .generate(&single_ir)
             .unwrap_or_else(|_| panic!("Failed to generate {}", typename));

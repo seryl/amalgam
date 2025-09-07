@@ -1,6 +1,6 @@
-let objectmeta = import "./objectmeta.ncl" in
-let volumeattachmentspec = import "./volumeattachmentspec.ncl" in
-let volumeattachmentstatus = import "./volumeattachmentstatus.ncl" in
+let objectMeta = import "./ObjectMeta.ncl" in
+let volumeAttachmentSpec = import "./VolumeAttachmentSpec.ncl" in
+let volumeAttachmentStatus = import "./VolumeAttachmentStatus.ncl" in
 
 # Module: k8s.io.v1
 
@@ -14,13 +14,13 @@ APIVersion defines the versioned schema of this representation of an object. Ser
   kind | optional | String | doc m%"
 Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
 "%,
-  metadata | optional | objectmeta | doc m%"
+  metadata | optional | objectMeta | doc m%"
 Standard object metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
 "%,
-  spec | optional | volumeattachmentspec | doc m%"
+  spec | volumeAttachmentSpec | doc m%"
 spec represents specification of the desired attach/detach volume behavior. Populated by the Kubernetes system.
 "%,
-  status | optional | volumeattachmentstatus | doc m%"
+  status | optional | volumeAttachmentStatus | doc m%"
 status represents status of the VolumeAttachment request. Populated by the entity completing the attach or detach operation, i.e. the external-attacher.
 "%
 }

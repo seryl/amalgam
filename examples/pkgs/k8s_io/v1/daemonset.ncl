@@ -1,6 +1,6 @@
-let objectmeta = import "./objectmeta.ncl" in
-let daemonsetspec = import "./daemonsetspec.ncl" in
-let daemonsetstatus = import "./daemonsetstatus.ncl" in
+let objectMeta = import "./ObjectMeta.ncl" in
+let daemonSetSpec = import "./DaemonSetSpec.ncl" in
+let daemonSetStatus = import "./DaemonSetStatus.ncl" in
 
 # Module: k8s.io.v1
 
@@ -12,13 +12,13 @@ APIVersion defines the versioned schema of this representation of an object. Ser
   kind | optional | String | doc m%"
 Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
 "%,
-  metadata | optional | objectmeta | doc m%"
+  metadata | optional | objectMeta | doc m%"
 Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
 "%,
-  spec | optional | daemonsetspec | doc m%"
+  spec | optional | daemonSetSpec | doc m%"
 The desired behavior of this daemon set. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
 "%,
-  status | optional | daemonsetstatus | doc m%"
+  status | optional | daemonSetStatus | doc m%"
 The current status of this daemon set. This data may be out of date by some window of time. Populated by the system. Read-only. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
 "%
 }

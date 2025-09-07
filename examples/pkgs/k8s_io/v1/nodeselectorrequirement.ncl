@@ -2,8 +2,8 @@
 
 # A node selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
 {
-  key | optional | String | doc "The label key that the selector applies to.",
-  operator | optional | String | doc m%"
+  key | String | doc "The label key that the selector applies to.",
+  operator | String | doc m%"
 Represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt.
 "%,
   values | optional | Array String | doc m%"

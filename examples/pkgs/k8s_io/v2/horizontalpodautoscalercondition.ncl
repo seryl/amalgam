@@ -7,6 +7,6 @@ lastTransitionTime is the last time the condition transitioned from one status t
 "%,
   message | optional | String | doc "message is a human-readable explanation containing details about the transition",
   reason | optional | String | doc "reason is the reason for the condition's last transition.",
-  status | optional | String | doc "status is the status of the condition (True, False, Unknown)",
-  type | optional | String | doc "type describes the current condition"
+  status | String | doc "status is the status of the condition (True, False, Unknown)",
+  type | String | doc "type describes the current condition"
 }

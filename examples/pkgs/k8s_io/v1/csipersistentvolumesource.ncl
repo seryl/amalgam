@@ -1,33 +1,33 @@
-let secretreference = import "./secretreference.ncl" in
+let secretReference = import "./SecretReference.ncl" in
 
 # Module: k8s.io.v1
 
 # Represents storage that is managed by an external CSI volume driver
 {
-  controllerExpandSecretRef | optional | secretreference | doc m%"
+  controllerExpandSecretRef | optional | secretReference | doc m%"
 controllerExpandSecretRef is a reference to the secret object containing sensitive information to pass to the CSI driver to complete the CSI ControllerExpandVolume call. This field is optional, and may be empty if no secret is required. If the secret object contains more than one secret, all secrets are passed.
 "%,
-  controllerPublishSecretRef | optional | secretreference | doc m%"
+  controllerPublishSecretRef | optional | secretReference | doc m%"
 controllerPublishSecretRef is a reference to the secret object containing sensitive information to pass to the CSI driver to complete the CSI ControllerPublishVolume and ControllerUnpublishVolume calls. This field is optional, and may be empty if no secret is required. If the secret object contains more than one secret, all secrets are passed.
 "%,
-  driver | optional | String | doc "driver is the name of the driver to use for this volume. Required.",
+  driver | String | doc "driver is the name of the driver to use for this volume. Required.",
   fsType | optional | String | doc m%"
 fsType to mount. Must be a filesystem type supported by the host operating system. Ex. "ext4", "xfs", "ntfs".
 "%,
-  nodeExpandSecretRef | optional | secretreference | doc m%"
+  nodeExpandSecretRef | optional | secretReference | doc m%"
 nodeExpandSecretRef is a reference to the secret object containing sensitive information to pass to the CSI driver to complete the CSI NodeExpandVolume call. This field is optional, may be omitted if no secret is required. If the secret object contains more than one secret, all secrets are passed.
 "%,
-  nodePublishSecretRef | optional | secretreference | doc m%"
+  nodePublishSecretRef | optional | secretReference | doc m%"
 nodePublishSecretRef is a reference to the secret object containing sensitive information to pass to the CSI driver to complete the CSI NodePublishVolume and NodeUnpublishVolume calls. This field is optional, and may be empty if no secret is required. If the secret object contains more than one secret, all secrets are passed.
 "%,
-  nodeStageSecretRef | optional | secretreference | doc m%"
+  nodeStageSecretRef | optional | secretReference | doc m%"
 nodeStageSecretRef is a reference to the secret object containing sensitive information to pass to the CSI driver to complete the CSI NodeStageVolume and NodeStageVolume and NodeUnstageVolume calls. This field is optional, and may be empty if no secret is required. If the secret object contains more than one secret, all secrets are passed.
 "%,
   readOnly | optional | Bool | doc m%"
 readOnly value to pass to ControllerPublishVolumeRequest. Defaults to false (read/write).
 "%,
   volumeAttributes | optional | { .. } | doc "volumeAttributes of the volume to publish.",
-  volumeHandle | optional | String | doc m%"
+  volumeHandle | String | doc m%"
 volumeHandle is the unique volume name returned by the CSI volume plugin’s CreateVolume to refer to the volume on all subsequent calls. Required.
 "%
 }

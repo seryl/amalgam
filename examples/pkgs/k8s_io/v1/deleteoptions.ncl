@@ -1,4 +1,4 @@
-let preconditions = import "./preconditions.ncl" in
+let preconditions = import "./Preconditions.ncl" in
 
 # Module: k8s.io.v1
 

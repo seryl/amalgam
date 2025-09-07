@@ -2,8 +2,8 @@
 
 # A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
 {
-  key | optional | String | doc "key is the label key that the selector applies to.",
-  operator | optional | String | doc m%"
+  key | String | doc "key is the label key that the selector applies to.",
+  operator | String | doc m%"
 operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.
 "%,
   values | optional | Array String | doc m%"

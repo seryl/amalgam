@@ -17,7 +17,7 @@ fn test_snapshot_simple_crd() {
     let ir = parser.parse(crd).expect("Failed to parse CRD");
 
     // Generate Nickel code
-    let mut codegen = NickelCodegen::new();
+    let mut codegen = NickelCodegen::from_ir(&ir);
     let generated = codegen
         .generate(&ir)
         .expect("Failed to generate Nickel code");
@@ -55,7 +55,7 @@ fn test_snapshot_crd_with_k8s_imports() {
     let version_files = generated_package.generate_version_files("test.io", "v1");
     let content = version_files.get("simple.ncl").cloned().unwrap_or_else(|| {
         // If no file found, generate from IR directly
-        let mut codegen = NickelCodegen::new();
+        let mut codegen = NickelCodegen::from_ir(&ir);
         codegen.generate(&ir).expect("Failed to generate")
     });
 
@@ -69,7 +69,7 @@ fn test_snapshot_multiple_k8s_refs() {
     let parser = CRDParser::new();
     let ir = parser.parse(crd).expect("Failed to parse CRD");
 
-    let mut codegen = NickelCodegen::new();
+    let mut codegen = NickelCodegen::from_ir(&ir);
     let content = codegen.generate(&ir).expect("Failed to generate");
 
     assert_snapshot!("multiple_k8s_refs_nickel", content);
@@ -81,7 +81,7 @@ fn test_snapshot_nested_objects() {
     let parser = CRDParser::new();
     let ir = parser.parse(crd).expect("Failed to parse CRD");
 
-    let mut codegen = NickelCodegen::new();
+    let mut codegen = NickelCodegen::from_ir(&ir);
     let generated = codegen.generate(&ir).expect("Failed to generate");
 
     assert_snapshot!("nested_objects_nickel", generated);
@@ -93,7 +93,7 @@ fn test_snapshot_arrays() {
     let parser = CRDParser::new();
     let ir = parser.parse(crd).expect("Failed to parse CRD");
 
-    let mut codegen = NickelCodegen::new();
+    let mut codegen = NickelCodegen::from_ir(&ir);
     let content = codegen.generate(&ir).expect("Failed to generate");
 
     assert_snapshot!("arrays_nickel", content);
@@ -105,7 +105,7 @@ fn test_snapshot_validation() {
     let parser = CRDParser::new();
     let ir = parser.parse(crd).expect("Failed to parse CRD");
 
-    let mut codegen = NickelCodegen::new();
+    let mut codegen = NickelCodegen::from_ir(&ir);
     let generated = codegen.generate(&ir).expect("Failed to generate");
 
     assert_snapshot!("validation_nickel", generated);
@@ -120,7 +120,7 @@ fn test_snapshot_multi_version() {
     let ir = parser.parse(crd).expect("Failed to parse CRD");
 
     // The IR should have modules for each version
-    let mut codegen = NickelCodegen::new();
+    let mut codegen = NickelCodegen::from_ir(&ir);
     let all_versions = codegen.generate(&ir).expect("Failed to generate");
 
     // Snapshot the full multi-version output

@@ -1,6 +1,6 @@
-let objectmeta = import "./objectmeta.ncl" in
-let statefulsetspec = import "./statefulsetspec.ncl" in
-let statefulsetstatus = import "./statefulsetstatus.ncl" in
+let objectMeta = import "./ObjectMeta.ncl" in
+let statefulSetSpec = import "./StatefulSetSpec.ncl" in
+let statefulSetStatus = import "./StatefulSetStatus.ncl" in
 
 # Module: k8s.io.v1
 
@@ -16,11 +16,11 @@ APIVersion defines the versioned schema of this representation of an object. Ser
   kind | optional | String | doc m%"
 Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
 "%,
-  metadata | optional | objectmeta | doc m%"
+  metadata | optional | objectMeta | doc m%"
 Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
 "%,
-  spec | optional | statefulsetspec | doc "Spec defines the desired identities of pods in this set.",
-  status | optional | statefulsetstatus | doc m%"
+  spec | optional | statefulSetSpec | doc "Spec defines the desired identities of pods in this set.",
+  status | optional | statefulSetStatus | doc m%"
 Status is the current status of Pods in this StatefulSet. This data may be out of date by some window of time.
 "%
 }

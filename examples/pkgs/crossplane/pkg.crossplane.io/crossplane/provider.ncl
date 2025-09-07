@@ -1,4 +1,4 @@
-let objectmeta = import "../../../k8s_io/v1/objectmeta.ncl" in
+let objectMeta = import "../../../../k8s_io/v1/ObjectMeta.ncl" in
 
 
 {
@@ -15,7 +15,7 @@ Cannot be updated.
 In CamelCase.
 More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
 "%,
-  metadata | optional | objectmeta.ObjectMeta,
+  metadata | optional | objectMeta.ObjectMeta,
   spec | optional | {
     commonLabels | optional | {
     } | doc m%"
@@ -29,7 +29,7 @@ IgnoreCrossplaneConstraints indicates to the package manager whether to
 honor Crossplane version constrains specified by the package.
 Default is false.
 "% | default = false,
-    package | optional | String | doc m%"
+    package | String | doc m%"
 Package is the name of the package that is being requested.
 must be a fully qualified image name, including the registry,
 repository, and tag. for example, "registry.example.com/repo/package:tag".
@@ -63,7 +63,7 @@ Defaults to 1. Can be disabled by explicitly setting to 0.
     runtimeConfigRef | {
       apiVersion | String | doc "API version of the referent." | default = "pkg.crossplane.io/v1beta1",
       kind | String | doc "Kind of the referent." | default = "DeploymentRuntimeConfig",
-      name | optional | String | doc "Name of the RuntimeConfig."
+      name | String | doc "Name of the RuntimeConfig."
     } | doc m%"
 RuntimeConfigRef references a RuntimeConfig resource that will be used
 to configure the package runtime.
@@ -82,14 +82,14 @@ Crossplane.
 "%,
   status | optional | {
     appliedImageConfigRefs | optional | Array {
-      name | optional | String | doc "Name is the name of the image config.",
-      reason | optional | String | doc "Reason indicates what the image config was used for."
+      name | String | doc "Name is the name of the image config.",
+      reason | String | doc "Reason indicates what the image config was used for."
     } | doc m%"
 AppliedImageConfigRefs records any image configs that were applied in
 reconciling this package, and what they were used for.
 "%,
     conditions | optional | Array {
-      lastTransitionTime | optional | String | doc m%"
+      lastTransitionTime | String | doc m%"
 LastTransitionTime is the last time this condition transitioned from one
 status to another.
 "%,
@@ -102,9 +102,9 @@ ObservedGeneration represents the .metadata.generation that the condition was se
 For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
 with respect to the current state of the instance.
 "%,
-      reason | optional | String | doc "A Reason for this condition's last transition from one status to another.",
-      status | optional | String | doc "Status of this condition; is it currently True, False, or Unknown?",
-      type | optional | String | doc m%"
+      reason | String | doc "A Reason for this condition's last transition from one status to another.",
+      status | String | doc "Status of this condition; is it currently True, False, or Unknown?",
+      type | String | doc m%"
 Type of this condition. At most one of each condition type may apply to
 a resource at any point in time.
 "%

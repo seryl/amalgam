@@ -1,6 +1,6 @@
-let labelselector = import "./labelselector.ncl" in
-let podtemplatespec = import "./podtemplatespec.ncl" in
-let daemonsetupdatestrategy = import "./daemonsetupdatestrategy.ncl" in
+let labelSelector = import "./LabelSelector.ncl" in
+let podTemplateSpec = import "./PodTemplateSpec.ncl" in
+let daemonSetUpdateStrategy = import "./DaemonSetUpdateStrategy.ncl" in
 
 # Module: k8s.io.v1
 
@@ -12,11 +12,11 @@ The minimum number of seconds for which a newly created DaemonSet pod should be 
   revisionHistoryLimit | optional | Number | doc m%"
 The number of old history to retain to allow rollback. This is a pointer to distinguish between explicit zero and not specified. Defaults to 10.
 "%,
-  selector | optional | labelselector | doc m%"
+  selector | labelSelector | doc m%"
 A label query over pods that are managed by the daemon set. Must match in order to be controlled. It must match the pod template's labels. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors
 "%,
-  template | optional | podtemplatespec | doc m%"
+  template | podTemplateSpec | doc m%"
 An object that describes the pod that will be created. The DaemonSet will create exactly one copy of this pod on every node that matches the template's node selector (or on every node if no node selector is specified). The only allowed template.spec.restartPolicy value is "Always". More info: https://kubernetes.io/docs/concepts/workloads/controllers/replicationcontroller#pod-template
 "%,
-  updateStrategy | optional | daemonsetupdatestrategy | doc "An update strategy to replace existing DaemonSet pods with new pods."
+  updateStrategy | optional | daemonSetUpdateStrategy | doc "An update strategy to replace existing DaemonSet pods with new pods."
 }

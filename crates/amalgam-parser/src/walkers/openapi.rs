@@ -437,7 +437,7 @@ impl SchemaWalker for OpenAPIWalker {
 impl OpenAPIWalker {
     /// Calculate relative import path between modules
     fn calculate_import_path(&self, from_module: &str, to_module: &str) -> String {
-        let calc = ImportPathCalculator::new();
+        let calc = ImportPathCalculator::new_standalone();
 
         // Parse module names to extract group and version
         let (from_group, from_version) = Self::parse_module_name(from_module);

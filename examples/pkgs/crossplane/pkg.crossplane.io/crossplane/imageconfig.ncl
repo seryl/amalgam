@@ -1,4 +1,4 @@
-let objectmeta = import "../../../k8s_io/v1/objectmeta.ncl" in
+let objectMeta = import "../../../../k8s_io/v1/ObjectMeta.ncl" in
 
 
 {
@@ -15,10 +15,10 @@ Cannot be updated.
 In CamelCase.
 More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
 "%,
-  metadata | optional | objectmeta.ObjectMeta,
+  metadata | optional | objectMeta.ObjectMeta,
   spec | optional | {
-    matchImages | optional | Array {
-      prefix | optional | String | doc m%"
+    matchImages | Array {
+      prefix | String | doc m%"
 Prefix is the prefix that should be matched. When multiple prefix rules
 match an image path, the longest one takes precedence.
 "%,
@@ -32,7 +32,7 @@ match an arbitrary one will be selected.
 "%,
     registry | optional | {
       authentication | optional | {
-        pullSecretRef | optional | {
+        pullSecretRef | {
           name | String | doc m%"
 Name of the referent.
 This field is effectively required, but due to backwards compatibility is
@@ -47,7 +47,7 @@ the registry.
       } | doc "Authentication is the authentication information for the registry."
     } | doc "Registry is the configuration for the registry.",
     rewriteImage | optional | {
-      prefix | optional | String | doc m%"
+      prefix | String | doc m%"
 Prefix is the prefix that will replace the portion of the image's path
 matched by the prefix in the ImageMatch. If multiple prefixes matched,
 the longest one will be replaced.
@@ -55,10 +55,10 @@ the longest one will be replaced.
     } | doc "RewriteImage defines how a matched image's path should be rewritten.",
     verification | optional | {
       cosign | optional | {
-        authorities | optional | Array {
+        authorities | Array {
           attestations | optional | Array {
-            name | optional | String | doc "Name of the attestation.",
-            predicateType | optional | String | doc m%"
+            name | String | doc "Name of the attestation.",
+            predicateType | String | doc m%"
 PredicateType defines which predicate type to verify. Matches cosign
 verify-attestation options.
 "%
@@ -70,13 +70,13 @@ once the signature for this authority has been verified.
             hashAlgorithm | String | doc m%"
 HashAlgorithm always defaults to sha256 if the algorithm hasn't been explicitly set
 "% | default = "sha256",
-            secretRef | optional | {
-              key | optional | String | doc "The key to select.",
-              name | optional | String | doc "Name of the secret."
+            secretRef | {
+              key | String | doc "The key to select.",
+              name | String | doc "Name of the secret."
             } | doc "SecretRef sets a reference to a secret with the key."
           } | doc "Key defines the type of key to validate the image.",
           keyless | optional | {
-            identities | optional | Array {
+            identities | Array {
               issuer | optional | String | doc "Issuer defines the issuer for this identity.",
               issuerRegExp | optional | String | doc m%"
 IssuerRegExp specifies a regular expression to match the issuer for this identity.
@@ -93,10 +93,10 @@ This has precedence over the Subject field.
 Keyless sets the configuration to verify the authority against a Fulcio
 instance.
 "%,
-          name | optional | String | doc "Name is the name for this authority."
+          name | String | doc "Name is the name for this authority."
         } | doc "Authorities defines the rules for discovering and validating signatures."
       } | doc "Cosign is the configuration for verifying the image using cosign.",
-      provider | optional | String | doc "Provider is the provider that should be used to verify the image."
+      provider | String | doc "Provider is the provider that should be used to verify the image."
     } | doc "Verification contains the configuration for verifying the image."
   } | doc "ImageConfigSpec contains the configuration for matching images."
 }

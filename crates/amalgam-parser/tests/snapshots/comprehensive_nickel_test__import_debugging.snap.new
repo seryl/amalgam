@@ -1,0 +1,29 @@
+---
+source: crates/amalgam-parser/tests/comprehensive_nickel_test.rs
+assertion_line: 346
+expression: snapshot_content
+---
+SUCCESS: false
+
+OUTPUT:
+STDERR:
+error: unexpected token
+   ┌─ /Users/jtoft/src/ai/amalgam/test_comprehensive_temp_5660_2.ncl:19:7
+   │
+19 │       let k8s = import "examples/pkgs/k8s_io/mod.ncl" in
+   │       ^^^
+
+error: unexpected token
+   ┌─ /Users/jtoft/src/ai/amalgam/test_comprehensive_temp_5660_2.ncl:21:82
+   │
+21 │         label_selector = k8s.v1.LabelSelector & { matchLabels = { app = "test" } },
+   │                                                                                  ^
+
+error: unexpected token
+   ┌─ /Users/jtoft/src/ai/amalgam/test_comprehensive_temp_5660_2.ncl:21:83
+   │
+21 │         label_selector = k8s.v1.LabelSelector & { matchLabels = { app = "test" } },
+   │                                                                                   ^
+
+
+STDOUT:

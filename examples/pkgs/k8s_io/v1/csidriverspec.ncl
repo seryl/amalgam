@@ -1,4 +1,4 @@
-let tokenrequest = import "./tokenrequest.ncl" in
+let tokenRequest = import "./TokenRequest.ncl" in
 
 # Module: k8s.io.v1
 
@@ -42,7 +42,7 @@ The check can be enabled immediately when deploying a driver. In that case, prov
 Alternatively, the driver can be deployed with the field unset or false and it can be flipped later when storage capacity information has been published.
 This field was immutable in Kubernetes <= 1.22 and now is mutable.
 "%,
-  tokenRequests | optional | Array tokenrequest | doc m%"
+  tokenRequests | optional | Array tokenRequest | doc m%"
 tokenRequests indicates the CSI driver needs pods' service account tokens it is mounting volume for to do necessary authentication. Kubelet will pass the tokens in VolumeContext in the CSI NodePublishVolume calls. The CSI driver should parse and validate the following VolumeContext: "csi.storage.k8s.io/serviceAccount.tokens": {
   "<audience>": {
     "token": <token>,

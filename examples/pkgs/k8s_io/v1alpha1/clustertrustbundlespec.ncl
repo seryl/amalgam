@@ -9,7 +9,7 @@ If signerName is not empty, then the ClusterTrustBundle object must be named wit
 If signerName is empty, then the ClusterTrustBundle object's name must not have such a prefix.
 List/watch requests for ClusterTrustBundles can filter on this field using a `spec.signerName=NAME` field selector.
 "%,
-  trustBundle | optional | String | doc m%"
+  trustBundle | String | doc m%"
 trustBundle contains the individual X.509 trust anchors for this bundle, as PEM bundle of PEM-wrapped, DER-formatted X.509 certificates.
 The data must consist only of PEM certificate blocks that parse as valid X.509 certificates.  Each certificate must include a basic constraints extension with the CA bit set.  The API server will reject objects that contain duplicate certificates, or that use PEM block headers.
 Users of ClusterTrustBundles, including Kubelet, are free to reorder and deduplicate certificate blocks in this file according to their own logic, as well as to drop PEM block headers and inter-block data.

@@ -1,4 +1,4 @@
-let localobjectreference = import "./localobjectreference.ncl" in
+let localObjectReference = import "./LocalObjectReference.ncl" in
 
 # Module: k8s.io.v1
 
@@ -12,19 +12,19 @@ fsType is the filesystem type of the volume that you want to mount. Tip: Ensure 
   initiatorName | optional | String | doc m%"
 initiatorName is the custom iSCSI Initiator Name. If initiatorName is specified with iscsiInterface simultaneously, new iSCSI interface <target portal>:<volume name> will be created for the connection.
 "%,
-  iqn | optional | String | doc "iqn is the target iSCSI Qualified Name.",
+  iqn | String | doc "iqn is the target iSCSI Qualified Name.",
   iscsiInterface | optional | String | doc m%"
 iscsiInterface is the interface Name that uses an iSCSI transport. Defaults to 'default' (tcp).
 "%,
-  lun | optional | Number | doc "lun represents iSCSI Target Lun number.",
+  lun | Number | doc "lun represents iSCSI Target Lun number.",
   portals | optional | Array String | doc m%"
 portals is the iSCSI Target Portal List. The portal is either an IP or ip_addr:port if the port is other than default (typically TCP ports 860 and 3260).
 "%,
   readOnly | optional | Bool | doc m%"
 readOnly here will force the ReadOnly setting in VolumeMounts. Defaults to false.
 "%,
-  secretRef | optional | localobjectreference | doc "secretRef is the CHAP Secret for iSCSI target and initiator authentication",
-  targetPortal | optional | String | doc m%"
+  secretRef | optional | localObjectReference | doc "secretRef is the CHAP Secret for iSCSI target and initiator authentication",
+  targetPortal | String | doc m%"
 targetPortal is iSCSI Target Portal. The Portal is either an IP or ip_addr:port if the port is other than default (typically TCP ports 860 and 3260).
 "%
 }

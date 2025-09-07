@@ -1,5 +1,5 @@
-let objectmeta = import "../v1/objectmeta.ncl" in
-let clustertrustbundlespec = import "./clustertrustbundlespec.ncl" in
+let objectMeta = import "../v1/ObjectMeta.ncl" in
+let clusterTrustBundleSpec = import "./ClusterTrustBundleSpec.ncl" in
 
 # Module: k8s.io.v1alpha1
 
@@ -15,6 +15,6 @@ APIVersion defines the versioned schema of this representation of an object. Ser
   kind | optional | String | doc m%"
 Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
 "%,
-  metadata | optional | objectmeta | doc "metadata contains the object metadata.",
-  spec | optional | clustertrustbundlespec | doc "spec contains the signer (if any) and trust anchors."
+  metadata | optional | objectMeta | doc "metadata contains the object metadata.",
+  spec | clusterTrustBundleSpec | doc "spec contains the signer (if any) and trust anchors."
 }

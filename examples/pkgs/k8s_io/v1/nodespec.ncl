@@ -1,11 +1,11 @@
-let nodeconfigsource = import "./nodeconfigsource.ncl" in
-let taint = import "./taint.ncl" in
+let nodeConfigSource = import "./NodeConfigSource.ncl" in
+let taint = import "./Taint.ncl" in
 
 # Module: k8s.io.v1
 
 # NodeSpec describes the attributes that a node is created with.
 {
-  configSource | optional | nodeconfigsource | doc m%"
+  configSource | optional | nodeConfigSource | doc m%"
 Deprecated: Previously used to specify the source of the node's configuration for the DynamicKubeletConfig feature. This feature is removed.
 "%,
   externalID | optional | String | doc m%"

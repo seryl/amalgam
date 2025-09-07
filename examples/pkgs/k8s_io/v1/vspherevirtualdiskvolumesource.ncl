@@ -9,5 +9,5 @@ fsType is filesystem type to mount. Must be a filesystem type supported by the h
 storagePolicyID is the storage Policy Based Management (SPBM) profile ID associated with the StoragePolicyName.
 "%,
   storagePolicyName | optional | String | doc "storagePolicyName is the storage Policy Based Management (SPBM) profile name.",
-  volumePath | optional | String | doc "volumePath is the path that identifies vSphere volume vmdk"
+  volumePath | String | doc "volumePath is the path that identifies vSphere volume vmdk"
 }

@@ -1,15 +1,15 @@
-let auditannotation = import "./auditannotation.ncl" in
-let matchcondition = import "./matchcondition.ncl" in
-let matchresources = import "./matchresources.ncl" in
-let paramkind = import "./paramkind.ncl" in
-let validation = import "./validation.ncl" in
-let variable = import "./variable.ncl" in
+let auditAnnotation = import "./AuditAnnotation.ncl" in
+let matchCondition = import "./MatchCondition.ncl" in
+let matchResources = import "./MatchResources.ncl" in
+let paramKind = import "./ParamKind.ncl" in
+let validation = import "./Validation.ncl" in
+let variable = import "./Variable.ncl" in
 
 # Module: k8s.io.v1beta1
 
 # ValidatingAdmissionPolicySpec is the specification of the desired behavior of the AdmissionPolicy.
 {
-  auditAnnotations | optional | Array auditannotation | doc m%"
+  auditAnnotations | optional | Array auditAnnotation | doc m%"
 auditAnnotations contains CEL expressions which are used to produce audit annotations for the audit event of the API request. validations and auditAnnotations may not both be empty; a least one of validations or auditAnnotations is required.
 "%,
   failurePolicy | optional | String | doc m%"
@@ -19,7 +19,7 @@ failurePolicy does not define how validations that evaluate to false are handled
 When failurePolicy is set to Fail, ValidatingAdmissionPolicyBinding validationActions define how failures are enforced.
 Allowed values are Ignore or Fail. Defaults to Fail.
 "%,
-  matchConditions | optional | Array matchcondition | doc m%"
+  matchConditions | optional | Array matchCondition | doc m%"
 MatchConditions is a list of conditions that must be met for a request to be validated. Match conditions filter requests that have already been matched by the rules, namespaceSelector, and objectSelector. An empty list of matchConditions matches all requests. There are a maximum of 64 match conditions allowed.
 If a parameter object is provided, it can be accessed via the `params` handle in the same manner as validation expressions.
 The exact matching logic is (in order):
@@ -29,10 +29,10 @@ The exact matching logic is (in order):
      - If failurePolicy=Fail, reject the request
      - If failurePolicy=Ignore, the policy is skipped
 "%,
-  matchConstraints | optional | matchresources | doc m%"
+  matchConstraints | optional | matchResources | doc m%"
 MatchConstraints specifies what resources this policy is designed to validate. The AdmissionPolicy cares about a request if it matches _all_ Constraints. However, in order to prevent clusters from being put into an unstable state that cannot be recovered from via the API ValidatingAdmissionPolicy cannot match ValidatingAdmissionPolicy and ValidatingAdmissionPolicyBinding. Required.
 "%,
-  paramKind | optional | paramkind | doc m%"
+  paramKind | optional | paramKind | doc m%"
 ParamKind specifies the kind of resources used to parameterize this policy. If absent, there are no parameters for this policy and the param CEL variable will not be provided to validation expressions. If ParamKind refers to a non-existent kind, this policy definition is mis-configured and the FailurePolicy is applied. If paramKind is specified but paramRef is unset in ValidatingAdmissionPolicyBinding, the params variable will be null.
 "%,
   validations | optional | Array validation | doc m%"

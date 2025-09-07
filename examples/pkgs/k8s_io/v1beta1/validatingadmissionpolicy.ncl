@@ -1,6 +1,6 @@
-let objectmeta = import "../v1/objectmeta.ncl" in
-let validatingadmissionpolicyspec = import "./validatingadmissionpolicyspec.ncl" in
-let validatingadmissionpolicystatus = import "./validatingadmissionpolicystatus.ncl" in
+let objectMeta = import "../v1/ObjectMeta.ncl" in
+let validatingAdmissionPolicySpec = import "./ValidatingAdmissionPolicySpec.ncl" in
+let validatingAdmissionPolicyStatus = import "./ValidatingAdmissionPolicyStatus.ncl" in
 
 # Module: k8s.io.v1beta1
 
@@ -12,11 +12,11 @@ APIVersion defines the versioned schema of this representation of an object. Ser
   kind | optional | String | doc m%"
 Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
 "%,
-  metadata | optional | objectmeta | doc m%"
+  metadata | optional | objectMeta | doc m%"
 Standard object metadata; More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata.
 "%,
-  spec | optional | validatingadmissionpolicyspec | doc "Specification of the desired behavior of the ValidatingAdmissionPolicy.",
-  status | optional | validatingadmissionpolicystatus | doc m%"
+  spec | optional | validatingAdmissionPolicySpec | doc "Specification of the desired behavior of the ValidatingAdmissionPolicy.",
+  status | optional | validatingAdmissionPolicyStatus | doc m%"
 The status of the ValidatingAdmissionPolicy, including warnings that are useful to determine if the policy behaves in the expected way. Populated by the system. Read-only.
 "%
 }

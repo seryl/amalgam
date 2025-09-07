@@ -1,8 +1,8 @@
-let matchcondition = import "./matchcondition.ncl" in
-let matchresources = import "./matchresources.ncl" in
-let mutation = import "./mutation.ncl" in
-let paramkind = import "./paramkind.ncl" in
-let variable = import "./variable.ncl" in
+let matchCondition = import "./MatchCondition.ncl" in
+let matchResources = import "./MatchResources.ncl" in
+let mutation = import "./Mutation.ncl" in
+let paramKind = import "./ParamKind.ncl" in
+let variable = import "./Variable.ncl" in
 
 # Module: k8s.io.v1alpha1
 
@@ -14,7 +14,7 @@ A policy is invalid if paramKind refers to a non-existent Kind. A binding is inv
 failurePolicy does not define how validations that evaluate to false are handled.
 Allowed values are Ignore or Fail. Defaults to Fail.
 "%,
-  matchConditions | optional | Array matchcondition | doc m%"
+  matchConditions | optional | Array matchCondition | doc m%"
 matchConditions is a list of conditions that must be met for a request to be validated. Match conditions filter requests that have already been matched by the matchConstraints. An empty list of matchConditions matches all requests. There are a maximum of 64 match conditions allowed.
 If a parameter object is provided, it can be accessed via the `params` handle in the same manner as validation expressions.
 The exact matching logic is (in order):
@@ -24,13 +24,13 @@ The exact matching logic is (in order):
      - If failurePolicy=Fail, reject the request
      - If failurePolicy=Ignore, the policy is skipped
 "%,
-  matchConstraints | optional | matchresources | doc m%"
+  matchConstraints | optional | matchResources | doc m%"
 matchConstraints specifies what resources this policy is designed to validate. The MutatingAdmissionPolicy cares about a request if it matches _all_ Constraints. However, in order to prevent clusters from being put into an unstable state that cannot be recovered from via the API MutatingAdmissionPolicy cannot match MutatingAdmissionPolicy and MutatingAdmissionPolicyBinding. The CREATE, UPDATE and CONNECT operations are allowed.  The DELETE operation may not be matched. '*' matches CREATE, UPDATE and CONNECT. Required.
 "%,
   mutations | optional | Array mutation | doc m%"
 mutations contain operations to perform on matching objects. mutations may not be empty; a minimum of one mutation is required. mutations are evaluated in order, and are reinvoked according to the reinvocationPolicy. The mutations of a policy are invoked for each binding of this policy and reinvocation of mutations occurs on a per binding basis.
 "%,
-  paramKind | optional | paramkind | doc m%"
+  paramKind | optional | paramKind | doc m%"
 paramKind specifies the kind of resources used to parameterize this policy. If absent, there are no parameters for this policy and the param CEL variable will not be provided to validation expressions. If paramKind refers to a non-existent kind, this policy definition is mis-configured and the FailurePolicy is applied. If paramKind is specified but paramRef is unset in MutatingAdmissionPolicyBinding, the params variable will be null.
 "%,
   reinvocationPolicy | optional | String | doc m%"

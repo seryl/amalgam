@@ -1,4 +1,4 @@
-let condition = import "../v1/condition.ncl" in
+let condition = import "../v1/Condition.ncl" in
 
 # Module: k8s.io.v1beta1
 

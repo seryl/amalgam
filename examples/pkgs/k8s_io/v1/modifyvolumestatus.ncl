@@ -2,7 +2,7 @@
 
 # ModifyVolumeStatus represents the status object of ControllerModifyVolume operation
 {
-  status | optional | String | doc m%"
+  status | String | doc m%"
 status is the status of the ControllerModifyVolume operation. It can be in any of following states:
  - Pending
    Pending indicates that the PersistentVolumeClaim cannot be modified due to unmet requirements, such as

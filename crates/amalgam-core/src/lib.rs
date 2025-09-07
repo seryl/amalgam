@@ -6,10 +6,12 @@ pub mod error;
 pub mod fingerprint;
 pub mod import_calculator;
 pub mod ir;
+pub mod module_registry;
 pub mod types;
 
 pub use debug::{CompilationDebugInfo, DebugConfig};
 pub use error::CoreError;
 pub use import_calculator::ImportPathCalculator;
 pub use ir::IR;
+pub use module_registry::ModuleRegistry;
 pub use types::{Type, TypeSystem};

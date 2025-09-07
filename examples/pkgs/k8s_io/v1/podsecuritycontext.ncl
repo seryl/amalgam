@@ -1,14 +1,14 @@
-let apparmorprofile = import "./apparmorprofile.ncl" in
-let selinuxoptions = import "./selinuxoptions.ncl" in
-let seccompprofile = import "./seccompprofile.ncl" in
-let sysctl = import "./sysctl.ncl" in
-let windowssecuritycontextoptions = import "./windowssecuritycontextoptions.ncl" in
+let appArmorProfile = import "./AppArmorProfile.ncl" in
+let sELinuxOptions = import "./SELinuxOptions.ncl" in
+let seccompProfile = import "./SeccompProfile.ncl" in
+let sysctl = import "./Sysctl.ncl" in
+let windowsSecurityContextOptions = import "./WindowsSecurityContextOptions.ncl" in
 
 # Module: k8s.io.v1
 
 # PodSecurityContext holds pod-level security attributes and common container settings. Some fields are also present in container.securityContext.  Field values of container.securityContext take precedence over field values of PodSecurityContext.
 {
-  appArmorProfile | optional | apparmorprofile | doc m%"
+  appArmorProfile | optional | appArmorProfile | doc m%"
 appArmorProfile is the AppArmor options to use by the containers in this pod. Note that this field cannot be set when spec.os.name is windows.
 "%,
   fsGroup | optional | Number | doc m%"
@@ -36,10 +36,10 @@ If not specified and SELinuxMount feature gate is enabled, "MountOption" is used
 This field affects only Pods that have SELinux label set, either in PodSecurityContext or in SecurityContext of all containers.
 All Pods that use the same volume should use the same seLinuxChangePolicy, otherwise some pods can get stuck in ContainerCreating state. Note that this field cannot be set when spec.os.name is windows.
 "%,
-  seLinuxOptions | optional | selinuxoptions | doc m%"
+  seLinuxOptions | optional | sELinuxOptions | doc m%"
 The SELinux context to be applied to all containers. If unspecified, the container runtime will allocate a random SELinux context for each container.  May also be set in SecurityContext.  If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence for that container. Note that this field cannot be set when spec.os.name is windows.
 "%,
-  seccompProfile | optional | seccompprofile | doc m%"
+  seccompProfile | optional | seccompProfile | doc m%"
 The seccomp options to use by the containers in this pod. Note that this field cannot be set when spec.os.name is windows.
 "%,
   supplementalGroups | optional | Array Number | doc m%"
@@ -51,7 +51,7 @@ Defines how supplemental groups of the first container processes are calculated.
   sysctls | optional | Array sysctl | doc m%"
 Sysctls hold a list of namespaced sysctls used for the pod. Pods with unsupported sysctls (by the container runtime) might fail to launch. Note that this field cannot be set when spec.os.name is windows.
 "%,
-  windowsOptions | optional | windowssecuritycontextoptions | doc m%"
+  windowsOptions | optional | windowsSecurityContextOptions | doc m%"
 The Windows specific settings applied to all containers. If unspecified, the options within a container's SecurityContext will be used. If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence. Note that this field cannot be set when spec.os.name is linux.
 "%
 }

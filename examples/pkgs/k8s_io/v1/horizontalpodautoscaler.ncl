@@ -1,6 +1,6 @@
-let objectmeta = import "./objectmeta.ncl" in
-let horizontalpodautoscalerspec = import "./horizontalpodautoscalerspec.ncl" in
-let horizontalpodautoscalerstatus = import "./horizontalpodautoscalerstatus.ncl" in
+let objectMeta = import "./ObjectMeta.ncl" in
+let horizontalPodAutoscalerSpec = import "./HorizontalPodAutoscalerSpec.ncl" in
+let horizontalPodAutoscalerStatus = import "./HorizontalPodAutoscalerStatus.ncl" in
 
 # Module: k8s.io.v1
 
@@ -12,11 +12,11 @@ APIVersion defines the versioned schema of this representation of an object. Ser
   kind | optional | String | doc m%"
 Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
 "%,
-  metadata | optional | objectmeta | doc m%"
+  metadata | optional | objectMeta | doc m%"
 Standard object metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
 "%,
-  spec | optional | horizontalpodautoscalerspec | doc m%"
+  spec | optional | horizontalPodAutoscalerSpec | doc m%"
 spec defines the behaviour of autoscaler. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status.
 "%,
-  status | optional | horizontalpodautoscalerstatus | doc "status is the current information about the autoscaler."
+  status | optional | horizontalPodAutoscalerStatus | doc "status is the current information about the autoscaler."
 }

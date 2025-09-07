@@ -83,7 +83,7 @@ impl TypeReference {
 
     /// Get the import path for this reference relative to a base path
     pub fn import_path(&self, from_group: &str, from_version: &str) -> String {
-        let calc = ImportPathCalculator::new();
+        let calc = ImportPathCalculator::new_standalone();
         calc.calculate(
             from_group,
             from_version,
@@ -200,11 +200,11 @@ mod tests {
             "ObjectMeta".to_string(),
         );
 
-        // With our unified ImportPathCalculator, all cross-package imports
-        // go up 2 levels (version + package dir) to reach the packages root
-        // Test with a Crossplane group
+        // With our unified ImportPathCalculator, CrossPlane packages have nested structure
+        // crossplane/apiextensions.crossplane.io/crossplane/<version>/file.ncl
+        // So we go up 4 levels to reach the packages root
         let path = type_ref.import_path("apiextensions.crossplane.io", "v1");
-        assert_eq!(path, "../../k8s_io/v1/objectmeta.ncl");
+        assert_eq!(path, "../../../../k8s_io/v1/objectmeta.ncl");
 
         // Test with a simple group - same path structure
         let path2 = type_ref.import_path("example.io", "v1");

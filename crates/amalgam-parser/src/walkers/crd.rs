@@ -471,7 +471,7 @@ impl SchemaWalker for CRDWalker {
 impl CRDWalker {
     /// Map k8s core type references to import paths using ImportPathCalculator
     fn map_k8s_import_path(&self, from_module: &str, fqn: &str) -> String {
-        let calc = ImportPathCalculator::new();
+        let calc = ImportPathCalculator::new_standalone();
 
         // Parse the current module to get from_group and from_version
         let (from_group, from_version) = Self::parse_module_name(from_module);
@@ -510,7 +510,7 @@ impl CRDWalker {
 
     /// Calculate relative import path between modules
     fn calculate_import_path(&self, from_module: &str, to_module: &str) -> String {
-        let calc = ImportPathCalculator::new();
+        let calc = ImportPathCalculator::new_standalone();
 
         // Parse module names to extract group and version
         let (from_group, from_version) = Self::parse_module_name(from_module);

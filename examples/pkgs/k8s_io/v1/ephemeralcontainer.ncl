@@ -1,13 +1,13 @@
-let envvar = import "./envvar.ncl" in
-let envfromsource = import "./envfromsource.ncl" in
-let lifecycle = import "./lifecycle.ncl" in
-let probe = import "./probe.ncl" in
-let containerport = import "./containerport.ncl" in
-let containerresizepolicy = import "./containerresizepolicy.ncl" in
-let resourcerequirements = import "./resourcerequirements.ncl" in
-let securitycontext = import "./securitycontext.ncl" in
-let volumedevice = import "./volumedevice.ncl" in
-let volumemount = import "./volumemount.ncl" in
+let envVar = import "./EnvVar.ncl" in
+let envFromSource = import "./EnvFromSource.ncl" in
+let lifecycle = import "./Lifecycle.ncl" in
+let probe = import "./Probe.ncl" in
+let containerPort = import "./ContainerPort.ncl" in
+let containerResizePolicy = import "./ContainerResizePolicy.ncl" in
+let resourceRequirements = import "./ResourceRequirements.ncl" in
+let securityContext = import "./SecurityContext.ncl" in
+let volumeDevice = import "./VolumeDevice.ncl" in
+let volumeMount = import "./VolumeMount.ncl" in
 
 # Module: k8s.io.v1
 
@@ -21,8 +21,8 @@ Arguments to the entrypoint. The image's CMD is used if this is not provided. Va
   command | optional | Array String | doc m%"
 Entrypoint array. Not executed within a shell. The image's ENTRYPOINT is used if this is not provided. Variable references $(VAR_NAME) are expanded using the container's environment. If a variable cannot be resolved, the reference in the input string will be unchanged. Double $$ are reduced to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e. "$$(VAR_NAME)" will produce the string literal "$(VAR_NAME)". Escaped references will never be expanded, regardless of whether the variable exists or not. Cannot be updated. More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell
 "%,
-  env | optional | Array envvar | doc "List of environment variables to set in the container. Cannot be updated.",
-  envFrom | optional | Array envfromsource | doc m%"
+  env | optional | Array envVar | doc "List of environment variables to set in the container. Cannot be updated.",
+  envFrom | optional | Array envFromSource | doc m%"
 List of sources to populate environment variables in the container. The keys defined within a source must be a C_IDENTIFIER. All invalid keys will be reported as an event when the container is starting. When a key exists in multiple sources, the value associated with the last source will take precedence. Values defined by an Env with a duplicate key will take precedence. Cannot be updated.
 "%,
   image | optional | String | doc m%"
@@ -33,19 +33,19 @@ Image pull policy. One of Always, Never, IfNotPresent. Defaults to Always if :la
 "%,
   lifecycle | optional | lifecycle | doc "Lifecycle is not allowed for ephemeral containers.",
   livenessProbe | optional | probe | doc "Probes are not allowed for ephemeral containers.",
-  name | optional | String | doc m%"
+  name | String | doc m%"
 Name of the ephemeral container specified as a DNS_LABEL. This name must be unique among all containers, init containers and ephemeral containers.
 "%,
-  ports | optional | Array containerport | doc "Ports are not allowed for ephemeral containers.",
+  ports | optional | Array containerPort | doc "Ports are not allowed for ephemeral containers.",
   readinessProbe | optional | probe | doc "Probes are not allowed for ephemeral containers.",
-  resizePolicy | optional | Array containerresizepolicy | doc "Resources resize policy for the container.",
-  resources | optional | resourcerequirements | doc m%"
+  resizePolicy | optional | Array containerResizePolicy | doc "Resources resize policy for the container.",
+  resources | optional | resourceRequirements | doc m%"
 Resources are not allowed for ephemeral containers. Ephemeral containers use spare resources already allocated to the pod.
 "%,
   restartPolicy | optional | String | doc m%"
 Restart policy for the container to manage the restart behavior of each container within a pod. This may only be set for init containers. You cannot set this field on ephemeral containers.
 "%,
-  securityContext | optional | securitycontext | doc m%"
+  securityContext | optional | securityContext | doc m%"
 Optional: SecurityContext defines the security options the ephemeral container should be run with. If set, the fields of SecurityContext override the equivalent fields of PodSecurityContext.
 "%,
   startupProbe | optional | probe | doc "Probes are not allowed for ephemeral containers.",
@@ -68,8 +68,8 @@ Indicate how the termination message should be populated. File will use the cont
   tty | optional | Bool | doc m%"
 Whether this container should allocate a TTY for itself, also requires 'stdin' to be true. Default is false.
 "%,
-  volumeDevices | optional | Array volumedevice | doc "volumeDevices is the list of block devices to be used by the container.",
-  volumeMounts | optional | Array volumemount | doc m%"
+  volumeDevices | optional | Array volumeDevice | doc "volumeDevices is the list of block devices to be used by the container.",
+  volumeMounts | optional | Array volumeMount | doc m%"
 Pod volumes to mount into the container's filesystem. Subpath mounts are not allowed for ephemeral containers. Cannot be updated.
 "%,
   workingDir | optional | String | doc m%"

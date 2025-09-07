@@ -1,5 +1,5 @@
-let objectmeta = import "./objectmeta.ncl" in
-let endpointsubset = import "./endpointsubset.ncl" in
+let objectMeta = import "./ObjectMeta.ncl" in
+let endpointSubset = import "./EndpointSubset.ncl" in
 
 # Module: k8s.io.v1
 
@@ -27,10 +27,10 @@ APIVersion defines the versioned schema of this representation of an object. Ser
   kind | optional | String | doc m%"
 Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
 "%,
-  metadata | optional | objectmeta | doc m%"
+  metadata | optional | objectMeta | doc m%"
 Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
 "%,
-  subsets | optional | Array endpointsubset | doc m%"
+  subsets | optional | Array endpointSubset | doc m%"
 The set of all endpoints is the union of all subsets. Addresses are placed into subsets according to the IPs they share. A single address with multiple ports, some of which are ready and some of which are not (because they come from different containers) will result in the address being displayed in different subsets for the different ports. No address will appear in both Addresses and NotReadyAddresses in the same subset. Sets of addresses and ports that comprise a service.
 "%
 }

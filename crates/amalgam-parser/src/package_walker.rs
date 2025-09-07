@@ -204,7 +204,7 @@ impl PackageWalkerAdapter {
         group: &str,
         version: &str,
     ) -> (String, String) {
-        let calc = ImportPathCalculator::new();
+        let calc = ImportPathCalculator::new_standalone();
 
         // Extract type name from dependency FQN
         let type_name = to_fqn.rsplit('.').next().unwrap_or(to_fqn).to_string();

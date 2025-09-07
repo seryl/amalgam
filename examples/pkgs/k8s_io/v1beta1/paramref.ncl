@@ -1,4 +1,4 @@
-let labelselector = import "../v1/labelselector.ncl" in
+let labelSelector = import "../v1/LabelSelector.ncl" in
 
 # Module: k8s.io.v1beta1
 
@@ -20,7 +20,7 @@ A per-namespace parameter may be used by specifying a namespace-scoped `paramKin
 Allowed values are `Allow` or `Deny`
 Required
 "%,
-  selector | optional | labelselector | doc m%"
+  selector | optional | labelSelector | doc m%"
 selector can be used to match multiple param objects based on their labels. Supply selector: {} to match all resources of the ParamKind.
 If multiple params are found, they are all evaluated with the policy expressions and the results are ANDed together.
 One of `name` or `selector` must be set, but `name` and `selector` are mutually exclusive properties. If one is set, the other must be unset.

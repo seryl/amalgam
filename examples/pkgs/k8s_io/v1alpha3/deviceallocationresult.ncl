@@ -1,13 +1,13 @@
-let deviceallocationconfiguration = import "./deviceallocationconfiguration.ncl" in
-let devicerequestallocationresult = import "./devicerequestallocationresult.ncl" in
+let deviceAllocationConfiguration = import "./DeviceAllocationConfiguration.ncl" in
+let deviceRequestAllocationResult = import "./DeviceRequestAllocationResult.ncl" in
 
 # Module: k8s.io.v1alpha3
 
 # DeviceAllocationResult is the result of allocating devices.
 {
-  config | optional | Array deviceallocationconfiguration | doc m%"
+  config | optional | Array deviceAllocationConfiguration | doc m%"
 This field is a combination of all the claim and class configuration parameters. Drivers can distinguish between those based on a flag.
 This includes configuration parameters for drivers which have no allocated devices in the result because it is up to the drivers which configuration parameters they support. They can silently ignore unknown configuration parameters.
 "%,
-  results | optional | Array devicerequestallocationresult | doc "Results lists all allocated devices."
+  results | optional | Array deviceRequestAllocationResult | doc "Results lists all allocated devices."
 }

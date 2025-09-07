@@ -173,7 +173,7 @@ fn test_k8s_lifecycle_imports() {
     assert_eq!(module.types.len(), 4, "Should have 4 types in module");
 
     // Now generate Nickel code and check for imports
-    let mut codegen = amalgam_codegen::nickel::NickelCodegen::new();
+    let mut codegen = amalgam_codegen::nickel::NickelCodegen::from_ir(&ir);
     let (output, import_map) = codegen
         .generate_with_import_tracking(&ir)
         .expect("Failed to generate Nickel code");
@@ -294,7 +294,7 @@ fn test_cross_module_import_generation() {
         .expect("Failed to generate IR");
 
     // Generate Nickel code
-    let mut codegen = amalgam_codegen::nickel::NickelCodegen::new();
+    let mut codegen = amalgam_codegen::nickel::NickelCodegen::from_ir(&ir);
     let (_output, import_map) = codegen
         .generate_with_import_tracking(&ir)
         .expect("Failed to generate Nickel code");

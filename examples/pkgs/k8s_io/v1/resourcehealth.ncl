@@ -12,7 +12,7 @@ Health of the resource. can be one of:
             For example, Device Plugin got unregistered and hasn't been re-registered since.
 In future we may want to introduce the PermanentlyUnhealthy Status.
 "%,
-  resourceID | optional | String | doc m%"
+  resourceID | String | doc m%"
 ResourceID is the unique identifier of the resource. See the ResourceID type for more information.
 "%
 }

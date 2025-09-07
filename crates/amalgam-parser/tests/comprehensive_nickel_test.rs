@@ -89,7 +89,7 @@ fn test_debug_ir_managedfields() {
 /// Test to debug what's actually in the generated files
 #[test] 
 fn test_debug_objectmeta_file() {
-    let content = std::fs::read_to_string("examples/pkgs/k8s_io/v1/objectmeta.ncl").unwrap();
+    let content = std::fs::read_to_string("examples/pkgs/k8s_io/v1/ObjectMeta.ncl").unwrap();
     
     // Find the managedFields line
     for line in content.lines() {

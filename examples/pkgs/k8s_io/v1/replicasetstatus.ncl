@@ -1,4 +1,4 @@
-let replicasetcondition = import "./replicasetcondition.ncl" in
+let replicaSetCondition = import "./ReplicaSetCondition.ncl" in
 
 # Module: k8s.io.v1
 
@@ -7,7 +7,7 @@ let replicasetcondition = import "./replicasetcondition.ncl" in
   availableReplicas | optional | Number | doc m%"
 The number of available non-terminating pods (ready for at least minReadySeconds) for this replica set.
 "%,
-  conditions | optional | Array replicasetcondition | doc "Represents the latest available observations of a replica set's current state.",
+  conditions | optional | Array replicaSetCondition | doc "Represents the latest available observations of a replica set's current state.",
   fullyLabeledReplicas | optional | Number | doc m%"
 The number of non-terminating pods that have labels matching the labels of the pod template of the replicaset.
 "%,
@@ -17,7 +17,7 @@ ObservedGeneration reflects the generation of the most recently observed Replica
   readyReplicas | optional | Number | doc m%"
 The number of non-terminating pods targeted by this ReplicaSet with a Ready Condition.
 "%,
-  replicas | optional | Number | doc m%"
+  replicas | Number | doc m%"
 Replicas is the most recently observed number of non-terminating pods. More info: https://kubernetes.io/docs/concepts/workloads/controllers/replicaset
 "%,
   terminatingReplicas | optional | Number | doc m%"

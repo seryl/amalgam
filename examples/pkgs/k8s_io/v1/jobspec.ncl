@@ -1,7 +1,7 @@
-let podfailurepolicy = import "./podfailurepolicy.ncl" in
-let labelselector = import "./labelselector.ncl" in
-let successpolicy = import "./successpolicy.ncl" in
-let podtemplatespec = import "./podtemplatespec.ncl" in
+let podFailurePolicy = import "./PodFailurePolicy.ncl" in
+let labelSelector = import "./LabelSelector.ncl" in
+let successPolicy = import "./SuccessPolicy.ncl" in
+let podTemplateSpec = import "./PodTemplateSpec.ncl" in
 
 # Module: k8s.io.v1
 
@@ -36,7 +36,7 @@ Specifies the maximal number of failed indexes before marking the Job as failed,
   parallelism | optional | Number | doc m%"
 Specifies the maximum desired number of pods the job should run at any given time. The actual number of pods running in steady state will be less than this number when ((.spec.completions - .status.successful) < .spec.parallelism), i.e. when the work left to do is less than max parallelism. More info: https://kubernetes.io/docs/concepts/workloads/controllers/jobs-run-to-completion/
 "%,
-  podFailurePolicy | optional | podfailurepolicy | doc m%"
+  podFailurePolicy | optional | podFailurePolicy | doc m%"
 Specifies the policy of handling failed pods. In particular, it allows to specify the set of actions and conditions which need to be satisfied to take the associated action. If empty, the default behaviour applies - the counter of failed pods, represented by the jobs's .status.failed field, is incremented and it is checked against the backoffLimit. This field cannot be used in combination with restartPolicy=OnFailure.
 "%,
   podReplacementPolicy | optional | String | doc m%"
@@ -46,16 +46,16 @@ podReplacementPolicy specifies when to create replacement Pods. Possible values 
   Failed or Succeeded) before creating a replacement Pod.
 When using podFailurePolicy, Failed is the the only allowed value. TerminatingOrFailed and Failed are allowed values when podFailurePolicy is not in use. This is an beta field. To use this, enable the JobPodReplacementPolicy feature toggle. This is on by default.
 "%,
-  selector | optional | labelselector | doc m%"
+  selector | optional | labelSelector | doc m%"
 A label query over pods that should match the pod count. Normally, the system sets this field for you. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors
 "%,
-  successPolicy | optional | successpolicy | doc m%"
+  successPolicy | optional | successPolicy | doc m%"
 successPolicy specifies the policy when the Job can be declared as succeeded. If empty, the default behavior applies - the Job is declared as succeeded only when the number of succeeded pods equals to the completions. When the field is specified, it must be immutable and works only for the Indexed Jobs. Once the Job meets the SuccessPolicy, the lingering pods are terminated.
 "%,
   suspend | optional | Bool | doc m%"
 suspend specifies whether the Job controller should create Pods or not. If a Job is created with suspend set to true, no Pods are created by the Job controller. If a Job is suspended after creation (i.e. the flag goes from false to true), the Job controller will delete all active Pods associated with this Job. Users must design their workload to gracefully handle this. Suspending a Job will reset the StartTime field of the Job, effectively resetting the ActiveDeadlineSeconds timer too. Defaults to false.
 "%,
-  template | optional | podtemplatespec | doc m%"
+  template | podTemplateSpec | doc m%"
 Describes the pod that will be created when executing a job. The only allowed template.spec.restartPolicy values are "Never" or "OnFailure". More info: https://kubernetes.io/docs/concepts/workloads/controllers/jobs-run-to-completion/
 "%,
   ttlSecondsAfterFinished | optional | Number | doc m%"

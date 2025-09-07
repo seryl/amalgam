@@ -128,7 +128,7 @@ fn test_import_generation_for_k8s_types() {
         let crd = Fixtures::multiple_k8s_refs(); // Use the fixture with k8s refs
         let parser = CRDParser::new();
         let ir = parser.parse(crd).expect("Failed to parse CRD");
-        let mut codegen = amalgam_codegen::nickel::NickelCodegen::new();
+        let mut codegen = amalgam_codegen::nickel::NickelCodegen::from_ir(&ir);
         let content = codegen.generate(&ir).expect("Failed to generate");
 
         // The k8s imports should still be resolved
@@ -182,7 +182,7 @@ fn test_reference_resolution_to_alias() {
     ir.add_module(module);
 
     // Generate Nickel code
-    let mut codegen = NickelCodegen::new();
+    let mut codegen = NickelCodegen::from_ir(&ir);
     let generated = codegen
         .generate(&ir)
         .expect("Failed to generate Nickel code");
@@ -215,7 +215,7 @@ fn test_multiple_k8s_type_references() {
     let parser = CRDParser::new();
     let ir = parser.parse(crd).expect("Failed to parse CRD");
 
-    let mut codegen = amalgam_codegen::nickel::NickelCodegen::new();
+    let mut codegen = amalgam_codegen::nickel::NickelCodegen::from_ir(&ir);
     let content = codegen.generate(&ir).expect("Failed to generate");
 
     // With single-type module optimization, the type is exported directly
@@ -303,7 +303,7 @@ fn test_case_insensitive_type_matching() {
 
     ir.add_module(module);
 
-    let mut codegen = NickelCodegen::new();
+    let mut codegen = NickelCodegen::from_ir(&ir);
     let generated = codegen.generate(&ir).expect("Failed to generate");
 
     // Should resolve despite case difference

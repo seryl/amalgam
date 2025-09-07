@@ -159,7 +159,7 @@ fn extract_version_from_fqn(fqn: &str) -> &str {
 
 #[test]
 fn test_import_path_calculator_v0_imports() {
-    let calc = ImportPathCalculator::new();
+    let calc = ImportPathCalculator::new_standalone();
 
     // Test v1 -> v0 import for RawExtension
     let path = calc.calculate("k8s.io", "v1", "k8s.io", "v0", "rawextension");

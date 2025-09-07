@@ -1,6 +1,6 @@
-let objectmeta = import "./objectmeta.ncl" in
-let podspec = import "./podspec.ncl" in
-let podstatus = import "./podstatus.ncl" in
+let objectMeta = import "./ObjectMeta.ncl" in
+let podSpec = import "./PodSpec.ncl" in
+let podStatus = import "./PodStatus.ncl" in
 
 # Module: k8s.io.v1
 
@@ -12,13 +12,13 @@ APIVersion defines the versioned schema of this representation of an object. Ser
   kind | optional | String | doc m%"
 Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
 "%,
-  metadata | optional | objectmeta | doc m%"
+  metadata | optional | objectMeta | doc m%"
 Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
 "%,
-  spec | optional | podspec | doc m%"
+  spec | optional | podSpec | doc m%"
 Specification of the desired behavior of the pod. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
 "%,
-  status | optional | podstatus | doc m%"
+  status | optional | podStatus | doc m%"
 Most recently observed status of the pod. This data may not be up to date. Populated by the system. Read-only. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
 "%
 }

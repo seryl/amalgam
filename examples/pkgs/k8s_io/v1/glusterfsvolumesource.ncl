@@ -2,10 +2,10 @@
 
 # Represents a Glusterfs mount that lasts the lifetime of a pod. Glusterfs volumes do not support ownership management or SELinux relabeling.
 {
-  endpoints | optional | String | doc m%"
+  endpoints | String | doc m%"
 endpoints is the endpoint name that details Glusterfs topology. More info: https://examples.k8s.io/volumes/glusterfs/README.md#create-a-pod
 "%,
-  path | optional | String | doc m%"
+  path | String | doc m%"
 path is the Glusterfs volume path. More info: https://examples.k8s.io/volumes/glusterfs/README.md#create-a-pod
 "%,
   readOnly | optional | Bool | doc m%"

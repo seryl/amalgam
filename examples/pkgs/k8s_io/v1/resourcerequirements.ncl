@@ -1,10 +1,10 @@
-let resourceclaim = import "./resourceclaim.ncl" in
+let resourceClaim = import "./ResourceClaim.ncl" in
 
 # Module: k8s.io.v1
 
 # ResourceRequirements describes the compute resource requirements.
 {
-  claims | optional | Array resourceclaim | doc m%"
+  claims | optional | Array resourceClaim | doc m%"
 Claims lists the names of resources, defined in spec.resourceClaims, that are used by this container.
 This is an alpha field and requires enabling the DynamicResourceAllocation feature gate.
 This field is immutable. It can only be set for containers.

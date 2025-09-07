@@ -1,5 +1,5 @@
-let serviceport = import "./serviceport.ncl" in
-let sessionaffinityconfig = import "./sessionaffinityconfig.ncl" in
+let servicePort = import "./ServicePort.ncl" in
+let sessionAffinityConfig = import "./SessionAffinityConfig.ncl" in
 
 # Module: k8s.io.v1
 
@@ -46,7 +46,7 @@ Only applies to Service Type: LoadBalancer. This feature depends on whether the 
   loadBalancerSourceRanges | optional | Array String | doc m%"
 If specified and supported by the platform, this will restrict traffic through the cloud-provider load-balancer will be restricted to the specified client IPs. This field will be ignored if the cloud-provider does not support the feature." More info: https://kubernetes.io/docs/tasks/access-application-cluster/create-external-load-balancer/
 "%,
-  ports | optional | Array serviceport | doc m%"
+  ports | optional | Array servicePort | doc m%"
 The list of ports that are exposed by this service. More info: https://kubernetes.io/docs/concepts/services-networking/service/#virtual-ips-and-service-proxies
 "%,
   publishNotReadyAddresses | optional | Bool | doc m%"
@@ -58,7 +58,7 @@ Route service traffic to pods with label keys and values matching this selector.
   sessionAffinity | optional | String | doc m%"
 Supports "ClientIP" and "None". Used to maintain session affinity. Enable client IP based session affinity. Must be ClientIP or None. Defaults to None. More info: https://kubernetes.io/docs/concepts/services-networking/service/#virtual-ips-and-service-proxies
 "%,
-  sessionAffinityConfig | optional | sessionaffinityconfig | doc "sessionAffinityConfig contains the configurations of session affinity.",
+  sessionAffinityConfig | optional | sessionAffinityConfig | doc "sessionAffinityConfig contains the configurations of session affinity.",
   trafficDistribution | optional | String | doc m%"
 TrafficDistribution offers a way to express preferences for how traffic is distributed to Service endpoints. Implementations can use this field as a hint, but are not required to guarantee strict adherence. If the field is not set, the implementation will apply its default routing strategy. If set to "PreferClose", implementations should prioritize endpoints that are in the same zone.
 "%,

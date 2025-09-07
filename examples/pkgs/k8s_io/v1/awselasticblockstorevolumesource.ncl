@@ -13,7 +13,7 @@ partition is the partition in the volume that you want to mount. If omitted, the
   readOnly | optional | Bool | doc m%"
 readOnly value true will force the readOnly setting in VolumeMounts. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
 "%,
-  volumeID | optional | String | doc m%"
+  volumeID | String | doc m%"
 volumeID is unique ID of the persistent disk resource in AWS (Amazon EBS volume). More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
 "%
 }

@@ -1,4 +1,4 @@
-let objectmeta = import "../../../k8s_io/v1/objectmeta.ncl" in
+let objectMeta = import "../../../../k8s_io/v1/ObjectMeta.ncl" in
 
 
 {
@@ -15,17 +15,17 @@ Cannot be updated.
 In CamelCase.
 More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
 "%,
-  metadata | optional | objectmeta.ObjectMeta,
+  metadata | optional | objectMeta.ObjectMeta,
   packages | optional | Array {
     apiVersion | optional | String | doc "APIVersion of the package.",
-    dependencies | optional | Array {
+    dependencies | Array {
       apiVersion | optional | String | doc "APIVersion of the package.",
-      constraints | optional | String | doc m%"
+      constraints | String | doc m%"
 Constraints is a valid semver range or a digest, which will be used to select a valid
 dependency version.
 "%,
       kind | optional | String | doc "Kind of the package (not the kind of the package revision).",
-      package | optional | String | doc "Package is the OCI image name without a tag or digest.",
+      package | String | doc "Package is the OCI image name without a tag or digest.",
       type | optional | String | doc m%"
 Type is the type of package. Can be either Configuration or Provider.
 Deprecated: Specify an apiVersion and kind instead.
@@ -35,17 +35,17 @@ Dependencies are the list of dependencies of this package. The order of
 the dependencies will dictate the order in which they are resolved.
 "%,
     kind | optional | String | doc "Kind of the package (not the kind of the package revision).",
-    name | optional | String | doc "Name corresponds to the name of the package revision for this package.",
-    source | optional | String | doc "Source is the OCI image name without a tag or digest.",
+    name | String | doc "Name corresponds to the name of the package revision for this package.",
+    source | String | doc "Source is the OCI image name without a tag or digest.",
     type | optional | String | doc m%"
 Type is the type of package.
 Deprecated: Specify an apiVersion and kind instead.
 "%,
-    version | optional | String | doc "Version is the tag or digest of the OCI image."
+    version | String | doc "Version is the tag or digest of the OCI image."
   },
   status | optional | {
     conditions | optional | Array {
-      lastTransitionTime | optional | String | doc m%"
+      lastTransitionTime | String | doc m%"
 LastTransitionTime is the last time this condition transitioned from one
 status to another.
 "%,
@@ -58,9 +58,9 @@ ObservedGeneration represents the .metadata.generation that the condition was se
 For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
 with respect to the current state of the instance.
 "%,
-      reason | optional | String | doc "A Reason for this condition's last transition from one status to another.",
-      status | optional | String | doc "Status of this condition; is it currently True, False, or Unknown?",
-      type | optional | String | doc m%"
+      reason | String | doc "A Reason for this condition's last transition from one status to another.",
+      status | String | doc "Status of this condition; is it currently True, False, or Unknown?",
+      type | String | doc m%"
 Type of this condition. At most one of each condition type may apply to
 a resource at any point in time.
 "%

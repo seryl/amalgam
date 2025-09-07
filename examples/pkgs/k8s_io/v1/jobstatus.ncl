@@ -1,5 +1,5 @@
-let jobcondition = import "./jobcondition.ncl" in
-let uncountedterminatedpods = import "./uncountedterminatedpods.ncl" in
+let jobCondition = import "./JobCondition.ncl" in
+let uncountedTerminatedPods = import "./UncountedTerminatedPods.ncl" in
 
 # Module: k8s.io.v1
 
@@ -14,7 +14,7 @@ completedIndexes holds the completed indexes when .spec.completionMode = "Indexe
   completionTime | optional | String | doc m%"
 Represents time when the job was completed. It is not guaranteed to be set in happens-before order across separate operations. It is represented in RFC3339 form and is in UTC. The completion time is set when the job finishes successfully, and only then. The value cannot be updated or removed. The value indicates the same or later point in time as the startTime field.
 "%,
-  conditions | optional | Array jobcondition | doc m%"
+  conditions | optional | Array jobCondition | doc m%"
 The latest available observations of an object's current state. When a Job fails, one of the conditions will have type "Failed" and status true. When a Job is suspended, one of the conditions will have type "Suspended" and status true; when the Job is resumed, the status of this condition will become false. When a Job is completed, one of the conditions will have type "Complete" and status true.
 A job is considered finished when it is in a terminal condition, either "Complete" or "Failed". A Job cannot have both the "Complete" and "Failed" conditions. Additionally, it cannot be in the "Complete" and "FailureTarget" conditions. The "Complete", "Failed" and "FailureTarget" conditions cannot be disabled.
 More info: https://kubernetes.io/docs/concepts/workloads/controllers/jobs-run-to-completion/
@@ -39,7 +39,7 @@ The number of pods which reached phase Succeeded. The value increases monotonica
 The number of pods which are terminating (in phase Pending or Running and have a deletionTimestamp).
 This field is beta-level. The job controller populates the field when the feature gate JobPodReplacementPolicy is enabled (enabled by default).
 "%,
-  uncountedTerminatedPods | optional | uncountedterminatedpods | doc m%"
+  uncountedTerminatedPods | optional | uncountedTerminatedPods | doc m%"
 uncountedTerminatedPods holds the UIDs of Pods that have terminated but the job controller hasn't yet accounted for in the status counters.
 The job controller creates pods with a finalizer. When a pod terminates (succeeded or failed), the controller does three steps to account for it in the job status:
 1. Add the pod UID to the arrays in this field. 2. Remove the pod finalizer. 3. Remove the pod UID from the arrays while increasing the corresponding

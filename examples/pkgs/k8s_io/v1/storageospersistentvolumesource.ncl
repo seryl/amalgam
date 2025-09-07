@@ -1,4 +1,4 @@
-let objectreference = import "./objectreference.ncl" in
+let objectReference = import "./ObjectReference.ncl" in
 
 # Module: k8s.io.v1
 
@@ -10,7 +10,7 @@ fsType is the filesystem type to mount. Must be a filesystem type supported by t
   readOnly | optional | Bool | doc m%"
 readOnly defaults to false (read/write). ReadOnly here will force the ReadOnly setting in VolumeMounts.
 "%,
-  secretRef | optional | objectreference | doc m%"
+  secretRef | optional | objectReference | doc m%"
 secretRef specifies the secret to use for obtaining the StorageOS API credentials.  If not specified, default values will be attempted.
 "%,
   volumeName | optional | String | doc m%"

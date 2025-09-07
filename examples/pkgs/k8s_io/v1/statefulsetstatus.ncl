@@ -1,4 +1,4 @@
-let statefulsetcondition = import "./statefulsetcondition.ncl" in
+let statefulSetCondition = import "./StatefulSetCondition.ncl" in
 
 # Module: k8s.io.v1
 
@@ -10,7 +10,7 @@ Total number of available pods (ready for at least minReadySeconds) targeted by 
   collisionCount | optional | Number | doc m%"
 collisionCount is the count of hash collisions for the StatefulSet. The StatefulSet controller uses this field as a collision avoidance mechanism when it needs to create the name for the newest ControllerRevision.
 "%,
-  conditions | optional | Array statefulsetcondition | doc "Represents the latest available observations of a statefulset's current state.",
+  conditions | optional | Array statefulSetCondition | doc "Represents the latest available observations of a statefulset's current state.",
   currentReplicas | optional | Number | doc m%"
 currentReplicas is the number of Pods created by the StatefulSet controller from the StatefulSet version indicated by currentRevision.
 "%,
@@ -23,7 +23,7 @@ observedGeneration is the most recent generation observed for this StatefulSet. 
   readyReplicas | optional | Number | doc m%"
 readyReplicas is the number of pods created for this StatefulSet with a Ready Condition.
 "%,
-  replicas | optional | Number | doc "replicas is the number of Pods created by the StatefulSet controller.",
+  replicas | Number | doc "replicas is the number of Pods created by the StatefulSet controller.",
   updateRevision | optional | String | doc m%"
 updateRevision, if not empty, indicates the version of the StatefulSet used to generate Pods in the sequence [replicas-updatedReplicas,replicas)
 "%,

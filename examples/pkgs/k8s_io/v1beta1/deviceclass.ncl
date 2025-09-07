@@ -1,5 +1,5 @@
-let objectmeta = import "../v1/objectmeta.ncl" in
-let deviceclassspec = import "./deviceclassspec.ncl" in
+let objectMeta = import "../v1/ObjectMeta.ncl" in
+let deviceClassSpec = import "./DeviceClassSpec.ncl" in
 
 # Module: k8s.io.v1beta1
 
@@ -13,8 +13,8 @@ APIVersion defines the versioned schema of this representation of an object. Ser
   kind | optional | String | doc m%"
 Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
 "%,
-  metadata | optional | objectmeta | doc "Standard object metadata",
-  spec | optional | deviceclassspec | doc m%"
+  metadata | optional | objectMeta | doc "Standard object metadata",
+  spec | deviceClassSpec | doc m%"
 Spec defines what can be allocated and how to configure it.
 This is mutable. Consumers have to be prepared for classes changing at any time, either because they get updated or replaced. Claim allocations are done once based on whatever was set in classes at the time of allocation.
 Changing the spec automatically increments the metadata.generation number.

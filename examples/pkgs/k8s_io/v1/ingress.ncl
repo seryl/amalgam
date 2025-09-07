@@ -1,6 +1,6 @@
-let objectmeta = import "./objectmeta.ncl" in
-let ingressspec = import "./ingressspec.ncl" in
-let ingressstatus = import "./ingressstatus.ncl" in
+let objectMeta = import "./ObjectMeta.ncl" in
+let ingressSpec = import "./IngressSpec.ncl" in
+let ingressStatus = import "./IngressStatus.ncl" in
 
 # Module: k8s.io.v1
 
@@ -12,13 +12,13 @@ APIVersion defines the versioned schema of this representation of an object. Ser
   kind | optional | String | doc m%"
 Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
 "%,
-  metadata | optional | objectmeta | doc m%"
+  metadata | optional | objectMeta | doc m%"
 Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
 "%,
-  spec | optional | ingressspec | doc m%"
+  spec | optional | ingressSpec | doc m%"
 spec is the desired state of the Ingress. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
 "%,
-  status | optional | ingressstatus | doc m%"
+  status | optional | ingressStatus | doc m%"
 status is the current state of the Ingress. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
 "%
 }

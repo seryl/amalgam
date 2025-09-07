@@ -1,5 +1,5 @@
-let objectmeta = import "./objectmeta.ncl" in
-let csidriverspec = import "./csidriverspec.ncl" in
+let objectMeta = import "./ObjectMeta.ncl" in
+let cSIDriverSpec = import "./CSIDriverSpec.ncl" in
 
 # Module: k8s.io.v1
 
@@ -11,8 +11,8 @@ APIVersion defines the versioned schema of this representation of an object. Ser
   kind | optional | String | doc m%"
 Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
 "%,
-  metadata | optional | objectmeta | doc m%"
+  metadata | optional | objectMeta | doc m%"
 Standard object metadata. metadata.Name indicates the name of the CSI driver that this object refers to; it MUST be the same name returned by the CSI GetPluginName() call for that driver. The driver name must be 63 characters or less, beginning and ending with an alphanumeric character ([a-z0-9A-Z]) with dashes (-), dots (.), and alphanumerics between. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
 "%,
-  spec | optional | csidriverspec | doc "spec represents the specification of the CSI Driver."
+  spec | cSIDriverSpec | doc "spec represents the specification of the CSI Driver."
 }

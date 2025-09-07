@@ -1,6 +1,6 @@
-let objectmeta = import "../v1/objectmeta.ncl" in
-let servicecidrspec = import "./servicecidrspec.ncl" in
-let servicecidrstatus = import "./servicecidrstatus.ncl" in
+let objectMeta = import "../v1/ObjectMeta.ncl" in
+let serviceCIDRSpec = import "./ServiceCIDRSpec.ncl" in
+let serviceCIDRStatus = import "./ServiceCIDRStatus.ncl" in
 
 # Module: k8s.io.v1beta1
 
@@ -12,13 +12,13 @@ APIVersion defines the versioned schema of this representation of an object. Ser
   kind | optional | String | doc m%"
 Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
 "%,
-  metadata | optional | objectmeta | doc m%"
+  metadata | optional | objectMeta | doc m%"
 Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
 "%,
-  spec | optional | servicecidrspec | doc m%"
+  spec | optional | serviceCIDRSpec | doc m%"
 spec is the desired state of the ServiceCIDR. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
 "%,
-  status | optional | servicecidrstatus | doc m%"
+  status | optional | serviceCIDRStatus | doc m%"
 status represents the current state of the ServiceCIDR. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
 "%
 }

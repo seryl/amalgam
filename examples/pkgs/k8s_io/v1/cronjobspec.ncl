@@ -1,4 +1,4 @@
-let jobtemplatespec = import "./jobtemplatespec.ncl" in
+let jobTemplateSpec = import "./JobTemplateSpec.ncl" in
 
 # Module: k8s.io.v1
 
@@ -11,8 +11,8 @@ Specifies how to treat concurrent executions of a Job. Valid values are:
   failedJobsHistoryLimit | optional | Number | doc m%"
 The number of failed finished jobs to retain. Value must be non-negative integer. Defaults to 1.
 "%,
-  jobTemplate | optional | jobtemplatespec | doc "Specifies the job that will be created when executing a CronJob.",
-  schedule | optional | String | doc "The schedule in Cron format, see https://en.wikipedia.org/wiki/Cron.",
+  jobTemplate | jobTemplateSpec | doc "Specifies the job that will be created when executing a CronJob.",
+  schedule | String | doc "The schedule in Cron format, see https://en.wikipedia.org/wiki/Cron.",
   startingDeadlineSeconds | optional | Number | doc m%"
 Optional deadline in seconds for starting the job if it misses scheduled time for any reason.  Missed jobs executions will be counted as failed ones.
 "%,

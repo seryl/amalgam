@@ -1,4 +1,4 @@
-let objectmeta = import "../../../k8s_io/v1/objectmeta.ncl" in
+let objectMeta = import "../../../../k8s_io/v1/ObjectMeta.ncl" in
 
 
 {
@@ -20,5 +20,5 @@ Cannot be updated.
 In CamelCase.
 More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
 "%,
-  metadata | optional | objectmeta.ObjectMeta
+  metadata | optional | objectMeta.ObjectMeta
 }

@@ -1,16 +1,16 @@
-let volumenoderesources = import "./volumenoderesources.ncl" in
+let volumeNodeResources = import "./VolumeNodeResources.ncl" in
 
 # Module: k8s.io.v1
 
 # CSINodeDriver holds information about the specification of one CSI driver installed on a node
 {
-  allocatable | optional | volumenoderesources | doc m%"
+  allocatable | optional | volumeNodeResources | doc m%"
 allocatable represents the volume resources of a node that are available for scheduling. This field is beta.
 "%,
-  name | optional | String | doc m%"
+  name | String | doc m%"
 name represents the name of the CSI driver that this object refers to. This MUST be the same name returned by the CSI GetPluginName() call for that driver.
 "%,
-  nodeID | optional | String | doc m%"
+  nodeID | String | doc m%"
 nodeID of the node from the driver point of view. This field enables Kubernetes to communicate with storage systems that do not share the same nomenclature for nodes. For example, Kubernetes may refer to a given node as "node1", but the storage system may refer to the same node as "nodeA". When Kubernetes issues a command to the storage system to attach a volume to a specific node, it can use this field to refer to the node name using the ID that the storage system will understand, e.g. "nodeA" instead of "node1". This field is required.
 "%,
   topologyKeys | optional | Array String | doc m%"

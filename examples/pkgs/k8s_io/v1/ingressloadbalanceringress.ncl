@@ -1,4 +1,4 @@
-let ingressportstatus = import "./ingressportstatus.ncl" in
+let ingressPortStatus = import "./IngressPortStatus.ncl" in
 
 # Module: k8s.io.v1
 
@@ -6,5 +6,5 @@ let ingressportstatus = import "./ingressportstatus.ncl" in
 {
   hostname | optional | String | doc "hostname is set for load-balancer ingress points that are DNS based.",
   ip | optional | String | doc "ip is set for load-balancer ingress points that are IP based.",
-  ports | optional | Array ingressportstatus | doc "ports provides information about the ports exposed by this LoadBalancer."
+  ports | optional | Array ingressPortStatus | doc "ports provides information about the ports exposed by this LoadBalancer."
 }

@@ -1,4 +1,4 @@
-let labelselector = import "./labelselector.ncl" in
+let labelSelector = import "./LabelSelector.ncl" in
 
 # Module: k8s.io.v1
 
@@ -10,7 +10,7 @@ An eviction is allowed if at most "maxUnavailable" pods selected by "selector" a
   minAvailable | optional | std.contract.from_predicate (fun value => std.is_number value || std.is_string value) | doc m%"
 An eviction is allowed if at least "minAvailable" pods selected by "selector" will still be available after the eviction, i.e. even in the absence of the evicted pod.  So for example you can prevent all voluntary evictions by specifying "100%".
 "%,
-  selector | optional | labelselector | doc m%"
+  selector | optional | labelSelector | doc m%"
 Label query over pods whose evictions are managed by the disruption budget. A null selector will match no pods, while an empty ({}) selector will select all pods within the namespace.
 "%,
   unhealthyPodEvictionPolicy | optional | String | doc m%"

@@ -14,7 +14,7 @@ ResourceNames is an optional white list of names that the rule applies to.  An e
   resources | optional | Array String | doc m%"
 Resources is a list of resources this rule applies to. '*' represents all resources.
 "%,
-  verbs | optional | Array String | doc m%"
+  verbs | Array String | doc m%"
 Verbs is a list of Verbs that apply to ALL the ResourceKinds contained in this rule. '*' represents all verbs.
 "%
 }

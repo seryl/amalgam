@@ -72,7 +72,7 @@ spec:
     assert!(ir.modules[0].name.contains("v1"));
 
     // Generate Nickel code
-    let mut codegen = amalgam_codegen::nickel::NickelCodegen::new();
+    let mut codegen = amalgam_codegen::nickel::NickelCodegen::from_ir(&ir);
     let nickel_code = codegen
         .generate(&ir)
         .expect("Failed to generate Nickel code");
@@ -522,7 +522,7 @@ spec:
     let ir = parser.parse(crd).expect("Failed to parse validated CRD");
 
     // Generate code and verify validation constraints are preserved
-    let mut codegen = amalgam_codegen::nickel::NickelCodegen::new();
+    let mut codegen = amalgam_codegen::nickel::NickelCodegen::from_ir(&ir);
     let nickel_code = codegen
         .generate(&ir)
         .expect("Failed to generate Nickel code");

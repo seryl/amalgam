@@ -1,4 +1,4 @@
-let keytopath = import "./keytopath.ncl" in
+let keyToPath = import "./KeyToPath.ncl" in
 
 # Module: k8s.io.v1
 
@@ -6,7 +6,7 @@ let keytopath = import "./keytopath.ncl" in
 # 
 # The contents of the target ConfigMap's Data field will be presented in a projected volume as files using the keys in the Data field as the file names, unless the items element is populated with specific mappings of keys to paths. Note that this is identical to a configmap volume source without the default mode.
 {
-  items | optional | Array keytopath | doc m%"
+  items | optional | Array keyToPath | doc m%"
 items if unspecified, each key-value pair in the Data field of the referenced ConfigMap will be projected into the volume as a file whose name is the key and content is the value. If specified, the listed keys will be projected into the specified paths, and unlisted keys will not be present. If a key is specified which is not present in the ConfigMap, the volume setup will error unless it is marked optional. Paths must be relative and may not contain the '..' path or start with '..'.
 "%,
   name | optional | String | doc m%"

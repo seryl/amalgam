@@ -2,13 +2,13 @@
 
 # VolumeMount describes a mounting of a Volume within a container.
 {
-  mountPath | optional | String | doc m%"
+  mountPath | String | doc m%"
 Path within the container at which the volume should be mounted.  Must not contain ':'.
 "%,
   mountPropagation | optional | String | doc m%"
 mountPropagation determines how mounts are propagated from the host to container and the other way around. When not set, MountPropagationNone is used. This field is beta in 1.10. When RecursiveReadOnly is set to IfPossible or to Enabled, MountPropagation must be None or unspecified (which defaults to None).
 "%,
-  name | optional | String | doc "This must match the Name of a Volume.",
+  name | String | doc "This must match the Name of a Volume.",
   readOnly | optional | Bool | doc m%"
 Mounted read-only if true, read-write otherwise (false or unspecified). Defaults to false.
 "%,

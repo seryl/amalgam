@@ -8,11 +8,13 @@ use crate::resolver::{ResolutionContext, TypeResolver};
 use crate::{Codegen, CodegenError};
 use amalgam_core::{
     debug::{CompilationDebugInfo, DebugConfig, ImportDebugEntry, ImportDebugInfo, ModuleNameTransform},
+    module_registry::ModuleRegistry,
     types::{Field, Type},
     ImportPathCalculator, IR,
 };
 use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
+use std::sync::Arc;
 use tracing::{debug, instrument, warn};
 
 /// Debug information for tracking import generation
@@ -87,6 +89,10 @@ pub struct NickelCodegen {
     indent_size: usize,
     resolver: TypeResolver,
     package_mode: PackageMode,
+    /// Module registry for import path resolution
+    registry: Arc<ModuleRegistry>,
+    /// Import path calculator using the registry
+    import_calculator: ImportPathCalculator,
     /// Track cross-module imports needed for the current module
     current_imports: HashSet<(String, String)>, // (version, type_name)
     /// Symbol table for dependency analysis (Phase 1)
@@ -108,11 +114,14 @@ pub struct NickelCodegen {
 }
 
 impl NickelCodegen {
-    pub fn new() -> Self {
+    pub fn new(registry: Arc<ModuleRegistry>) -> Self {
+        let import_calculator = ImportPathCalculator::new(registry.clone());
         Self {
             indent_size: 2,
             resolver: TypeResolver::new(),
             package_mode: PackageMode::default(),
+            registry,
+            import_calculator,
             current_imports: HashSet::new(),
             symbol_table: HashMap::new(),
             same_package_deps: HashSet::new(),
@@ -123,6 +132,19 @@ impl NickelCodegen {
             debug_config: DebugConfig::default(),
             compilation_debug: CompilationDebugInfo::new(),
         }
+    }
+    
+    /// Create with a new registry built from IR
+    pub fn from_ir(ir: &IR) -> Self {
+        let registry = Arc::new(ModuleRegistry::from_ir(ir));
+        Self::new(registry)
+    }
+    
+    /// Create with an empty registry (mainly for tests)
+    #[cfg(test)]
+    pub fn new_for_test() -> Self {
+        let registry = Arc::new(ModuleRegistry::new());
+        Self::new(registry)
     }
 
     /// Set debug configuration
@@ -674,21 +696,21 @@ impl NickelCodegen {
                     // Check if this is a cross-module reference
                     if ref_module != &module.name {
                         // Track this as a cross-module import
-                        let snake_name = name.to_lowercase();
+                        let camelcased_name = to_camel_case(name);
 
                         // Use the ImportPathCalculator to get the correct path
-                        let calc = ImportPathCalculator::new();
-                        let import_path = calc.calculate(
+                        // Pass the original name to preserve case in the filename
+                        let import_path = self.import_calculator.calculate(
                             &current_group,
                             &current_version,
                             &ref_group,
                             &ref_version,
-                            &snake_name,
+                            name,  // Use original case for filename
                         );
 
                         // Track the import for this type - format it as a proper Nickel import statement
                         let import_stmt =
-                            format!("let {} = import \"{}\" in", snake_name, import_path);
+                            format!("let {} = import \"{}\" in", camelcased_name, import_path);
                         eprintln!("🔍 IMPORT SOURCE 1: Generated import: '{}'", import_stmt);
                         tracing::debug!(
                             "Adding cross-module import for type '{}': path='{}', stmt='{}'",
@@ -708,12 +730,12 @@ impl NickelCodegen {
                         // For cross-package references, use module.type format
                         let result = if ref_group == current_group {
                             // Same package - the imported file directly exports the type
-                            snake_name.clone()
+                            camelcased_name.clone()
                         } else {
                             // Different package - use qualified name
-                            format!("{}.{}", snake_name, name)
+                            format!("{}.{}", camelcased_name, name)
                         };
-                        eprintln!("🔍 TRACE: Generated qualified reference: '{}' (same_package={}, module_alias='{}')", result, ref_group == current_group, snake_name);
+                        eprintln!("🔍 TRACE: Generated qualified reference: '{}' (same_package={}, module_alias='{}')", result, ref_group == current_group, camelcased_name);
                         return Ok(result);
                     }
                 } else {
@@ -746,9 +768,10 @@ impl NickelCodegen {
                             && symbol.module != module.name
                         {
                             // Generate import statement for same-package reference
-                            let snake_name = name.to_lowercase();
-                            let import_path = format!("./{}.ncl", snake_name);
-                            let import_stmt = format!("let {} = import \"{}\" in", snake_name, import_path);
+                            // Use camelCase for the variable name but proper case for the filename
+                            let camelcased_name = to_camel_case(name);
+                            let import_path = format!("./{}.ncl", name);  // Use original case for filename
+                            let import_stmt = format!("let {} = import \"{}\" in", camelcased_name, import_path);
                             eprintln!("🔍 IMPORT SOURCE 2: Generated import: '{}'", import_stmt);
                             
                             tracing::debug!(
@@ -763,9 +786,10 @@ impl NickelCodegen {
                                 &import_stmt,
                             );
 
-                            // Use import alias directly for same-package reference
+                            // Use the imported type name (which matches the import variable)
                             // The imported file exports the type directly, not as a field
-                            let result = snake_name.clone();
+                            // We use the camelCase import variable name here since that's what we imported
+                            let result = camelcased_name.clone();
                             eprintln!("🔍 TRACE: Generated qualified reference for same-package: '{}' (using import alias directly)", result);
                             return Ok(result);
                         }
@@ -785,9 +809,9 @@ impl NickelCodegen {
                         
                         // For same-package references, assume they exist and generate import
                         // This handles cases where the symbol table might be incomplete
-                        let snake_name = sanitize_import_variable_name(name);
-                        let import_path = format!("./{}.ncl", snake_name);
-                        let import_stmt = format!("let {} = import \"{}\" in", snake_name, import_path);
+                        let camelcased_name = sanitize_import_variable_name(name);
+                        let import_path = format!("./{}.ncl", name);  // Use original case for filename
+                        let import_stmt = format!("let {} = import \"{}\" in", camelcased_name, import_path);
                         eprintln!("🔍 IMPORT SOURCE 3: Generated import: '{}'", import_stmt);
                         
                         tracing::debug!(
@@ -804,8 +828,8 @@ impl NickelCodegen {
                         
                         // Return qualified reference - extract just the type name, not the full path
                         let type_name = name.split('.').last().unwrap_or(name);
-                        let result = format!("{}.{}", snake_name, type_name);
-                        eprintln!("🔍 TRACE: Generated qualified reference at line 777: '{}' (snake_name='{}', name='{}')", result, snake_name, name);
+                        let result = format!("{}.{}", camelcased_name, type_name);
+                        eprintln!("🔍 TRACE: Generated qualified reference at line 777: '{}' (camelcased_name='{}', name='{}')", result, camelcased_name, name);
                         return Ok(result);
                     }
                 }
@@ -912,7 +936,7 @@ fn format_json_value_impl(
 
 impl Default for NickelCodegen {
     fn default() -> Self {
-        Self::new()
+        Self::new(Arc::new(ModuleRegistry::new()))
     }
 }
 
@@ -968,7 +992,6 @@ impl Codegen for NickelCodegen {
             // Phase 3: Generate imports for same-package dependencies
             if !self.same_package_deps.is_empty() {
                 let (current_group, current_version) = Self::parse_module_name(&module.name);
-                let calc = ImportPathCalculator::new();
 
                 let mut same_pkg_imports: Vec<_> = self.same_package_deps.iter().collect();
                 same_pkg_imports.sort();
@@ -979,12 +1002,12 @@ impl Codegen for NickelCodegen {
                         let (import_alias, path) = if symbol.version == current_version {
                             // Same version, different module - import directly as the type
                             let alias = format!("{}_{}", type_name, "type");
-                            let path = calc.calculate(
+                            let path = self.import_calculator.calculate(
                                 &current_group,
                                 &current_version,
                                 &symbol.group,
                                 &symbol.version,
-                                &type_name.to_lowercase(),
+                                type_name,  // Use original case for filename
                             );
                             (alias, path)
                         } else {
@@ -995,12 +1018,12 @@ impl Codegen for NickelCodegen {
                                 type_name.to_lowercase(),
                                 "import"
                             );
-                            let path = calc.calculate(
+                            let path = self.import_calculator.calculate(
                                 &current_group,
                                 &current_version,
                                 &symbol.group,
                                 &symbol.version,
-                                &type_name.to_lowercase(),
+                                type_name,  // Use original case for filename
                             );
                             (alias, path)
                         };
@@ -1029,13 +1052,11 @@ impl Codegen for NickelCodegen {
                 // - "Kind.version.group" (e.g., "Composition.v1.apiextensions.crossplane.io")
                 let (from_group, from_version) = Self::parse_module_name(&module.name);
 
-                let calc = ImportPathCalculator::new();
-
                 for (version, type_name) in imports {
                     let import_alias = format!("{}_{}", version, type_name);
 
                     // Use unified calculator for cross-module imports within same package
-                    let path = calc.calculate(
+                    let path = self.import_calculator.calculate(
                         &from_group,
                         &from_version,
                         &from_group, // Same group, different version
@@ -1219,7 +1240,6 @@ impl NickelCodegen {
                 // Generate import statements for this type's dependencies
                 if !type_specific_deps.is_empty() {
                     let (current_group, current_version) = Self::parse_module_name(&module.name);
-                    let calc = ImportPathCalculator::new();
 
                     let mut import_gen = ImportGeneration {
                         type_name: type_def.name.clone(),
@@ -1246,12 +1266,12 @@ impl NickelCodegen {
                                 symbol.group,
                                 symbol.version
                             );
-                            let path = calc.calculate(
+                            let path = self.import_calculator.calculate(
                                 &current_group,
                                 &current_version,
                                 &symbol.group,
                                 &symbol.version,
-                                &dep_type_name.to_lowercase(),
+                                dep_type_name,  // Use original case for filename
                             );
                             tracing::debug!("Calculated path: {}", path);
 
@@ -1596,7 +1616,7 @@ mod tests {
 
     #[test]
     fn test_simple_type_generation() {
-        let mut codegen = NickelCodegen::new();
+        let mut codegen = NickelCodegen::new_for_test();
         let module = create_test_module();
 
         assert_eq!(
@@ -1619,7 +1639,7 @@ mod tests {
 
     #[test]
     fn test_array_generation() {
-        let mut codegen = NickelCodegen::new();
+        let mut codegen = NickelCodegen::new_for_test();
         let module = create_test_module();
         let array_type = Type::Array(Box::new(Type::String));
         assert_eq!(
@@ -1630,7 +1650,7 @@ mod tests {
 
     #[test]
     fn test_optional_generation() {
-        let mut codegen = NickelCodegen::new();
+        let mut codegen = NickelCodegen::new_for_test();
         let module = create_test_module();
         let optional_type = Type::Optional(Box::new(Type::String));
         assert_eq!(
@@ -1641,7 +1661,7 @@ mod tests {
 
     #[test]
     fn test_doc_formatting() {
-        let codegen = NickelCodegen::new();
+        let codegen = NickelCodegen::new_for_test();
 
         // Short doc uses regular quotes
         assert_eq!(codegen.format_doc("Short doc"), "\"Short doc\"");
@@ -1661,18 +1681,21 @@ mod tests {
     }
 }
 
+/// Convert PascalCase to camelCase for import variable names
+fn to_camel_case(name: &str) -> String {
+    let mut chars = name.chars();
+    match chars.next() {
+        None => String::new(),
+        Some(first) => first.to_lowercase().collect::<String>() + chars.as_str(),
+    }
+}
+
 /// Sanitize a string to be a valid Nickel variable name
-/// Converts dots, slashes, and other special characters to underscores
+/// Converts special characters to underscores and converts to camelCase
 fn sanitize_import_variable_name(name: &str) -> String {
-    name.replace(['-', '.', '/', ':', '\\'], "_")
-        .to_lowercase()
-        .chars()
-        .map(|c| {
-            if c.is_alphanumeric() || c == '_' {
-                c
-            } else {
-                '_'
-            }
-        })
-        .collect()
+    // First clean up special characters
+    let cleaned = name.replace(['-', '.', '/', ':', '\\'], "_");
+    
+    // Then convert to camelCase (lowercase first letter, keep rest as-is)
+    to_camel_case(&cleaned)
 }

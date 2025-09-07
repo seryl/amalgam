@@ -1,6 +1,6 @@
-let devicesubrequest = import "./devicesubrequest.ncl" in
-let deviceselector = import "./deviceselector.ncl" in
-let devicetoleration = import "./devicetoleration.ncl" in
+let deviceSubRequest = import "./DeviceSubRequest.ncl" in
+let deviceSelector = import "./DeviceSelector.ncl" in
+let deviceToleration = import "./DeviceToleration.ncl" in
 
 # Module: k8s.io.v1alpha3
 
@@ -33,20 +33,20 @@ DeviceClassName references a specific DeviceClass, which can define additional c
 A class is required if no subrequests are specified in the firstAvailable list and no class can be set if subrequests are specified in the firstAvailable list. Which classes are available depends on the cluster.
 Administrators may use this to restrict which devices may get requested by only installing classes with selectors for permitted devices. If users are free to request anything without restrictions, then administrators can create an empty DeviceClass for users to reference.
 "%,
-  firstAvailable | optional | Array devicesubrequest | doc m%"
+  firstAvailable | optional | Array deviceSubRequest | doc m%"
 FirstAvailable contains subrequests, of which exactly one will be satisfied by the scheduler to satisfy this request. It tries to satisfy them in the order in which they are listed here. So if there are two entries in the list, the scheduler will only check the second one if it determines that the first one cannot be used.
 This field may only be set in the entries of DeviceClaim.Requests.
 DRA does not yet implement scoring, so the scheduler will select the first set of devices that satisfies all the requests in the claim. And if the requirements can be satisfied on more than one node, other scheduling features will determine which node is chosen. This means that the set of devices allocated to a claim might not be the optimal set available to the cluster. Scoring will be implemented later.
 "%,
-  name | optional | String | doc m%"
+  name | String | doc m%"
 Name can be used to reference this request in a pod.spec.containers[].resources.claims entry and in a constraint of the claim.
 Must be a DNS label.
 "%,
-  selectors | optional | Array deviceselector | doc m%"
+  selectors | optional | Array deviceSelector | doc m%"
 Selectors define criteria which must be satisfied by a specific device in order for that device to be considered for this request. All selectors must be satisfied for a device to be considered.
 This field can only be set when deviceClassName is set and no subrequests are specified in the firstAvailable list.
 "%,
-  tolerations | optional | Array devicetoleration | doc m%"
+  tolerations | optional | Array deviceToleration | doc m%"
 If specified, the request's tolerations.
 Tolerations for NoSchedule are required to allocate a device which has a taint with that effect. The same applies to NoExecute.
 In addition, should any of the allocated devices get tainted with NoExecute after allocation and that effect is not tolerated, then all pods consuming the ResourceClaim get deleted to evict them. The scheduler will not let new pods reserve the claim while it has these tainted devices. Once all pods are evicted, the claim will get deallocated.

@@ -1,64 +1,64 @@
-let awselasticblockstorevolumesource = import "./awselasticblockstorevolumesource.ncl" in
-let azurediskvolumesource = import "./azurediskvolumesource.ncl" in
-let azurefilevolumesource = import "./azurefilevolumesource.ncl" in
-let cephfsvolumesource = import "./cephfsvolumesource.ncl" in
-let cindervolumesource = import "./cindervolumesource.ncl" in
-let configmapvolumesource = import "./configmapvolumesource.ncl" in
-let csivolumesource = import "./csivolumesource.ncl" in
-let downwardapivolumesource = import "./downwardapivolumesource.ncl" in
-let emptydirvolumesource = import "./emptydirvolumesource.ncl" in
-let ephemeralvolumesource = import "./ephemeralvolumesource.ncl" in
-let fcvolumesource = import "./fcvolumesource.ncl" in
-let flexvolumesource = import "./flexvolumesource.ncl" in
-let flockervolumesource = import "./flockervolumesource.ncl" in
-let gcepersistentdiskvolumesource = import "./gcepersistentdiskvolumesource.ncl" in
-let gitrepovolumesource = import "./gitrepovolumesource.ncl" in
-let glusterfsvolumesource = import "./glusterfsvolumesource.ncl" in
-let hostpathvolumesource = import "./hostpathvolumesource.ncl" in
-let imagevolumesource = import "./imagevolumesource.ncl" in
-let iscsivolumesource = import "./iscsivolumesource.ncl" in
-let nfsvolumesource = import "./nfsvolumesource.ncl" in
-let persistentvolumeclaimvolumesource = import "./persistentvolumeclaimvolumesource.ncl" in
-let photonpersistentdiskvolumesource = import "./photonpersistentdiskvolumesource.ncl" in
-let portworxvolumesource = import "./portworxvolumesource.ncl" in
-let projectedvolumesource = import "./projectedvolumesource.ncl" in
-let quobytevolumesource = import "./quobytevolumesource.ncl" in
-let rbdvolumesource = import "./rbdvolumesource.ncl" in
-let scaleiovolumesource = import "./scaleiovolumesource.ncl" in
-let secretvolumesource = import "./secretvolumesource.ncl" in
-let storageosvolumesource = import "./storageosvolumesource.ncl" in
-let vspherevirtualdiskvolumesource = import "./vspherevirtualdiskvolumesource.ncl" in
+let aWSElasticBlockStoreVolumeSource = import "./AWSElasticBlockStoreVolumeSource.ncl" in
+let azureDiskVolumeSource = import "./AzureDiskVolumeSource.ncl" in
+let azureFileVolumeSource = import "./AzureFileVolumeSource.ncl" in
+let cephFSVolumeSource = import "./CephFSVolumeSource.ncl" in
+let cinderVolumeSource = import "./CinderVolumeSource.ncl" in
+let configMapVolumeSource = import "./ConfigMapVolumeSource.ncl" in
+let cSIVolumeSource = import "./CSIVolumeSource.ncl" in
+let downwardAPIVolumeSource = import "./DownwardAPIVolumeSource.ncl" in
+let emptyDirVolumeSource = import "./EmptyDirVolumeSource.ncl" in
+let ephemeralVolumeSource = import "./EphemeralVolumeSource.ncl" in
+let fCVolumeSource = import "./FCVolumeSource.ncl" in
+let flexVolumeSource = import "./FlexVolumeSource.ncl" in
+let flockerVolumeSource = import "./FlockerVolumeSource.ncl" in
+let gCEPersistentDiskVolumeSource = import "./GCEPersistentDiskVolumeSource.ncl" in
+let gitRepoVolumeSource = import "./GitRepoVolumeSource.ncl" in
+let glusterfsVolumeSource = import "./GlusterfsVolumeSource.ncl" in
+let hostPathVolumeSource = import "./HostPathVolumeSource.ncl" in
+let imageVolumeSource = import "./ImageVolumeSource.ncl" in
+let iSCSIVolumeSource = import "./ISCSIVolumeSource.ncl" in
+let nFSVolumeSource = import "./NFSVolumeSource.ncl" in
+let persistentVolumeClaimVolumeSource = import "./PersistentVolumeClaimVolumeSource.ncl" in
+let photonPersistentDiskVolumeSource = import "./PhotonPersistentDiskVolumeSource.ncl" in
+let portworxVolumeSource = import "./PortworxVolumeSource.ncl" in
+let projectedVolumeSource = import "./ProjectedVolumeSource.ncl" in
+let quobyteVolumeSource = import "./QuobyteVolumeSource.ncl" in
+let rBDVolumeSource = import "./RBDVolumeSource.ncl" in
+let scaleIOVolumeSource = import "./ScaleIOVolumeSource.ncl" in
+let secretVolumeSource = import "./SecretVolumeSource.ncl" in
+let storageOSVolumeSource = import "./StorageOSVolumeSource.ncl" in
+let vsphereVirtualDiskVolumeSource = import "./VsphereVirtualDiskVolumeSource.ncl" in
 
 # Module: k8s.io.v1
 
 # Volume represents a named volume in a pod that may be accessed by any container in the pod.
 {
-  awsElasticBlockStore | optional | awselasticblockstorevolumesource | doc m%"
+  awsElasticBlockStore | optional | aWSElasticBlockStoreVolumeSource | doc m%"
 awsElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. Deprecated: AWSElasticBlockStore is deprecated. All operations for the in-tree awsElasticBlockStore type are redirected to the ebs.csi.aws.com CSI driver. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
 "%,
-  azureDisk | optional | azurediskvolumesource | doc m%"
+  azureDisk | optional | azureDiskVolumeSource | doc m%"
 azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod. Deprecated: AzureDisk is deprecated. All operations for the in-tree azureDisk type are redirected to the disk.csi.azure.com CSI driver.
 "%,
-  azureFile | optional | azurefilevolumesource | doc m%"
+  azureFile | optional | azureFileVolumeSource | doc m%"
 azureFile represents an Azure File Service mount on the host and bind mount to the pod. Deprecated: AzureFile is deprecated. All operations for the in-tree azureFile type are redirected to the file.csi.azure.com CSI driver.
 "%,
-  cephfs | optional | cephfsvolumesource | doc m%"
+  cephfs | optional | cephFSVolumeSource | doc m%"
 cephFS represents a Ceph FS mount on the host that shares a pod's lifetime. Deprecated: CephFS is deprecated and the in-tree cephfs type is no longer supported.
 "%,
-  cinder | optional | cindervolumesource | doc m%"
+  cinder | optional | cinderVolumeSource | doc m%"
 cinder represents a cinder volume attached and mounted on kubelets host machine. Deprecated: Cinder is deprecated. All operations for the in-tree cinder type are redirected to the cinder.csi.openstack.org CSI driver. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
 "%,
-  configMap | optional | configmapvolumesource | doc "configMap represents a configMap that should populate this volume",
-  csi | optional | csivolumesource | doc m%"
+  configMap | optional | configMapVolumeSource | doc "configMap represents a configMap that should populate this volume",
+  csi | optional | cSIVolumeSource | doc m%"
 csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers.
 "%,
-  downwardAPI | optional | downwardapivolumesource | doc m%"
+  downwardAPI | optional | downwardAPIVolumeSource | doc m%"
 downwardAPI represents downward API about the pod that should populate this volume
 "%,
-  emptyDir | optional | emptydirvolumesource | doc m%"
+  emptyDir | optional | emptyDirVolumeSource | doc m%"
 emptyDir represents a temporary directory that shares a pod's lifetime. More info: https://kubernetes.io/docs/concepts/storage/volumes#emptydir
 "%,
-  ephemeral | optional | ephemeralvolumesource | doc m%"
+  ephemeral | optional | ephemeralVolumeSource | doc m%"
 ephemeral represents a volume that is handled by a cluster storage driver. The volume's lifecycle is tied to the pod that defines it - it will be created before the pod starts, and deleted when the pod is removed.
 Use this if: a) the volume is only needed while the pod runs, b) features of normal volumes like restoring from snapshot or capacity
    tracking are needed,
@@ -70,67 +70,67 @@ Use PersistentVolumeClaim or one of the vendor-specific APIs for volumes that pe
 Use CSI for light-weight local ephemeral volumes if the CSI driver is meant to be used that way - see the documentation of the driver for more information.
 A pod can use both types of ephemeral volumes and persistent volumes at the same time.
 "%,
-  fc | optional | fcvolumesource | doc m%"
+  fc | optional | fCVolumeSource | doc m%"
 fc represents a Fibre Channel resource that is attached to a kubelet's host machine and then exposed to the pod.
 "%,
-  flexVolume | optional | flexvolumesource | doc m%"
+  flexVolume | optional | flexVolumeSource | doc m%"
 flexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin. Deprecated: FlexVolume is deprecated. Consider using a CSIDriver instead.
 "%,
-  flocker | optional | flockervolumesource | doc m%"
+  flocker | optional | flockerVolumeSource | doc m%"
 flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running. Deprecated: Flocker is deprecated and the in-tree flocker type is no longer supported.
 "%,
-  gcePersistentDisk | optional | gcepersistentdiskvolumesource | doc m%"
+  gcePersistentDisk | optional | gCEPersistentDiskVolumeSource | doc m%"
 gcePersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. Deprecated: GCEPersistentDisk is deprecated. All operations for the in-tree gcePersistentDisk type are redirected to the pd.csi.storage.gke.io CSI driver. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
 "%,
-  gitRepo | optional | gitrepovolumesource | doc m%"
+  gitRepo | optional | gitRepoVolumeSource | doc m%"
 gitRepo represents a git repository at a particular revision. Deprecated: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.
 "%,
-  glusterfs | optional | glusterfsvolumesource | doc m%"
+  glusterfs | optional | glusterfsVolumeSource | doc m%"
 glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. Deprecated: Glusterfs is deprecated and the in-tree glusterfs type is no longer supported. More info: https://examples.k8s.io/volumes/glusterfs/README.md
 "%,
-  hostPath | optional | hostpathvolumesource | doc m%"
+  hostPath | optional | hostPathVolumeSource | doc m%"
 hostPath represents a pre-existing file or directory on the host machine that is directly exposed to the container. This is generally used for system agents or other privileged things that are allowed to see the host machine. Most containers will NOT need this. More info: https://kubernetes.io/docs/concepts/storage/volumes#hostpath
 "%,
-  image | optional | imagevolumesource | doc m%"
+  image | optional | imageVolumeSource | doc m%"
 image represents an OCI object (a container image or artifact) pulled and mounted on the kubelet's host machine. The volume is resolved at pod startup depending on which PullPolicy value is provided:
 - Always: the kubelet always attempts to pull the reference. Container creation will fail If the pull fails. - Never: the kubelet never pulls the reference and only uses a local image or artifact. Container creation will fail if the reference isn't present. - IfNotPresent: the kubelet pulls if the reference isn't already present on disk. Container creation will fail if the reference isn't present and the pull fails.
 The volume gets re-resolved if the pod gets deleted and recreated, which means that new remote content will become available on pod recreation. A failure to resolve or pull the image during pod startup will block containers from starting and may add significant latency. Failures will be retried using normal volume backoff and will be reported on the pod reason and message. The types of objects that may be mounted by this volume are defined by the container runtime implementation on a host machine and at minimum must include all valid types supported by the container image field. The OCI object gets mounted in a single directory (spec.containers[*].volumeMounts.mountPath) by merging the manifest layers in the same way as for container images. The volume will be mounted read-only (ro) and non-executable files (noexec). Sub path mounts for containers are not supported (spec.containers[*].volumeMounts.subpath) before 1.33. The field spec.securityContext.fsGroupChangePolicy has no effect on this volume type.
 "%,
-  iscsi | optional | iscsivolumesource | doc m%"
+  iscsi | optional | iSCSIVolumeSource | doc m%"
 iscsi represents an ISCSI Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://examples.k8s.io/volumes/iscsi/README.md
 "%,
-  name | optional | String | doc m%"
+  name | String | doc m%"
 name of the volume. Must be a DNS_LABEL and unique within the pod. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
 "%,
-  nfs | optional | nfsvolumesource | doc m%"
+  nfs | optional | nFSVolumeSource | doc m%"
 nfs represents an NFS mount on the host that shares a pod's lifetime More info: https://kubernetes.io/docs/concepts/storage/volumes#nfs
 "%,
-  persistentVolumeClaim | optional | persistentvolumeclaimvolumesource | doc m%"
+  persistentVolumeClaim | optional | persistentVolumeClaimVolumeSource | doc m%"
 persistentVolumeClaimVolumeSource represents a reference to a PersistentVolumeClaim in the same namespace. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#persistentvolumeclaims
 "%,
-  photonPersistentDisk | optional | photonpersistentdiskvolumesource | doc m%"
+  photonPersistentDisk | optional | photonPersistentDiskVolumeSource | doc m%"
 photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine. Deprecated: PhotonPersistentDisk is deprecated and the in-tree photonPersistentDisk type is no longer supported.
 "%,
-  portworxVolume | optional | portworxvolumesource | doc m%"
+  portworxVolume | optional | portworxVolumeSource | doc m%"
 portworxVolume represents a portworx volume attached and mounted on kubelets host machine. Deprecated: PortworxVolume is deprecated. All operations for the in-tree portworxVolume type are redirected to the pxd.portworx.com CSI driver when the CSIMigrationPortworx feature-gate is on.
 "%,
-  projected | optional | projectedvolumesource | doc "projected items for all in one resources secrets, configmaps, and downward API",
-  quobyte | optional | quobytevolumesource | doc m%"
+  projected | optional | projectedVolumeSource | doc "projected items for all in one resources secrets, configmaps, and downward API",
+  quobyte | optional | quobyteVolumeSource | doc m%"
 quobyte represents a Quobyte mount on the host that shares a pod's lifetime. Deprecated: Quobyte is deprecated and the in-tree quobyte type is no longer supported.
 "%,
-  rbd | optional | rbdvolumesource | doc m%"
+  rbd | optional | rBDVolumeSource | doc m%"
 rbd represents a Rados Block Device mount on the host that shares a pod's lifetime. Deprecated: RBD is deprecated and the in-tree rbd type is no longer supported. More info: https://examples.k8s.io/volumes/rbd/README.md
 "%,
-  scaleIO | optional | scaleiovolumesource | doc m%"
+  scaleIO | optional | scaleIOVolumeSource | doc m%"
 scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes. Deprecated: ScaleIO is deprecated and the in-tree scaleIO type is no longer supported.
 "%,
-  secret | optional | secretvolumesource | doc m%"
+  secret | optional | secretVolumeSource | doc m%"
 secret represents a secret that should populate this volume. More info: https://kubernetes.io/docs/concepts/storage/volumes#secret
 "%,
-  storageos | optional | storageosvolumesource | doc m%"
+  storageos | optional | storageOSVolumeSource | doc m%"
 storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes. Deprecated: StorageOS is deprecated and the in-tree storageos type is no longer supported.
 "%,
-  vsphereVolume | optional | vspherevirtualdiskvolumesource | doc m%"
+  vsphereVolume | optional | vsphereVirtualDiskVolumeSource | doc m%"
 vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine. Deprecated: VsphereVolume is deprecated. All operations for the in-tree vsphereVolume type are redirected to the csi.vsphere.vmware.com CSI driver.
 "%
 }

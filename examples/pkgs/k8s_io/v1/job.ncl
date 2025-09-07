@@ -1,6 +1,6 @@
-let objectmeta = import "./objectmeta.ncl" in
-let jobspec = import "./jobspec.ncl" in
-let jobstatus = import "./jobstatus.ncl" in
+let objectMeta = import "./ObjectMeta.ncl" in
+let jobSpec = import "./JobSpec.ncl" in
+let jobStatus = import "./JobStatus.ncl" in
 
 # Module: k8s.io.v1
 
@@ -12,13 +12,13 @@ APIVersion defines the versioned schema of this representation of an object. Ser
   kind | optional | String | doc m%"
 Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
 "%,
-  metadata | optional | objectmeta | doc m%"
+  metadata | optional | objectMeta | doc m%"
 Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
 "%,
-  spec | optional | jobspec | doc m%"
+  spec | optional | jobSpec | doc m%"
 Specification of the desired behavior of a job. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
 "%,
-  status | optional | jobstatus | doc m%"
+  status | optional | jobStatus | doc m%"
 Current status of a job. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
 "%
 }

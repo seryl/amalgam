@@ -1,6 +1,6 @@
-let objectmeta = import "./objectmeta.ncl" in
-let poddisruptionbudgetspec = import "./poddisruptionbudgetspec.ncl" in
-let poddisruptionbudgetstatus = import "./poddisruptionbudgetstatus.ncl" in
+let objectMeta = import "./ObjectMeta.ncl" in
+let podDisruptionBudgetSpec = import "./PodDisruptionBudgetSpec.ncl" in
+let podDisruptionBudgetStatus = import "./PodDisruptionBudgetStatus.ncl" in
 
 # Module: k8s.io.v1
 
@@ -12,9 +12,9 @@ APIVersion defines the versioned schema of this representation of an object. Ser
   kind | optional | String | doc m%"
 Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
 "%,
-  metadata | optional | objectmeta | doc m%"
+  metadata | optional | objectMeta | doc m%"
 Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
 "%,
-  spec | optional | poddisruptionbudgetspec | doc "Specification of the desired behavior of the PodDisruptionBudget.",
-  status | optional | poddisruptionbudgetstatus | doc "Most recently observed status of the PodDisruptionBudget."
+  spec | optional | podDisruptionBudgetSpec | doc "Specification of the desired behavior of the PodDisruptionBudget.",
+  status | optional | podDisruptionBudgetStatus | doc "Most recently observed status of the PodDisruptionBudget."
 }

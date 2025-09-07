@@ -1,4 +1,4 @@
-let deploymentcondition = import "./deploymentcondition.ncl" in
+let deploymentCondition = import "./DeploymentCondition.ncl" in
 
 # Module: k8s.io.v1
 
@@ -10,7 +10,7 @@ Total number of available non-terminating pods (ready for at least minReadySecon
   collisionCount | optional | Number | doc m%"
 Count of hash collisions for the Deployment. The Deployment controller uses this field as a collision avoidance mechanism when it needs to create the name for the newest ReplicaSet.
 "%,
-  conditions | optional | Array deploymentcondition | doc "Represents the latest available observations of a deployment's current state.",
+  conditions | optional | Array deploymentCondition | doc "Represents the latest available observations of a deployment's current state.",
   observedGeneration | optional | Number | doc "The generation observed by the deployment controller.",
   readyReplicas | optional | Number | doc m%"
 Total number of non-terminating pods targeted by this Deployment with a Ready Condition.

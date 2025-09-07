@@ -1,10 +1,10 @@
-let loadbalanceringress = import "./loadbalanceringress.ncl" in
+let loadBalancerIngress = import "./LoadBalancerIngress.ncl" in
 
 # Module: k8s.io.v1
 
 # LoadBalancerStatus represents the status of a load-balancer.
 {
-  ingress | optional | Array loadbalanceringress | doc m%"
+  ingress | optional | Array loadBalancerIngress | doc m%"
 Ingress is a list containing ingress points for the load-balancer. Traffic intended for the service should be sent to these ingress points.
 "%
 }

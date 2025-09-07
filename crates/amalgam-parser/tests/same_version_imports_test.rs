@@ -85,7 +85,7 @@ fn test_v1alpha3_same_version_imports() {
         .expect("Should generate IR");
 
     // Generate Nickel code
-    let mut codegen = NickelCodegen::new();
+    let mut codegen = NickelCodegen::from_ir(&ir);
     let nickel_code = codegen.generate(&ir).expect("Should generate Nickel");
 
     // Verify deviceselector.ncl has correct import
@@ -104,7 +104,7 @@ fn test_v1alpha3_same_version_imports() {
 
 #[test]
 fn test_import_path_calculator_same_version() {
-    let calc = ImportPathCalculator::new();
+    let calc = ImportPathCalculator::new_standalone();
 
     // Test the specific v1alpha3 case
     let path = calc.calculate(

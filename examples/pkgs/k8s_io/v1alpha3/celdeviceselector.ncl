@@ -2,7 +2,7 @@
 
 # CELDeviceSelector contains a CEL expression for selecting a device.
 {
-  expression | optional | String | doc m%"
+  expression | String | doc m%"
 Expression is a CEL expression which evaluates a single device. It must evaluate to true when the device under consideration satisfies the desired criteria, and false when it does not. Any other result is an error and causes allocation of devices to abort.
 The expression's input is an object named "device", which carries the following properties:
  - driver (string): the name of the driver which defines this device.

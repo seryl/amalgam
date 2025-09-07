@@ -193,10 +193,11 @@ impl NamespacedPackage {
                     };
                     // Single-type modules now export the type directly (not wrapped in record)
                     // So we can import them directly without extraction
+                    // Use original case for the filename
                     content.push_str(&format!(
                         "  {} = import \"./{}.ncl\",\n",
                         type_name,
-                        kind.to_lowercase()
+                        type_name  // Use the type_name which has the correct case
                     ));
                 }
 
@@ -247,7 +248,7 @@ impl NamespacedPackage {
 
         // Step 4: Generate files from IR using codegen with complete symbol table
         // The key insight: pass the complete IR so NickelCodegen can build a full symbol table
-        let mut codegen = amalgam_codegen::nickel::NickelCodegen::new();
+        let mut codegen = amalgam_codegen::nickel::NickelCodegen::from_ir(&ir);
 
         tracing::debug!(
             "Generating Nickel files from IR with {} modules using unified pipeline",
@@ -350,8 +351,8 @@ impl NamespacedPackage {
             if let Some(module) = module {
                 // Extract each type definition from the module content
                 for type_def in &module.types {
-                    let type_name = type_def.name.to_lowercase();
-                    let file_name = format!("{}.ncl", type_name);
+                    // Keep the original case for the filename
+                    let file_name = format!("{}.ncl", type_def.name);
                     
 
                     // For single-type modules, export just the type

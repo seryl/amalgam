@@ -1,13 +1,13 @@
-let envvar = import "./envvar.ncl" in
-let envfromsource = import "./envfromsource.ncl" in
-let lifecycle = import "./lifecycle.ncl" in
-let probe = import "./probe.ncl" in
-let containerport = import "./containerport.ncl" in
-let containerresizepolicy = import "./containerresizepolicy.ncl" in
-let resourcerequirements = import "./resourcerequirements.ncl" in
-let securitycontext = import "./securitycontext.ncl" in
-let volumedevice = import "./volumedevice.ncl" in
-let volumemount = import "./volumemount.ncl" in
+let envVar = import "./EnvVar.ncl" in
+let envFromSource = import "./EnvFromSource.ncl" in
+let lifecycle = import "./Lifecycle.ncl" in
+let probe = import "./Probe.ncl" in
+let containerPort = import "./ContainerPort.ncl" in
+let containerResizePolicy = import "./ContainerResizePolicy.ncl" in
+let resourceRequirements = import "./ResourceRequirements.ncl" in
+let securityContext = import "./SecurityContext.ncl" in
+let volumeDevice = import "./VolumeDevice.ncl" in
+let volumeMount = import "./VolumeMount.ncl" in
 
 # Module: k8s.io.v1
 
@@ -19,8 +19,8 @@ Arguments to the entrypoint. The container image's CMD is used if this is not pr
   command | optional | Array String | doc m%"
 Entrypoint array. Not executed within a shell. The container image's ENTRYPOINT is used if this is not provided. Variable references $(VAR_NAME) are expanded using the container's environment. If a variable cannot be resolved, the reference in the input string will be unchanged. Double $$ are reduced to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e. "$$(VAR_NAME)" will produce the string literal "$(VAR_NAME)". Escaped references will never be expanded, regardless of whether the variable exists or not. Cannot be updated. More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell
 "%,
-  env | optional | Array envvar | doc "List of environment variables to set in the container. Cannot be updated.",
-  envFrom | optional | Array envfromsource | doc m%"
+  env | optional | Array envVar | doc "List of environment variables to set in the container. Cannot be updated.",
+  envFrom | optional | Array envFromSource | doc m%"
 List of sources to populate environment variables in the container. The keys defined within a source must be a C_IDENTIFIER. All invalid keys will be reported as an event when the container is starting. When a key exists in multiple sources, the value associated with the last source will take precedence. Values defined by an Env with a duplicate key will take precedence. Cannot be updated.
 "%,
   image | optional | String | doc m%"
@@ -35,23 +35,23 @@ Actions that the management system should take in response to container lifecycl
   livenessProbe | optional | probe | doc m%"
 Periodic probe of container liveness. Container will be restarted if the probe fails. Cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes
 "%,
-  name | optional | String | doc m%"
+  name | String | doc m%"
 Name of the container specified as a DNS_LABEL. Each container in a pod must have a unique name (DNS_LABEL). Cannot be updated.
 "%,
-  ports | optional | Array containerport | doc m%"
+  ports | optional | Array containerPort | doc m%"
 List of ports to expose from the container. Not specifying a port here DOES NOT prevent that port from being exposed. Any port which is listening on the default "0.0.0.0" address inside a container will be accessible from the network. Modifying this array with strategic merge patch may corrupt the data. For more information See https://github.com/kubernetes/kubernetes/issues/108255. Cannot be updated.
 "%,
   readinessProbe | optional | probe | doc m%"
 Periodic probe of container service readiness. Container will be removed from service endpoints if the probe fails. Cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes
 "%,
-  resizePolicy | optional | Array containerresizepolicy | doc "Resources resize policy for the container.",
-  resources | optional | resourcerequirements | doc m%"
+  resizePolicy | optional | Array containerResizePolicy | doc "Resources resize policy for the container.",
+  resources | optional | resourceRequirements | doc m%"
 Compute Resources required by this container. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
 "%,
   restartPolicy | optional | String | doc m%"
 RestartPolicy defines the restart behavior of individual containers in a pod. This field may only be set for init containers, and the only allowed value is "Always". For non-init containers or when this field is not specified, the restart behavior is defined by the Pod's restart policy and the container type. Setting the RestartPolicy as "Always" for the init container will have the following effect: this init container will be continually restarted on exit until all regular containers have terminated. Once all regular containers have completed, all init containers with restartPolicy "Always" will be shut down. This lifecycle differs from normal init containers and is often referred to as a "sidecar" container. Although this init container still starts in the init container sequence, it does not wait for the container to complete before proceeding to the next init container. Instead, the next init container starts immediately after this init container is started, or after any startupProbe has successfully completed.
 "%,
-  securityContext | optional | securitycontext | doc m%"
+  securityContext | optional | securityContext | doc m%"
 SecurityContext defines the security options the container should be run with. If set, the fields of SecurityContext override the equivalent fields of PodSecurityContext. More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
 "%,
   startupProbe | optional | probe | doc m%"
@@ -72,8 +72,8 @@ Indicate how the termination message should be populated. File will use the cont
   tty | optional | Bool | doc m%"
 Whether this container should allocate a TTY for itself, also requires 'stdin' to be true. Default is false.
 "%,
-  volumeDevices | optional | Array volumedevice | doc "volumeDevices is the list of block devices to be used by the container.",
-  volumeMounts | optional | Array volumemount | doc "Pod volumes to mount into the container's filesystem. Cannot be updated.",
+  volumeDevices | optional | Array volumeDevice | doc "volumeDevices is the list of block devices to be used by the container.",
+  volumeMounts | optional | Array volumeMount | doc "Pod volumes to mount into the container's filesystem. Cannot be updated.",
   workingDir | optional | String | doc m%"
 Container's working directory. If not specified, the container runtime's default will be used, which might be configured in the container image. Cannot be updated.
 "%

@@ -1,18 +1,18 @@
-let affinity = import "./affinity.ncl" in
-let container = import "./container.ncl" in
-let poddnsconfig = import "./poddnsconfig.ncl" in
-let ephemeralcontainer = import "./ephemeralcontainer.ncl" in
-let hostalias = import "./hostalias.ncl" in
-let localobjectreference = import "./localobjectreference.ncl" in
-let podos = import "./podos.ncl" in
-let podreadinessgate = import "./podreadinessgate.ncl" in
-let podresourceclaim = import "./podresourceclaim.ncl" in
-let resourcerequirements = import "./resourcerequirements.ncl" in
-let podschedulinggate = import "./podschedulinggate.ncl" in
-let podsecuritycontext = import "./podsecuritycontext.ncl" in
-let toleration = import "./toleration.ncl" in
-let topologyspreadconstraint = import "./topologyspreadconstraint.ncl" in
-let volume = import "./volume.ncl" in
+let affinity = import "./Affinity.ncl" in
+let container = import "./Container.ncl" in
+let podDNSConfig = import "./PodDNSConfig.ncl" in
+let ephemeralContainer = import "./EphemeralContainer.ncl" in
+let hostAlias = import "./HostAlias.ncl" in
+let localObjectReference = import "./LocalObjectReference.ncl" in
+let podOS = import "./PodOS.ncl" in
+let podReadinessGate = import "./PodReadinessGate.ncl" in
+let podResourceClaim = import "./PodResourceClaim.ncl" in
+let resourceRequirements = import "./ResourceRequirements.ncl" in
+let podSchedulingGate = import "./PodSchedulingGate.ncl" in
+let podSecurityContext = import "./PodSecurityContext.ncl" in
+let toleration = import "./Toleration.ncl" in
+let topologySpreadConstraint = import "./TopologySpreadConstraint.ncl" in
+let volume = import "./Volume.ncl" in
 
 # Module: k8s.io.v1
 
@@ -25,10 +25,10 @@ Optional duration in seconds the pod may be active on the node relative to Start
   automountServiceAccountToken | optional | Bool | doc m%"
 AutomountServiceAccountToken indicates whether a service account token should be automatically mounted.
 "%,
-  containers | optional | Array container | doc m%"
+  containers | Array container | doc m%"
 List of containers belonging to the pod. Containers cannot currently be added or removed. There must be at least one container in a Pod. Cannot be updated.
 "%,
-  dnsConfig | optional | poddnsconfig | doc m%"
+  dnsConfig | optional | podDNSConfig | doc m%"
 Specifies the DNS parameters of a pod. Parameters specified here will be merged to the generated DNS configuration based on DNSPolicy.
 "%,
   dnsPolicy | optional | String | doc m%"
@@ -37,10 +37,10 @@ Set DNS policy for the pod. Defaults to "ClusterFirst". Valid values are 'Cluste
   enableServiceLinks | optional | Bool | doc m%"
 EnableServiceLinks indicates whether information about services should be injected into pod's environment variables, matching the syntax of Docker links. Optional: Defaults to true.
 "%,
-  ephemeralContainers | optional | Array ephemeralcontainer | doc m%"
+  ephemeralContainers | optional | Array ephemeralContainer | doc m%"
 List of ephemeral containers run in this pod. Ephemeral containers may be run in an existing pod to perform user-initiated actions such as debugging. This list cannot be specified when creating a pod, and it cannot be modified by updating the pod spec. In order to add an ephemeral container to an existing pod, use the pod's ephemeralcontainers subresource.
 "%,
-  hostAliases | optional | Array hostalias | doc m%"
+  hostAliases | optional | Array hostAlias | doc m%"
 HostAliases is an optional list of hosts and IPs that will be injected into the pod's hosts file if specified.
 "%,
   hostIPC | optional | Bool | doc "Use the host's ipc namespace. Optional: Default to false.",
@@ -54,7 +54,7 @@ Use the host's user namespace. Optional: Default to true. If set to true or not 
   hostname | optional | String | doc m%"
 Specifies the hostname of the Pod If not specified, the pod's hostname will be set to a system-defined value.
 "%,
-  imagePullSecrets | optional | Array localobjectreference | doc m%"
+  imagePullSecrets | optional | Array localObjectReference | doc m%"
 ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images used by this PodSpec. If specified, these secrets will be passed to individual puller implementations for them to use. More info: https://kubernetes.io/docs/concepts/containers/images#specifying-imagepullsecrets-on-a-pod
 "%,
   initContainers | optional | Array container | doc m%"
@@ -66,7 +66,7 @@ NodeName indicates in which node this pod is scheduled. If empty, this pod is a 
   nodeSelector | optional | { .. } | doc m%"
 NodeSelector is a selector which must be true for the pod to fit on a node. Selector which must match a node's labels for the pod to be scheduled on that node. More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
 "%,
-  os | optional | podos | doc m%"
+  os | optional | podOS | doc m%"
 Specifies the OS of the containers in the pod. Some pod and container fields are restricted if this is set.
 If the OS field is set to linux, the following fields must be unset: -securityContext.windowsOptions
 If the OS field is set to windows, following fields must be unset: - spec.hostPID - spec.hostIPC - spec.hostUsers - spec.securityContext.appArmorProfile - spec.securityContext.seLinuxOptions - spec.securityContext.seccompProfile - spec.securityContext.fsGroup - spec.securityContext.fsGroupChangePolicy - spec.securityContext.sysctls - spec.shareProcessNamespace - spec.securityContext.runAsUser - spec.securityContext.runAsGroup - spec.securityContext.supplementalGroups - spec.securityContext.supplementalGroupsPolicy - spec.containers[*].securityContext.appArmorProfile - spec.containers[*].securityContext.seLinuxOptions - spec.containers[*].securityContext.seccompProfile - spec.containers[*].securityContext.capabilities - spec.containers[*].securityContext.readOnlyRootFilesystem - spec.containers[*].securityContext.privileged - spec.containers[*].securityContext.allowPrivilegeEscalation - spec.containers[*].securityContext.procMount - spec.containers[*].securityContext.runAsUser - spec.containers[*].securityContext.runAsGroup
@@ -83,15 +83,15 @@ The priority value. Various system components use this field to find the priorit
   priorityClassName | optional | String | doc m%"
 If specified, indicates the pod's priority. "system-node-critical" and "system-cluster-critical" are two special keywords which indicate the highest priorities with the former being the highest priority. Any other name must be defined by creating a PriorityClass object with that name. If not specified, the pod priority will be default or zero if there is no default.
 "%,
-  readinessGates | optional | Array podreadinessgate | doc m%"
+  readinessGates | optional | Array podReadinessGate | doc m%"
 If specified, all readiness gates will be evaluated for pod readiness. A pod is ready when all its containers are ready AND all conditions specified in the readiness gates have status equal to "True" More info: https://git.k8s.io/enhancements/keps/sig-network/580-pod-readiness-gates
 "%,
-  resourceClaims | optional | Array podresourceclaim | doc m%"
+  resourceClaims | optional | Array podResourceClaim | doc m%"
 ResourceClaims defines which ResourceClaims must be allocated and reserved before the Pod is allowed to start. The resources will be made available to those containers which consume them by name.
 This is an alpha field and requires enabling the DynamicResourceAllocation feature gate.
 This field is immutable.
 "%,
-  resources | optional | resourcerequirements | doc m%"
+  resources | optional | resourceRequirements | doc m%"
 Resources is the total amount of CPU and Memory resources required by all containers in the pod. It supports specifying Requests and Limits for "cpu" and "memory" resource names only. ResourceClaims are not supported.
 This field enables fine-grained control over resource allocation for the entire pod, allowing resource sharing among containers in a pod.
 This is an alpha field and requires enabling the PodLevelResources feature gate.
@@ -105,11 +105,11 @@ RuntimeClassName refers to a RuntimeClass object in the node.k8s.io group, which
   schedulerName | optional | String | doc m%"
 If specified, the pod will be dispatched by specified scheduler. If not specified, the pod will be dispatched by default scheduler.
 "%,
-  schedulingGates | optional | Array podschedulinggate | doc m%"
+  schedulingGates | optional | Array podSchedulingGate | doc m%"
 SchedulingGates is an opaque list of values that if specified will block scheduling the pod. If schedulingGates is not empty, the pod will stay in the SchedulingGated state and the scheduler will not attempt to schedule the pod.
 SchedulingGates can only be set at pod creation time, and be removed only afterwards.
 "%,
-  securityContext | optional | podsecuritycontext | doc m%"
+  securityContext | optional | podSecurityContext | doc m%"
 SecurityContext holds pod-level security attributes and common container settings. Optional: Defaults to empty.  See type description for default values of each field.
 "%,
   serviceAccount | optional | String | doc m%"
@@ -131,7 +131,7 @@ If specified, the fully qualified Pod hostname will be "<hostname>.<subdomain>.<
 Optional duration in seconds the pod needs to terminate gracefully. May be decreased in delete request. Value must be non-negative integer. The value zero indicates stop immediately via the kill signal (no opportunity to shut down). If this value is nil, the default grace period will be used instead. The grace period is the duration in seconds after the processes running in the pod are sent a termination signal and the time when the processes are forcibly halted with a kill signal. Set this value longer than the expected cleanup time for your process. Defaults to 30 seconds.
 "%,
   tolerations | optional | Array toleration | doc "If specified, the pod's tolerations.",
-  topologySpreadConstraints | optional | Array topologyspreadconstraint | doc m%"
+  topologySpreadConstraints | optional | Array topologySpreadConstraint | doc m%"
 TopologySpreadConstraints describes how a group of pods ought to spread across topology domains. Scheduler will schedule pods in a way which abides by the constraints. All topologySpreadConstraints are ANDed.
 "%,
   volumes | optional | Array volume | doc m%"

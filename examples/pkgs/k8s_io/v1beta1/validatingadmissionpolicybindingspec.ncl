@@ -1,14 +1,14 @@
-let matchresources = import "./matchresources.ncl" in
-let paramref = import "./paramref.ncl" in
+let matchResources = import "./MatchResources.ncl" in
+let paramRef = import "./ParamRef.ncl" in
 
 # Module: k8s.io.v1beta1
 
 # ValidatingAdmissionPolicyBindingSpec is the specification of the ValidatingAdmissionPolicyBinding.
 {
-  matchResources | optional | matchresources | doc m%"
+  matchResources | optional | matchResources | doc m%"
 MatchResources declares what resources match this binding and will be validated by it. Note that this is intersected with the policy's matchConstraints, so only requests that are matched by the policy can be selected by this. If this is unset, all resources matched by the policy are validated by this binding When resourceRules is unset, it does not constrain resource matching. If a resource is matched by the other fields of this object, it will be validated. Note that this is differs from ValidatingAdmissionPolicy matchConstraints, where resourceRules are required.
 "%,
-  paramRef | optional | paramref | doc m%"
+  paramRef | optional | paramRef | doc m%"
 paramRef specifies the parameter resource used to configure the admission control policy. It should point to a resource of the type specified in ParamKind of the bound ValidatingAdmissionPolicy. If the policy specifies a ParamKind and the resource referred to by ParamRef does not exist, this binding is considered mis-configured and the FailurePolicy of the ValidatingAdmissionPolicy applied. If the policy does not specify a ParamKind then this field is ignored, and the rules are evaluated without a param.
 "%,
   policyName | optional | String | doc m%"

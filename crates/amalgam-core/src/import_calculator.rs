@@ -4,15 +4,34 @@
 //! different packages and versions, replacing the scattered logic throughout the codebase.
 
 use std::path::PathBuf;
+use std::sync::Arc;
+use crate::module_registry::ModuleRegistry;
 
 /// Unified import path calculator for all import resolution needs
-#[derive(Debug, Clone, Default)]
-pub struct ImportPathCalculator;
+/// This now acts as a facade over the ModuleRegistry for backwards compatibility
+#[derive(Debug, Clone)]
+pub struct ImportPathCalculator {
+    registry: Arc<ModuleRegistry>,
+}
 
 impl ImportPathCalculator {
-    /// Create a new ImportPathCalculator instance
-    pub fn new() -> Self {
-        Self
+    /// Create a new ImportPathCalculator with a shared ModuleRegistry
+    pub fn new(registry: Arc<ModuleRegistry>) -> Self {
+        Self { registry }
+    }
+    
+    /// Create from an owned ModuleRegistry
+    pub fn from_registry(registry: ModuleRegistry) -> Self {
+        Self {
+            registry: Arc::new(registry),
+        }
+    }
+    
+    /// Create with an empty registry (for backward compatibility where IR is not yet available)
+    pub fn new_standalone() -> Self {
+        Self {
+            registry: Arc::new(ModuleRegistry::new()),
+        }
     }
 
     /// Calculate the import path from one type to another
@@ -34,8 +53,17 @@ impl ImportPathCalculator {
         to_version: &str,
         to_type: &str,
     ) -> String {
-        // Normalize type name to lowercase
-        let type_name = to_type.to_lowercase();
+        // Try to use registry if modules are registered
+        let from_module = format!("{}.{}", from_group, from_version);
+        let to_module = format!("{}.{}", to_group, to_version);
+        
+        if let Some(path) = self.registry.calculate_import_path(&from_module, &to_module, to_type) {
+            return path;
+        }
+        
+        // Fall back to static calculation if modules not in registry
+        // Keep the original case for the filename
+        let type_name = to_type;
 
         // Case 1: Same package, same version - use relative import
         if from_group == to_group && from_version == to_version {
@@ -54,7 +82,7 @@ impl ImportPathCalculator {
         // Calculate relative path between packages
         let relative = Self::calculate_relative_path(&from_path, &to_path);
 
-        // Append version and type
+        // Append version and type (preserving original case)
         format!("{}/{}/{}.ncl", relative, to_version, type_name)
     }
 
@@ -129,19 +157,22 @@ impl ImportPathCalculator {
     /// Calculate relative path between two package paths
     fn calculate_relative_path(from: &PathBuf, to: &PathBuf) -> String {
         // Calculate how many levels deep we are from the packages root
-        // Examples:
-        // - k8s.io: k8s_io/<version>/<file> = 2 levels up to reach pkgs/
-        // - crossplane: crossplane/protection.crossplane.io/crossplane/<version>/<file> = 4 levels up to reach pkgs/
+        // The actual directory structure is:
+        // - Simple packages: pkgs/<package_name>/<version>/<file>.ncl = 2 levels up
+        // - CrossPlane: pkgs/crossplane/<domain>/crossplane/<version>/<file>.ncl = 4 levels up
+        //
+        // We need to count the actual components in the path, plus 1 for the version directory
         
-        // The depth is the number of components in the from path + 1 for the version directory
-        // But we need to go up to reach the packages root, so we use the full path depth
-        let from_depth = from.components().count() + 1; // +1 for version directory
+        // For the 'from' path, we need to count its components plus 1 for version
+        // For simple packages (1 component like "k8s_io"), we go up 2 levels
+        // For CrossPlane packages (3 components like "crossplane/domain/crossplane"), we go up 4 levels
+        let from_components = from.components().count();
+        let from_depth = from_components + 1; // +1 for version directory
         
         let mut path_parts = vec![];
 
         // Go up the required number of levels to reach the packages root
-        // But we actually need one less level since we're calculating relative to the file location
-        for _ in 0..(from_depth - 1) {
+        for _ in 0..from_depth {
             path_parts.push("..");
         }
 
@@ -193,24 +224,29 @@ impl ImportPathCalculator {
 #[cfg(test)]
 mod tests {
     use super::*;
+    
+    fn test_calculator() -> ImportPathCalculator {
+        // Create with empty registry for tests
+        ImportPathCalculator::from_registry(ModuleRegistry::new())
+    }
 
     #[test]
     fn test_same_package_same_version() {
-        let calc = ImportPathCalculator::new();
+        let calc = test_calculator();
         let path = calc.calculate("k8s.io", "v1", "k8s.io", "v1", "pod");
         assert_eq!(path, "./pod.ncl");
     }
 
     #[test]
     fn test_same_package_different_version() {
-        let calc = ImportPathCalculator::new();
+        let calc = test_calculator();
         let path = calc.calculate("k8s.io", "v1beta1", "k8s.io", "v1", "objectmeta");
         assert_eq!(path, "../v1/objectmeta.ncl");
     }
 
     #[test]
     fn test_cross_package_import() {
-        let calc = ImportPathCalculator::new();
+        let calc = test_calculator();
         let path = calc.calculate(
             "apiextensions.crossplane.io",
             "v1",
@@ -225,7 +261,7 @@ mod tests {
 
     #[test]
     fn test_crossplane_to_k8s_path() {
-        let calc = ImportPathCalculator::new();
+        let calc = test_calculator();
         // From a CrossPlane ops.crossplane.io package to k8s.io
         let path = calc.calculate(
             "ops.crossplane.io", 
@@ -234,15 +270,15 @@ mod tests {
             "v1", 
             "objectmeta"
         );
-        // Should be ../../../k8s_io/v1/objectmeta.ncl
+        // Should be ../../../../k8s_io/v1/objectmeta.ncl
         // Going up from: crossplane/ops.crossplane.io/crossplane/<version>/file.ncl
-        // That's 3 levels up to reach pkgs/, then down to k8s_io/v1/
-        assert_eq!(path, "../../../k8s_io/v1/objectmeta.ncl");
+        // That's 4 levels up to reach pkgs/, then down to k8s_io/v1/
+        assert_eq!(path, "../../../../k8s_io/v1/objectmeta.ncl");
     }
 
     #[test]
     fn test_calculate_with_alias() {
-        let calc = ImportPathCalculator::new();
+        let calc = test_calculator();
 
         // Same package
         let (path, alias) = calc.calculate_with_alias("k8s.io", "v1", "k8s.io", "v1", "Pod");
@@ -269,7 +305,7 @@ mod tests {
 
     #[test]
     fn test_requires_import() {
-        let calc = ImportPathCalculator::new();
+        let calc = test_calculator();
 
         // Same package, same version - no import needed
         assert!(!calc.requires_import("k8s.io", "v1", "k8s.io", "v1"));
@@ -283,7 +319,7 @@ mod tests {
 
     #[test]
     fn test_is_cross_version_import() {
-        let calc = ImportPathCalculator::new();
+        let calc = test_calculator();
 
         assert!(!calc.is_cross_version_import("k8s.io", "v1", "k8s.io", "v1"));
         assert!(calc.is_cross_version_import("k8s.io", "v1beta1", "k8s.io", "v1"));
@@ -292,7 +328,7 @@ mod tests {
 
     #[test]
     fn test_v1alpha3_same_version() {
-        let calc = ImportPathCalculator::new();
+        let calc = test_calculator();
 
         // Test the specific case from deviceselector.ncl
         let path = calc.calculate(
@@ -307,7 +343,7 @@ mod tests {
 
     #[test]
     fn test_raw_extension_to_v0() {
-        let calc = ImportPathCalculator::new();
+        let calc = test_calculator();
 
         // RawExtension should import from v0
         let path = calc.calculate("k8s.io", "v1", "k8s.io", "v0", "rawextension");

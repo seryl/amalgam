@@ -1,10 +1,10 @@
-let secretreference = import "./secretreference.ncl" in
+let secretReference = import "./SecretReference.ncl" in
 
 # Module: k8s.io.v1
 
 # Represents a Ceph Filesystem mount that lasts the lifetime of a pod Cephfs volumes do not support ownership management or SELinux relabeling.
 {
-  monitors | optional | Array String | doc m%"
+  monitors | Array String | doc m%"
 monitors is Required: Monitors is a collection of Ceph monitors More info: https://examples.k8s.io/volumes/cephfs/README.md#how-to-use-it
 "%,
   path | optional | String | doc m%"
@@ -16,7 +16,7 @@ readOnly is Optional: Defaults to false (read/write). ReadOnly here will force t
   secretFile | optional | String | doc m%"
 secretFile is Optional: SecretFile is the path to key ring for User, default is /etc/ceph/user.secret More info: https://examples.k8s.io/volumes/cephfs/README.md#how-to-use-it
 "%,
-  secretRef | optional | secretreference | doc m%"
+  secretRef | optional | secretReference | doc m%"
 secretRef is Optional: SecretRef is reference to the authentication secret for User, default is empty. More info: https://examples.k8s.io/volumes/cephfs/README.md#how-to-use-it
 "%,
   user | optional | String | doc m%"

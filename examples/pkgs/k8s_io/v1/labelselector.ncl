@@ -1,10 +1,10 @@
-let labelselectorrequirement = import "./labelselectorrequirement.ncl" in
+let labelSelectorRequirement = import "./LabelSelectorRequirement.ncl" in
 
 # Module: k8s.io.v1
 
 # A label selector is a label query over a set of resources. The result of matchLabels and matchExpressions are ANDed. An empty label selector matches all objects. A null label selector matches no objects.
 {
-  matchExpressions | optional | Array labelselectorrequirement | doc m%"
+  matchExpressions | optional | Array labelSelectorRequirement | doc m%"
 matchExpressions is a list of label selector requirements. The requirements are ANDed.
 "%,
   matchLabels | optional | { .. } | doc m%"

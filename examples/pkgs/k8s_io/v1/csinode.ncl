@@ -1,5 +1,5 @@
-let objectmeta = import "./objectmeta.ncl" in
-let csinodespec = import "./csinodespec.ncl" in
+let objectMeta = import "./ObjectMeta.ncl" in
+let cSINodeSpec = import "./CSINodeSpec.ncl" in
 
 # Module: k8s.io.v1
 
@@ -11,6 +11,6 @@ APIVersion defines the versioned schema of this representation of an object. Ser
   kind | optional | String | doc m%"
 Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
 "%,
-  metadata | optional | objectmeta | doc "Standard object's metadata. metadata.name must be the Kubernetes node name.",
-  spec | optional | csinodespec | doc "spec is the specification of CSINode"
+  metadata | optional | objectMeta | doc "Standard object's metadata. metadata.name must be the Kubernetes node name.",
+  spec | cSINodeSpec | doc "spec is the specification of CSINode"
 }

@@ -1,4 +1,4 @@
-let objectmeta = import "../../../k8s_io/v1/objectmeta.ncl" in
+let objectMeta = import "../../../../k8s_io/v1/ObjectMeta.ncl" in
 
 
 {
@@ -15,7 +15,7 @@ Cannot be updated.
 In CamelCase.
 More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
 "%,
-  metadata | optional | objectmeta.ObjectMeta,
+  metadata | optional | objectMeta.ObjectMeta,
   spec | optional | {
     claimNames | optional | {
       categories | optional | Array String | doc m%"
@@ -23,14 +23,14 @@ categories is a list of grouped resources this custom resource belongs to (e.g. 
 This is published in API discovery documents, and used by clients to support invocations like
 `kubectl get all`.
 "%,
-      kind | optional | String | doc m%"
+      kind | String | doc m%"
 kind is the serialized kind of the resource. It is normally CamelCase and singular.
 Custom resource instances will use this value as the `kind` attribute in API calls.
 "%,
       listKind | optional | String | doc m%"
 listKind is the serialized kind of the list for this resource. Defaults to "`kind`List".
 "%,
-      plural | optional | String | doc m%"
+      plural | String | doc m%"
 plural is the plural name of the resource to serve.
 The custom resources are served under `/apis/<group>/<version>/.../<plural>`.
 Must match the name of the CustomResourceDefinition (in the form `<names.plural>.<group>`).
@@ -65,7 +65,7 @@ Deprecated: XR connection secrets aren't supported in
 apiextensions.crossplane.io/v2. Compose a secret instead.
 "%,
     conversion | optional | {
-      strategy | optional | String | doc m%"
+      strategy | String | doc m%"
 strategy specifies how custom resources are converted between versions. Allowed values are:
 - `"None"`: The converter only change the apiVersion and would not touch any other field in the custom resource.
 - `"Webhook"`: API Server will call to an external webhook to do the conversion. Additional information
@@ -78,11 +78,11 @@ caBundle is a PEM encoded CA bundle which will be used to validate the webhook's
 If unspecified, system trust roots on the apiserver are used.
 "%,
           service | optional | {
-            name | optional | String | doc m%"
+            name | String | doc m%"
 name is the name of the service.
 Required
 "%,
-            namespace | optional | String | doc m%"
+            namespace | String | doc m%"
 namespace is the namespace of the service.
 Required
 "%,
@@ -122,7 +122,7 @@ allowed, either.
         } | doc m%"
 clientConfig is the instructions for how to call the webhook if strategy is `Webhook`.
 "%,
-        conversionReviewVersions | optional | Array String | doc m%"
+        conversionReviewVersions | Array String | doc m%"
 conversionReviewVersions is an ordered list of preferred `ConversionReview`
 versions the Webhook expects. The API server will use the first version in
 the list which it supports. If none of the versions specified in this list
@@ -140,7 +140,7 @@ that is associated with the Claim if no policy has been specified.
 Deprecated: Claims aren't supported in apiextensions.crossplane.io/v2.
 "%,
     defaultCompositionRef | optional | {
-      name | optional | String | doc "Name of the Composition."
+      name | String | doc "Name of the Composition."
     } | doc m%"
 DefaultCompositionRef refers to the Composition resource that will be used
 in case no composition selector is given.
@@ -150,12 +150,12 @@ DefaultCompositionUpdatePolicy is the policy used when updating composites after
 Composition Revision has been created if no policy has been specified on the composite.
 "% | default = "Automatic",
     enforcedCompositionRef | optional | {
-      name | optional | String | doc "Name of the Composition."
+      name | String | doc "Name of the Composition."
     } | doc m%"
 EnforcedCompositionRef refers to the Composition resource that will be used
 by all composite instances whose schema is defined by this definition.
 "%,
-    group | optional | String | doc m%"
+    group | String | doc m%"
 Group specifies the API group of the defined composite resource.
 Composite resources are served under `/apis/<group>/...`. Must match the
 name of the XRD (in the form `<names.plural>.<group>`).
@@ -180,20 +180,20 @@ to any labels defined by `CompositionResourceDefinition` `metadata.labels`.
     } | doc m%"
 Metadata specifies the desired metadata for the defined composite resource and claim CRD's.
 "%,
-    names | optional | {
+    names | {
       categories | optional | Array String | doc m%"
 categories is a list of grouped resources this custom resource belongs to (e.g. 'all').
 This is published in API discovery documents, and used by clients to support invocations like
 `kubectl get all`.
 "%,
-      kind | optional | String | doc m%"
+      kind | String | doc m%"
 kind is the serialized kind of the resource. It is normally CamelCase and singular.
 Custom resource instances will use this value as the `kind` attribute in API calls.
 "%,
       listKind | optional | String | doc m%"
 listKind is the serialized kind of the list for this resource. Defaults to "`kind`List".
 "%,
-      plural | optional | String | doc m%"
+      plural | String | doc m%"
 plural is the plural name of the resource to serve.
 The custom resources are served under `/apis/<group>/<version>/.../<plural>`.
 Must match the name of the CustomResourceDefinition (in the form `<names.plural>.<group>`).
@@ -216,7 +216,7 @@ Scope of the defined composite resource. Namespaced composite resources
 are scoped to a single namespace. Cluster scoped composite resource exist
 outside the scope of any namespace.
 "% | default = "Namespaced",
-    versions | optional | Array {
+    versions | Array {
       additionalPrinterColumns | optional | Array {
         description | optional | String | doc "description is a human readable description of this column.",
         format | optional | String | doc m%"
@@ -224,17 +224,17 @@ format is an optional OpenAPI type definition for this column. The 'name' format
 to the primary identifier column to assist in clients identifying column is the resource name.
 See https://github.com/OAI/OpenAPI-Specification/blob/master/versions/2.0.md#data-types for details.
 "%,
-        jsonPath | optional | String | doc m%"
+        jsonPath | String | doc m%"
 jsonPath is a simple JSON path (i.e. with array notation) which is evaluated against
 each custom resource to produce the value for this column.
 "%,
-        name | optional | String | doc "name is a human readable name for the column.",
+        name | String | doc "name is a human readable name for the column.",
         "priority" | optional | Number | doc m%"
 priority is an integer defining the relative importance of this column compared to others. Lower
 numbers are considered higher priority. Columns that may be omitted in limited space scenarios
 should be given a priority greater than 0.
 "%,
-        type | optional | String | doc m%"
+        type | String | doc m%"
 type is an OpenAPI type definition for this column.
 See https://github.com/OAI/OpenAPI-Specification/blob/master/versions/2.0.md#data-types for details.
 "%
@@ -252,12 +252,12 @@ not be used.
 DeprecationWarning specifies the message that should be shown to the user
 when using this version.
 "%,
-      name | optional | String | doc m%"
+      name | String | doc m%"
 Name of this version, e.g. “v1”, “v2beta1”, etc. Composite resources are
 served under this version at `/apis/<group>/<version>/...` if `served` is
 true.
 "%,
-      referenceable | optional | Bool | doc m%"
+      referenceable | Bool | doc m%"
 Referenceable specifies that this version may be referenced by a
 Composition in order to configure which resources an XR may be composed
 of. Exactly one version must be marked as referenceable; all Compositions
@@ -278,7 +278,7 @@ will override equivalently named fields in this schema. Omitting this
 schema results in a schema that contains only the fields required by all
 composite resources.
 "%,
-      served | optional | Bool | doc "Served specifies that this version should be served via REST APIs."
+      served | Bool | doc "Served specifies that this version should be served via REST APIs."
     } | doc m%"
 Versions is the list of all API versions of the defined composite
 resource. Version names are used to compute the order in which served
@@ -295,7 +295,7 @@ v10beta3, v3beta1, v12alpha1, v11alpha2, foo1, foo10.
   } | doc "CompositeResourceDefinitionSpec specifies the desired state of the definition.",
   status | optional | {
     conditions | optional | Array {
-      lastTransitionTime | optional | String | doc m%"
+      lastTransitionTime | String | doc m%"
 LastTransitionTime is the last time this condition transitioned from one
 status to another.
 "%,
@@ -308,17 +308,17 @@ ObservedGeneration represents the .metadata.generation that the condition was se
 For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
 with respect to the current state of the instance.
 "%,
-      reason | optional | String | doc "A Reason for this condition's last transition from one status to another.",
-      status | optional | String | doc "Status of this condition; is it currently True, False, or Unknown?",
-      type | optional | String | doc m%"
+      reason | String | doc "A Reason for this condition's last transition from one status to another.",
+      status | String | doc "Status of this condition; is it currently True, False, or Unknown?",
+      type | String | doc m%"
 Type of this condition. At most one of each condition type may apply to
 a resource at any point in time.
 "%
     } | doc "Conditions of the resource.",
     controllers | optional | {
       compositeResourceClaimType | optional | {
-        apiVersion | optional | String | doc "APIVersion of the type.",
-        kind | optional | String | doc "Kind of the type."
+        apiVersion | String | doc "APIVersion of the type.",
+        kind | String | doc "Kind of the type."
       } | doc m%"
 The CompositeResourceClaimTypeRef is the type of composite resource claim
 that Crossplane is currently reconciling for this definition. Its version
@@ -327,8 +327,8 @@ version. Note that clients may interact with any served type; this is
 simply the type that Crossplane interacts with.
 "%,
       compositeResourceType | optional | {
-        apiVersion | optional | String | doc "APIVersion of the type.",
-        kind | optional | String | doc "Kind of the type."
+        apiVersion | String | doc "APIVersion of the type.",
+        kind | String | doc "Kind of the type."
       } | doc m%"
 The CompositeResourceTypeRef is the type of composite resource that
 Crossplane is currently reconciling for this definition. Its version will
