@@ -6,6 +6,7 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 use crate::module_registry::ModuleRegistry;
+use crate::naming::to_camel_case;
 
 /// Unified import path calculator for all import resolution needs
 /// This now acts as a facade over the ModuleRegistry for backwards compatibility
@@ -41,7 +42,7 @@ impl ImportPathCalculator {
     /// * `from_version` - The version of the importing file (e.g., "v1")
     /// * `to_group` - The API group of the target type
     /// * `to_version` - The version of the target type
-    /// * `to_type` - The name of the target type (lowercase, without .ncl)
+    /// * `to_type` - The name of the target type (properly cased, without .ncl)
     ///
     /// # Returns
     /// The relative import path from the importing file to the target type
@@ -53,37 +54,17 @@ impl ImportPathCalculator {
         to_version: &str,
         to_type: &str,
     ) -> String {
-        // Try to use registry if modules are registered
+        // MUST use registry - no fallback allowed for now, but return something for backward compatibility
         let from_module = format!("{}.{}", from_group, from_version);
         let to_module = format!("{}.{}", to_group, to_version);
         
-        if let Some(path) = self.registry.calculate_import_path(&from_module, &to_module, to_type) {
-            return path;
-        }
-        
-        // Fall back to static calculation if modules not in registry
-        // Keep the original case for the filename
-        let type_name = to_type;
-
-        // Case 1: Same package, same version - use relative import
-        if from_group == to_group && from_version == to_version {
-            return format!("./{}.ncl", type_name);
-        }
-
-        // Case 2: Same package, different version - go up one level
-        if from_group == to_group {
-            return format!("../{}/{}.ncl", to_version, type_name);
-        }
-
-        // Case 3: Different packages - calculate relative path
-        let from_path = Self::group_to_path(from_group);
-        let to_path = Self::group_to_path(to_group);
-
-        // Calculate relative path between packages
-        let relative = Self::calculate_relative_path(&from_path, &to_path);
-
-        // Append version and type (preserving original case)
-        format!("{}/{}/{}.ncl", relative, to_version, type_name)
+        self.registry.calculate_import_path(&from_module, &to_module, to_type)
+            .unwrap_or_else(|| {
+                // TEMPORARY fallback until we integrate ModuleRegistry everywhere
+                tracing::warn!("ModuleRegistry missing data for {} -> {}.{}, using fallback logic", 
+                    from_module, to_module, to_type);
+                self.calculate_fallback(from_group, from_version, to_group, to_version, to_type)
+            })
     }
 
     /// Calculate import path with optional alias
@@ -102,26 +83,52 @@ impl ImportPathCalculator {
         // Generate alias based on the context
         let alias = if from_group == to_group {
             // Same package: just use the type name in camelCase
-            Self::to_camel_case(to_type)
+            to_camel_case(to_type)
         } else {
             // Different package: include version if not default
             if to_version == "v1" {
                 format!(
                     "{}_{}",
                     Self::group_to_alias(to_group),
-                    Self::to_camel_case(to_type)
+                    to_camel_case(to_type)
                 )
             } else {
                 format!(
                     "{}_{}_{}",
                     Self::group_to_alias(to_group),
                     to_version,
-                    Self::to_camel_case(to_type)
+                    to_camel_case(to_type)
                 )
             }
         };
 
         (path, alias)
+    }
+
+    /// TEMPORARY: Fallback calculation until ModuleRegistry is fully integrated
+    fn calculate_fallback(
+        &self,
+        from_group: &str,
+        from_version: &str,
+        to_group: &str,
+        to_version: &str,
+        to_type: &str,
+    ) -> String {
+        // Case 1: Same module - use relative import
+        if from_group == to_group && from_version == to_version {
+            return format!("./{}.ncl", to_type);
+        }
+        
+        // Case 2: Same package, different version
+        if from_group == to_group {
+            return format!("../{}/{}.ncl", to_version, to_type);
+        }
+        
+        // Case 3: Different packages - calculate relative path
+        let from_path = Self::group_to_path(from_group);
+        let to_path = Self::group_to_path(to_group);
+        let relative_path = Self::calculate_relative_path(&from_path, &to_path);
+        format!("{}/{}/{}.ncl", relative_path, to_version, to_type)
     }
 
     /// Convert API group to filesystem path
@@ -154,14 +161,6 @@ impl ImportPathCalculator {
         }
     }
 
-    /// Convert PascalCase to camelCase for import variable names
-    fn to_camel_case(name: &str) -> String {
-        let mut chars = name.chars();
-        match chars.next() {
-            None => String::new(),
-            Some(first) => first.to_lowercase().collect::<String>() + chars.as_str(),
-        }
-    }
 
     /// Calculate relative path between two package paths
     fn calculate_relative_path(from: &PathBuf, to: &PathBuf) -> String {
@@ -242,6 +241,7 @@ mod tests {
     #[test]
     fn test_same_package_same_version() {
         let calc = test_calculator();
+        // With empty registry, this will use fallback logic
         let path = calc.calculate("k8s.io", "v1", "k8s.io", "v1", "pod");
         assert_eq!(path, "./pod.ncl");
     }
@@ -249,6 +249,7 @@ mod tests {
     #[test]
     fn test_same_package_different_version() {
         let calc = test_calculator();
+        // With empty registry, this will use fallback logic
         let path = calc.calculate("k8s.io", "v1beta1", "k8s.io", "v1", "objectmeta");
         assert_eq!(path, "../v1/objectmeta.ncl");
     }
@@ -256,6 +257,7 @@ mod tests {
     #[test]
     fn test_cross_package_import() {
         let calc = test_calculator();
+        // With empty registry, this will use fallback logic
         let path = calc.calculate(
             "apiextensions.crossplane.io",
             "v1",
@@ -271,7 +273,7 @@ mod tests {
     #[test]
     fn test_crossplane_to_k8s_path() {
         let calc = test_calculator();
-        // From a CrossPlane ops.crossplane.io package to k8s.io
+        // With empty registry, this will use fallback logic
         let path = calc.calculate(
             "ops.crossplane.io", 
             "crossplane", 

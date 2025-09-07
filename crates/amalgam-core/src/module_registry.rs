@@ -3,7 +3,7 @@
 //! This module provides a registry that maps module names to their actual filesystem
 //! locations, enabling correct import path resolution across different package structures.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
 use petgraph::graph::{DiGraph, NodeIndex};
@@ -26,6 +26,10 @@ pub struct ModuleInfo {
     pub path: PathBuf,
     /// The package root directory (e.g., "k8s_io" or "crossplane/apiextensions.crossplane.io/crossplane")
     pub package_root: PathBuf,
+    /// Set of type names in this module with their correct casing
+    /// e.g., "ObjectMeta", "CELDeviceSelector", "Pod"
+    #[serde(default)]
+    pub type_names: HashSet<String>,
 }
 
 /// Types of dependencies between modules
@@ -149,12 +153,20 @@ impl ModuleRegistry {
         let (group, version) = Self::parse_module_name(&module.name);
         let (package_root, module_path) = Self::calculate_paths(&group, &version);
         
+        // Build the type names set from the module's types
+        let mut type_names = HashSet::new();
+        for typ in &module.types {
+            // Store each type name exactly as it appears in the schema
+            type_names.insert(typ.name.clone());
+        }
+        
         let info = ModuleInfo {
             name: module.name.clone(),
             group: group.clone(),
             version: version.clone(),
             path: module_path,
             package_root,
+            type_names,
         };
         
         self.modules.insert(module.name.clone(), info);
@@ -170,8 +182,13 @@ impl ModuleRegistry {
         let from_info = self.get(from_module)?;
         let to_info = self.get(to_module)?;
         
-        // Normalize type name to lowercase
-        let type_name = to_type.to_lowercase();
+        // Verify the type exists in the target module with its proper casing
+        if !to_info.type_names.contains(to_type) {
+            return None; // Type not found in registry - return None instead of panicking
+        }
+        
+        // Use the type name exactly as provided (it must already be properly cased)
+        let type_name = to_type;
         
         // Case 1: Same module - use relative import
         if from_module == to_module {
@@ -431,6 +448,10 @@ mod tests {
         let mut registry = ModuleRegistry::new();
         
         // Register some test modules
+        let mut k8s_v1_types = HashSet::new();
+        k8s_v1_types.insert("Pod".to_string());
+        k8s_v1_types.insert("ObjectMeta".to_string());
+        
         registry.modules.insert(
             "k8s.io.v1".to_string(),
             ModuleInfo {
@@ -439,8 +460,12 @@ mod tests {
                 version: "v1".to_string(),
                 path: PathBuf::from("k8s_io/v1"),
                 package_root: PathBuf::from("k8s_io"),
+                type_names: k8s_v1_types,
             },
         );
+        
+        let mut k8s_v1alpha3_types = HashSet::new();
+        k8s_v1alpha3_types.insert("ObjectMeta".to_string());
         
         registry.modules.insert(
             "k8s.io.v1alpha3".to_string(),
@@ -450,8 +475,12 @@ mod tests {
                 version: "v1alpha3".to_string(),
                 path: PathBuf::from("k8s_io/v1alpha3"),
                 package_root: PathBuf::from("k8s_io"),
+                type_names: k8s_v1alpha3_types,
             },
         );
+        
+        let mut example_types = HashSet::new();
+        example_types.insert("ObjectMeta".to_string());
         
         registry.modules.insert(
             "example.io.v1".to_string(),
@@ -461,25 +490,26 @@ mod tests {
                 version: "v1".to_string(),
                 path: PathBuf::from("example_io/v1"),
                 package_root: PathBuf::from("example_io"),
+                type_names: example_types,
             },
         );
         
-        // Test same module
+        // Test same module - type name must be exact
         assert_eq!(
             registry.calculate_import_path("k8s.io.v1", "k8s.io.v1", "Pod"),
-            Some("./pod.ncl".to_string())
+            Some("./Pod.ncl".to_string())
         );
         
-        // Test same package, different version
+        // Test same package, different version - type name must be exact
         assert_eq!(
             registry.calculate_import_path("k8s.io.v1alpha3", "k8s.io.v1", "ObjectMeta"),
-            Some("../v1/objectmeta.ncl".to_string())
+            Some("../v1/ObjectMeta.ncl".to_string())
         );
         
-        // Test different packages
+        // Test different packages - type name must be exact
         assert_eq!(
             registry.calculate_import_path("example.io.v1", "k8s.io.v1", "ObjectMeta"),
-            Some("../../k8s_io/v1/objectmeta.ncl".to_string())
+            Some("../../k8s_io/v1/ObjectMeta.ncl".to_string())
         );
     }
     
@@ -575,6 +605,7 @@ mod tests {
             version: "v1".to_string(),
             path: PathBuf::from("test/v1"),
             package_root: PathBuf::from("test"),
+            type_names: HashSet::new(),
         };
         
         let module2 = ModuleInfo {
@@ -583,6 +614,7 @@ mod tests {
             version: "v2".to_string(),
             path: PathBuf::from("test/v2"),
             package_root: PathBuf::from("test"),
+            type_names: HashSet::new(),
         };
         
         graph.add_module(module1);
@@ -610,6 +642,7 @@ mod tests {
             version: "v1".to_string(),
             path: PathBuf::from("test/v1"),
             package_root: PathBuf::from("test"),
+            type_names: HashSet::new(),
         };
         
         let module2 = ModuleInfo {
@@ -618,6 +651,7 @@ mod tests {
             version: "v2".to_string(),
             path: PathBuf::from("test/v2"),
             package_root: PathBuf::from("test"),
+            type_names: HashSet::new(),
         };
         
         graph.add_module(module1);

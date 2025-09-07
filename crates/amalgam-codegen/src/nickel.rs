@@ -9,6 +9,7 @@ use crate::{Codegen, CodegenError};
 use amalgam_core::{
     debug::{CompilationDebugInfo, DebugConfig, ImportDebugEntry, ImportDebugInfo, ModuleNameTransform},
     module_registry::ModuleRegistry,
+    naming::to_camel_case,
     types::{Field, Type},
     ImportPathCalculator, IR,
 };
@@ -518,10 +519,14 @@ impl NickelCodegen {
 
     fn format_doc(&self, doc: &str) -> String {
         if doc.contains('\n') || doc.len() > 80 {
-            // Use triple quotes for multiline or long docs
-            format!("m%\"\n{}\n\"%", doc.trim())
+            // Use multiline string format for multiline or long docs
+            let trimmed_doc = doc.trim();
+            
+            // For multiline docs, use the m%"..."%  format
+            // This preserves newlines and formatting within the doc string
+            format!("m%\"\n{}\n\"%", trimmed_doc)
         } else {
-            // Use regular quotes for short docs
+            // Use regular quotes for short docs, properly escaping internal quotes
             format!("\"{}\"", doc.replace('"', "\\\""))
         }
     }
@@ -860,34 +865,33 @@ impl NickelCodegen {
         let indent = self.indent(indent_level);
         let type_str = self.type_to_nickel(&field.ty, module, indent_level)?;
 
-        let mut parts = Vec::new();
-
-        // Field name - escape reserved keywords and fields starting with $
+        // Start with field name - escape reserved keywords and fields starting with $
         let field_name = self.escape_field_name(name);
-        parts.push(format!("{}{}", indent, field_name));
+        let mut result = format!("{}{}", indent, field_name);
 
+        // 1. Type annotation
+        result.push_str(&format!("\n{}{} | {}", indent, " ".repeat(2), type_str));
+
+        // 2. Documentation (with proper multiline handling)
+        if let Some(desc) = &field.description {
+            result.push_str(&format!("\n{}{} | doc {}", indent, " ".repeat(2), self.format_doc(desc)));
+        }
+
+        // 3. Required/Optional marker
         // In Nickel, a field with a default value is implicitly optional
         // For required fields, don't add 'optional' marker
         // For optional fields without defaults, add 'optional' marker
         if !field.required && field.default.is_none() {
-            parts.push("optional".to_string());
+            result.push_str(&format!("\n{}{} | optional", indent, " ".repeat(2)));
         }
 
-        // Type
-        parts.push(type_str);
-
-        // Documentation (must come BEFORE default in Nickel)
-        if let Some(desc) = &field.description {
-            parts.push(format!("doc {}", self.format_doc(desc)));
-        }
-
-        // Default value (must come AFTER doc in Nickel)
+        // 4. Default value (comes last in the type pipeline)
         if let Some(default) = &field.default {
             let default_str = format_json_value_impl(default, indent_level, self);
-            parts.push(format!("default = {}", default_str));
+            result.push_str(&format!("\n{}{} = {}", indent, " ".repeat(2), default_str));
         }
 
-        Ok(parts.join(" | "))
+        Ok(result)
     }
 }
 
@@ -1681,14 +1685,6 @@ mod tests {
     }
 }
 
-/// Convert PascalCase to camelCase for import variable names
-fn to_camel_case(name: &str) -> String {
-    let mut chars = name.chars();
-    match chars.next() {
-        None => String::new(),
-        Some(first) => first.to_lowercase().collect::<String>() + chars.as_str(),
-    }
-}
 
 /// Sanitize a string to be a valid Nickel variable name
 /// Converts special characters to underscores and converts to camelCase

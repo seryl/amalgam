@@ -8,6 +8,7 @@
 
 use std::fs;
 use std::path::Path;
+use amalgam_core::naming::to_camel_case;
 
 /// Validates that a generated package follows naming conventions
 fn validate_package_structure(package_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
@@ -165,17 +166,6 @@ fn is_camel_case(s: &str) -> bool {
     !s.is_empty() && s.chars().next().map_or(false, |c| c.is_lowercase())
 }
 
-/// Convert PascalCase to camelCase
-fn to_camel_case(s: &str) -> String {
-    if s.is_empty() {
-        return String::new();
-    }
-    let mut chars = s.chars();
-    match chars.next() {
-        None => String::new(),
-        Some(first) => first.to_lowercase().collect::<String>() + chars.as_str(),
-    }
-}
 
 #[test]
 fn test_k8s_package_structure() -> Result<(), Box<dyn std::error::Error>> {

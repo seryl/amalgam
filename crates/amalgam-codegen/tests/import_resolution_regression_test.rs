@@ -176,7 +176,7 @@ fn test_package_structure_and_import_paths() -> Result<(), Box<dyn std::error::E
     // Skip test if examples directory doesn't exist (CI environments)
     if !examples_dir.exists() {
         println!("Skipping package structure test - examples directory not found");
-        return;
+        return Ok(());
     }
 
     let mut validation_errors = Vec::new();
@@ -509,7 +509,13 @@ fn check_circular_imports(
     // Find imports from current file
     for (importer, imported) in relationships {
         if importer == &current_file_buf && imported.starts_with("../") {
-            let import_path = current_file.parent()?.join(imported);
+            let import_path = match current_file.parent() {
+                Some(parent) => parent.join(imported),
+                None => {
+                    errors.push(format!("Failed to get parent directory for {:?}", current_file));
+                    continue;
+                }
+            };
             if let Ok(canonical_import) = import_path.canonicalize() {
                 check_circular_imports(&canonical_import, relationships, checked, stack, errors);
             }
@@ -530,7 +536,7 @@ fn test_package_manifest_structure() -> Result<(), Box<dyn std::error::Error>> {
 
     if !examples_dir.exists() {
         println!("Skipping package manifest test - examples directory not found");
-        return;
+        return Ok(());
     }
 
     let mut validation_errors = Vec::new();

@@ -7,6 +7,7 @@ pub mod fingerprint;
 pub mod import_calculator;
 pub mod ir;
 pub mod module_registry;
+pub mod naming;
 pub mod types;
 
 pub use debug::{CompilationDebugInfo, DebugConfig};

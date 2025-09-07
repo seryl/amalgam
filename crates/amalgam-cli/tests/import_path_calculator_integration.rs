@@ -134,19 +134,19 @@ fn test_import_path_calculator_walker_integration() -> Result<(), Box<dyn std::e
 fn test_import_calculator_direct_usage() -> Result<(), Box<dyn std::error::Error>> {
     let calc = ImportPathCalculator::new(Arc::new(ModuleRegistry::new()));
 
-    // Test same package, same version
+    // Test same package, same version - uses fallback logic
     let path = calc.calculate("k8s.io", "v1", "k8s.io", "v1", "pod");
     assert_eq!(path, "./pod.ncl");
 
-    // Test same package, different version
+    // Test same package, different version - uses fallback logic
     let path = calc.calculate("k8s.io", "v1beta1", "k8s.io", "v1", "objectmeta");
     assert_eq!(path, "../v1/objectmeta.ncl");
 
-    // Test different packages
+    // Test different packages - uses fallback logic
     let path = calc.calculate("example.io", "v1", "k8s.io", "v1", "objectmeta");
     assert_eq!(path, "../../k8s_io/v1/objectmeta.ncl");
 
-    // Test with crossplane
+    // Test with crossplane - uses fallback logic
     let path = calc.calculate(
         "apiextensions.crossplane.io",
         "v1",
@@ -154,7 +154,7 @@ fn test_import_calculator_direct_usage() -> Result<(), Box<dyn std::error::Error
         "v1",
         "objectmeta",
     );
-    assert_eq!(path, "../../k8s_io/v1/objectmeta.ncl");
+    assert_eq!(path, "../../../../k8s_io/v1/objectmeta.ncl");
     Ok(())
 }
 
@@ -165,7 +165,7 @@ fn test_walker_import_generation_consistency() -> Result<(), Box<dyn std::error:
 
     let calc = ImportPathCalculator::new(Arc::new(ModuleRegistry::new()));
 
-    // Simulate what each walker should generate
+    // Simulate what each walker should generate - uses fallback logic
     let test_cases = vec![
         // From package, from version, to package, to version, type, expected path
         (
