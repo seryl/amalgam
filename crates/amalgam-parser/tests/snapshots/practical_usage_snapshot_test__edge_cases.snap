@@ -6,11 +6,23 @@ SUCCESS: false
 
 OUTPUT:
 STDERR:
-error: import of ./quantity.ncl failed: could not find import (looked in [/Users/jtoft/src/ai/amalgam/examples/pkgs/k8s_io/resource])
-  ┌─ /Users/jtoft/src/ai/amalgam/examples/pkgs/k8s_io/resource/mod.ncl:5:14
-  │
-5 │   Quantity = import "./quantity.ncl",
-  │              ----------------------- imported here
+error: missing definition for `maxReplicas`
+   ┌─ /Users/jtoft/src/ai/amalgam/examples/pkgs/k8s_io/v2/HorizontalPodAutoscalerSpec.ncl:15:3
+   │
+15 │   maxReplicas
+   │   ^^^^^^^^^^^ required here
+   │
+   ┌─ /Users/jtoft/src/ai/amalgam/test_snapshot_temp_80558_0.ncl:17:12
+   │  
+17 │       spec = {
+   │ ╭────────────'
+18 │ │       metrics = [{
+19 │ │         type = "Resource",
+20 │ │         resource = {
+   · │
+41 │ │       }],
+42 │ │     },
+   │ ╰─────' in this record
 
 
 STDOUT:

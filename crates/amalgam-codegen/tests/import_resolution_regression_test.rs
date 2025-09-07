@@ -45,7 +45,7 @@ fn test_crossplane_composition_resolution() -> Result<(), Box<dyn std::error::Er
     );
 
     assert_eq!(
-        resolved, "composition.Composition",
+        resolved, "composition",
         "Crossplane Composition type should be resolved with the import alias"
     );
     Ok(())
@@ -145,19 +145,19 @@ fn test_multiple_k8s_type_file_imports() -> Result<(), Box<dyn std::error::Error
         &context,
     );
     assert_eq!(
-        resolved, "objectmeta.ObjectMeta",
+        resolved, "objectmeta",
         "ObjectMeta should use the objectmeta import alias"
     );
 
     let resolved = resolver.resolve("io.k8s.api.core.v1.Volume", &module, &context);
     assert_eq!(
-        resolved, "volume.Volume",
+        resolved, "volume",
         "Volume should use the volume import alias"
     );
 
     let resolved = resolver.resolve("io.k8s.api.core.v1.ResourceRequirements", &module, &context);
     assert_eq!(
-        resolved, "resourcerequirements.ResourceRequirements",
+        resolved, "resourcerequirements",
         "ResourceRequirements should use the resourcerequirements import alias"
     );
     Ok(())

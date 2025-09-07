@@ -3,21 +3,41 @@ source: crates/amalgam-parser/tests/snapshot_test.rs
 expression: all_versions
 ---
 {
-  spec | optional | {
-    field1 | optional | String
+  spec
+     | {
+    field1
+       | String
+       | optional
   }
+     | optional
 }
 {
-  spec | optional | {
-    field1 | optional | String,
-    field2 | optional | Number
+  spec
+     | {
+    field1
+       | String
+       | optional,
+    field2
+       | Number
+       | optional
   }
+     | optional
 }
 {
-  metadata | optional | objectMeta.ObjectMeta,
-  spec | optional | {
-    field1 | optional | String,
-    field2 | optional | Number,
-    field3 | optional | Bool
+  metadata
+     | objectMeta
+     | optional,
+  spec
+     | {
+    field1
+       | String
+       | optional,
+    field2
+       | Number
+       | optional,
+    field3
+       | Bool
+       | optional
   }
+     | optional
 }

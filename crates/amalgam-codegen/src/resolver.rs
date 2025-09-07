@@ -130,7 +130,20 @@ impl TypeResolver {
             // Use the import alias if provided, otherwise use a derived name
             let prefix = import.alias.as_ref().unwrap_or(&import_info.module_name);
 
-            return Some(format!("{}.{}", prefix, type_name));
+            // Check if this is a specific type file import with explicit items list
+            // In this case, the imported alias IS the type, not a module containing types
+            let ref_type_name = reference.split('/').next_back().unwrap_or(reference).split('.').next_back().unwrap_or(reference);
+            let import_type_name = import_info.module_name.to_lowercase();
+            
+            if ref_type_name.to_lowercase() == import_type_name 
+                && import_info.module_name != "mod" 
+                && !import.items.is_empty() {
+                // This is a specific type file with explicit items - the alias IS the type
+                return Some(prefix.to_string());
+            } else {
+                // This is a module import or pattern-matched import - use alias.TypeName format
+                return Some(format!("{}.{}", prefix, type_name));
+            }
         }
 
         None
@@ -289,7 +302,7 @@ mod tests {
             &module,
             &ResolutionContext::default(),
         );
-        assert_eq!(resolved, "objectmeta.ObjectMeta");
+        assert_eq!(resolved, "objectmeta");
     }
 
     #[test]
@@ -306,7 +319,7 @@ mod tests {
 
         // Should expand ObjectMeta to full name and resolve
         let resolved = resolver.resolve("ObjectMeta", &module, &ResolutionContext::default());
-        assert_eq!(resolved, "objectmeta.ObjectMeta");
+        assert_eq!(resolved, "objectmeta");
     }
 
     #[test]

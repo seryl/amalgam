@@ -6,16 +6,18 @@ SUCCESS: false
 
 OUTPUT:
 STDERR:
-error: unexpected token
-  ┌─ /Users/jtoft/src/ai/amalgam/examples/pkgs/k8s_io/v1alpha3/allocationresult.ncl:4:31
+error: missing field `v1`
+  ┌─ /Users/jtoft/src/ai/amalgam/test_snapshot_temp_80558_3.ncl:8:17
   │
-4 │ DeviceRequestAllocationResult = {
-  │                               ^
+8 │   composition = crossplane.apiextensions_crossplane_io.v1.Composition & {
+  │                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this requires the field `v1` to exist
   │
-  ┌─ /Users/jtoft/src/ai/amalgam/examples/pkgs/k8s_io/v1alpha3/mod.ncl:6:22
-  │
-6 │   AllocationResult = import "./allocationresult.ncl",
-  │                      ------------------------------- imported here
+  ┌─ /Users/jtoft/src/ai/amalgam/examples/pkgs/crossplane/apiextensions.crossplane.io/mod.ncl:4:1
+  │  
+4 │ ╭ {
+5 │ │   crossplane = import "./crossplane/mod.ncl",
+6 │ │ }
+  │ ╰─' this record lacks the field `v1`
 
 
 STDOUT:

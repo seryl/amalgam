@@ -32,18 +32,8 @@ impl OpenAPIWalker {
             SchemaKind::Type(OpenAPIType::Boolean(_)) => Ok(Type::Bool),
 
             SchemaKind::Type(OpenAPIType::Array(array_type)) => {
-                let item_type = if let Some(items) = &array_type.items {
-                    match items {
-                        ReferenceOr::Item(schema) => self.schema_to_type(schema, refs)?,
-                        ReferenceOr::Reference { reference } => {
-                            refs.push(reference.clone());
-                            let type_name = reference.rsplit('/').next().unwrap_or(reference);
-                            Type::Reference {
-                                name: type_name.to_string(),
-                                module: None, // Same module reference
-                            }
-                        }
-                    }
+                let item_type = if let Some(ReferenceOr::Item(schema)) = &array_type.items {
+                    self.schema_to_type(&**schema, refs)?
                 } else {
                     Type::Any
                 };
@@ -72,7 +62,7 @@ impl OpenAPIWalker {
                         refs.push(reference.clone());
 
                         // Extract type name from reference like "#/components/schemas/TypeName"
-                        let type_name = reference.rsplit('/').next().unwrap_or(reference);
+                        let type_name = reference.rsplit('/').next().unwrap_or(reference).to_string();
 
                         // For OpenAPI references within the same schema (like #/components/schemas/X),
                         // they're all in the same module, so module should be None
@@ -103,11 +93,10 @@ impl OpenAPIWalker {
                 for schema_ref in one_of {
                     match schema_ref {
                         ReferenceOr::Item(schema) => {
-                            types.push(self.schema_to_type(schema, refs)?);
-                        }
+                            types.push(self.schema_to_type(&schema, refs)?);                        }
                         ReferenceOr::Reference { reference } => {
                             refs.push(reference.clone());
-                            let type_name = reference.rsplit('/').next().unwrap_or(reference);
+                            let type_name = reference.rsplit('/').next().unwrap_or(reference).to_string();
                             types.push(Type::Reference {
                                 name: type_name.to_string(),
                                 module: None, // Same module reference
@@ -130,11 +119,10 @@ impl OpenAPIWalker {
                 for schema_ref in all_of {
                     match schema_ref {
                         ReferenceOr::Item(schema) => {
-                            types.push(self.schema_to_type(schema, refs)?);
-                        }
+                            types.push(self.schema_to_type(&schema, refs)?);                        }
                         ReferenceOr::Reference { reference } => {
                             refs.push(reference.clone());
-                            let type_name = reference.rsplit('/').next().unwrap_or(reference);
+                            let type_name = reference.rsplit('/').next().unwrap_or(reference).to_string();
                             types.push(Type::Reference {
                                 name: type_name.to_string(),
                                 module: None, // Same module reference
@@ -159,11 +147,10 @@ impl OpenAPIWalker {
                 for schema_ref in any_of {
                     match schema_ref {
                         ReferenceOr::Item(schema) => {
-                            types.push(self.schema_to_type(schema, refs)?);
-                        }
+                            types.push(self.schema_to_type(&schema, refs)?);                        }
                         ReferenceOr::Reference { reference } => {
                             refs.push(reference.clone());
-                            let type_name = reference.rsplit('/').next().unwrap_or(reference);
+                            let type_name = reference.rsplit('/').next().unwrap_or(reference).to_string();
                             types.push(Type::Reference {
                                 name: type_name.to_string(),
                                 module: None, // Same module reference
@@ -330,22 +317,23 @@ impl SchemaWalker for OpenAPIWalker {
         debug!("Extracting types from OpenAPI schema");
         let mut registry = TypeRegistry::new();
 
+        // Process schemas from components if present
         if let Some(components) = &input.components {
             for (name, schema_ref) in &components.schemas {
-                if let ReferenceOr::Item(schema) = schema_ref {
-                    let mut refs = Vec::new();
-                    let ty = self.schema_to_type(schema, &mut refs)?;
+            if let ReferenceOr::Item(schema) = schema_ref {
+                let mut refs = Vec::new();
+                let ty = self.schema_to_type(schema, &mut refs)?;
 
-                    let fqn = format!("{}.{}", self.base_module, name);
-                    let type_def = TypeDefinition {
-                        name: name.clone(),
-                        ty,
-                        documentation: schema.schema_data.description.clone(),
-                        annotations: Default::default(),
-                    };
+                let fqn = format!("{}.{}", self.base_module, name);
+                let type_def = TypeDefinition {
+                    name: name.clone(),
+                    ty,
+                    documentation: schema.schema_data.description.clone(),
+                    annotations: Default::default(),
+                };
 
-                    registry.add_type(&fqn, type_def);
-                }
+                registry.add_type(&fqn, type_def);
+            }
             }
         }
 

@@ -3,12 +3,24 @@ source: crates/amalgam-parser/tests/snapshot_test.rs
 expression: content
 ---
 {
-  metadata | optional | objectMeta.ObjectMeta,
-  spec | optional | {
-    configs | optional | Array {
-      name | optional | String,
-      value | optional | String
-    },
-    items | optional | Array String
+  metadata
+     | objectMeta
+     | optional,
+  spec
+     | {
+    configs
+       | Array {
+      name
+         | String
+         | optional,
+      value
+         | String
+         | optional
+    }
+       | optional,
+    items
+       | Array String
+       | optional
   }
+     | optional
 }

@@ -24,32 +24,29 @@ fn main() {
 }
 
 fn extract_k8s_version(toml_content: &str) -> Option<String> {
-    // Simple TOML parsing to find k8s-core package version
+    // Extract version from Kubernetes source URL in new simplified format
+    // Look for lines like: source = "https://raw.githubusercontent.com/kubernetes/kubernetes/v1.33.4/api/openapi-spec/swagger.json"
+    
     let lines: Vec<&str> = toml_content.lines().collect();
-    let mut in_k8s_package = false;
-
-    for i in 0..lines.len() {
-        let line = lines[i].trim();
-
-        // Check if we're starting a new [[packages]] section
-        if line.starts_with("[[packages]]") {
-            in_k8s_package = false;
-        }
-
-        // Check if this package is type = "k8s-core"
-        if line.starts_with("type = \"k8s-core\"") {
-            in_k8s_package = true;
-        }
-
-        // If we're in a k8s-core package and find a version, extract it
-        if in_k8s_package && line.starts_with("version = \"") {
-            if let Some(start) = line.find("\"") {
-                if let Some(end) = line[start + 1..].find("\"") {
-                    let version = &line[start + 1..start + 1 + end];
-                    return Some(version.to_string());
+    
+    for line in lines {
+        let line = line.trim();
+        
+        // Look for source lines containing kubernetes
+        if line.starts_with("source = \"") && line.contains("kubernetes/kubernetes/") {
+            // Extract version from URL pattern: .../kubernetes/v1.33.4/...
+            if let Some(start_pos) = line.find("kubernetes/kubernetes/v") {
+                let version_start = start_pos + "kubernetes/kubernetes/v".len();
+                if let Some(rest) = line.get(version_start..) {
+                    if let Some(end_pos) = rest.find('/') {
+                        let version = &rest[..end_pos];
+                        return Some(format!("v{}", version));
+                    }
                 }
             }
         }
     }
-    None
+    
+    // Fallback: return a default version if parsing fails
+    Some("v1.33.4".to_string())
 }

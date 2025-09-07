@@ -461,13 +461,14 @@ spec:
 
     // Verify we can generate files for each version
     let v1alpha1_files = package.generate_version_files("test.io", "v1alpha1");
-    assert!(v1alpha1_files.contains_key("evolving.ncl"));
+    // Type names are PascalCase, so the file should be "Evolving.ncl"
+    assert!(v1alpha1_files.contains_key("Evolving.ncl"), "Missing Evolving.ncl in v1alpha1 files");
 
     let v1beta1_files = package.generate_version_files("test.io", "v1beta1");
-    assert!(v1beta1_files.contains_key("evolving.ncl"));
+    assert!(v1beta1_files.contains_key("Evolving.ncl"), "Missing Evolving.ncl in v1beta1 files");
 
     let v1_files = package.generate_version_files("test.io", "v1");
-    assert!(v1_files.contains_key("evolving.ncl"));
+    assert!(v1_files.contains_key("Evolving.ncl"), "Missing Evolving.ncl in v1 files");
     Ok(())
 }
 

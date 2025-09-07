@@ -2,20 +2,205 @@
 source: crates/amalgam-parser/tests/practical_usage_snapshot_test.rs
 expression: snapshot_content
 ---
-SUCCESS: false
+SUCCESS: true
 
 OUTPUT:
-STDERR:
-error: unexpected token
-  ┌─ /Users/jtoft/src/ai/amalgam/examples/pkgs/k8s_io/v1/affinity.ncl:5:13
-  │
-5 │ PodAffinity = {
-  │             ^
-  │
-  ┌─ /Users/jtoft/src/ai/amalgam/examples/pkgs/k8s_io/v1/mod.ncl:6:14
-  │
-6 │   Affinity = import "./affinity.ncl",
-  │              ----------------------- imported here
-
-
-STDOUT:
+{
+  app_selector =
+    {
+        matchExpressions
+          | Array labelSelectorRequirement
+          | doc "matchExpressions is a list of label selector requirements. The requirements are ANDed."
+          = [
+              {
+                key
+                  | String
+                  | doc "key is the label key that the selector applies to."
+                  = "environment",
+                operator
+                  | String
+                  | doc "operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist."
+                  = "In",
+                values
+                  | Array String
+                  | doc "values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch."
+                  = [ "production", "staging" ],
+              }
+            ],
+        matchLabels
+          | {  .. }
+          | doc "matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is \"key\", the operator is \"In\", and the values array contains only \"value\". The requirements are ANDed."
+          = { app = "web", version = "v1.0", .. },
+      },
+  web_hpa =
+    {
+        metadata
+          | objectMeta
+          | doc "metadata is the standard object metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata"
+          = {
+              name
+                | String
+                | doc "Name must be unique within a namespace. Is required when creating resources, although some resources may allow a client to request the generation of an appropriate name automatically. Name is primarily intended for creation idempotence and configuration definition. Cannot be updated. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names"
+                = "nginx-hpa",
+            },
+        spec
+          | horizontalPodAutoscalerSpec
+          | doc "spec is the specification for the behaviour of the autoscaler. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status."
+          = {
+              maxReplicas
+                | Number
+                | doc "maxReplicas is the upper limit for the number of replicas to which the autoscaler can scale up. It cannot be less that minReplicas."
+                = 10,
+              metrics
+                | Array metricSpec
+                | doc "metrics contains the specifications for which to use to calculate the desired replica count (the maximum replica count across all metrics will be used).  The desired replica count is calculated multiplying the ratio between the target value and the current value by the current number of pods.  Ergo, metrics used must decrease as the pod count is increased, and vice-versa.  See the individual metric source types for more information about how each type of metric must respond. If not set, the default metric will be set to 80% average CPU utilization."
+                = [
+                    {
+                      resource
+                        | resourceMetricSource
+                        | doc "resource refers to a resource metric (such as those specified in requests and limits) known to Kubernetes describing each pod in the current scale target (e.g. CPU or memory). Such metrics are built in to Kubernetes, and have special scaling options on top of those available to normal per-pod metrics using the \"pods\" source."
+                        = {
+                            name
+                              | String
+                              | doc "name is the name of the resource in question."
+                              = "cpu",
+                            target
+                              | metricTarget
+                              | doc "target specifies the target value for the given metric"
+                              = {
+                                  averageUtilization
+                                    | Number
+                                    | doc "averageUtilization is the target value of the average of the resource metric across all relevant pods, represented as a percentage of the requested value of the resource for the pods. Currently only valid for Resource metric source type"
+                                    = 70,
+                                  type
+                                    | String
+                                    | doc "type represents whether the metric type is Utilization, Value, or AverageValue"
+                                    = "Utilization",
+                                },
+                          },
+                      type
+                        | String
+                        | doc "type is the type of metric source.  It should be one of \"ContainerResource\", \"External\", \"Object\", \"Pods\" or \"Resource\", each mapping to a matching field in the object."
+                        = "Resource",
+                    }
+                  ],
+              minReplicas
+                | Number
+                | doc "minReplicas is the lower limit for the number of replicas to which the autoscaler can scale down.  It defaults to 1 pod.  minReplicas is allowed to be 0 if the alpha feature gate HPAScaleToZero is enabled and at least one Object or External metric is configured.  Scaling is active as long as at least one metric value is available."
+                = 2,
+              scaleTargetRef
+                | crossVersionObjectReference
+                | doc "scaleTargetRef points to the target resource to scale, and is used to the pods for which metrics should be collected, as well as to actually change the replica count."
+                = {
+                    apiVersion
+                      | String
+                      | doc "apiVersion is the API version of the referent"
+                      = "apps/v1",
+                    kind
+                      | String
+                      | doc "kind is the kind of the referent; More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds"
+                      = "Deployment",
+                    name
+                      | String
+                      | doc "name is the name of the referent; More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names"
+                      = "nginx-deployment",
+                  },
+            },
+      },
+  web_pod =
+    {
+        metadata
+          | objectMeta
+          | doc "Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata"
+          = {
+              labels
+                | {  .. }
+                | doc "Map of string keys and values that can be used to organize and categorize (scope and select) objects. May match selectors of replication controllers and services. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels"
+                = { app = "nginx", tier = "web", .. },
+              name
+                | String
+                | doc "Name must be unique within a namespace. Is required when creating resources, although some resources may allow a client to request the generation of an appropriate name automatically. Name is primarily intended for creation idempotence and configuration definition. Cannot be updated. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names"
+                = "nginx-pod",
+            },
+        spec
+          | podSpec
+          | doc "Specification of the desired behavior of the pod. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status"
+          = {
+              containers
+                | Array container
+                | doc "List of containers belonging to the pod. Containers cannot currently be added or removed. There must be at least one container in a Pod. Cannot be updated."
+                = [
+                    {
+                      image
+                        | String
+                        | doc "Container image name. More info: https://kubernetes.io/docs/concepts/containers/images This field is optional to allow higher level config management to default or override container images in workload controllers like Deployments and StatefulSets."
+                        = "nginx:1.20",
+                      name
+                        | String
+                        | doc "Name of the container specified as a DNS_LABEL. Each container in a pod must have a unique name (DNS_LABEL). Cannot be updated."
+                        = "nginx",
+                      ports
+                        | Array containerPort
+                        | doc "List of ports to expose from the container. Not specifying a port here DOES NOT prevent that port from being exposed. Any port which is listening on the default \"0.0.0.0\" address inside a container will be accessible from the network. Modifying this array with strategic merge patch may corrupt the data. For more information See https://github.com/kubernetes/kubernetes/issues/108255. Cannot be updated."
+                        = [
+                            {
+                              containerPort
+                                | Number
+                                | doc "Number of port to expose on the pod's IP address. This must be a valid port number, 0 < x < 65536."
+                                = 80,
+                            }
+                          ],
+                      resources
+                        | resourceRequirements
+                        | doc "Compute Resources required by this container. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/"
+                        = {
+                            limits
+                              | {  .. }
+                              | doc "Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/"
+                              = { cpu = "500m", memory = "512Mi", .. },
+                            requests
+                              | {  .. }
+                              | doc "Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. Requests cannot exceed Limits. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/"
+                              = { cpu = "100m", memory = "128Mi", .. },
+                          },
+                    }
+                  ],
+            },
+      },
+  web_service =
+    {
+        metadata
+          | objectMeta
+          | doc "Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata"
+          = {
+              name
+                | String
+                | doc "Name must be unique within a namespace. Is required when creating resources, although some resources may allow a client to request the generation of an appropriate name automatically. Name is primarily intended for creation idempotence and configuration definition. Cannot be updated. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names"
+                = "nginx-service",
+            },
+        spec
+          | serviceSpec
+          | doc "Spec defines the behavior of a service. https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status"
+          = {
+              ports
+                | Array servicePort
+                | doc "The list of ports that are exposed by this service. More info: https://kubernetes.io/docs/concepts/services-networking/service/#virtual-ips-and-service-proxies"
+                = [
+                    {
+                      port
+                        | Number
+                        | doc "The port that will be exposed by this service."
+                        = 80,
+                    }
+                  ],
+              selector
+                | {  .. }
+                | doc "Route service traffic to pods with label keys and values matching this selector. If empty or not present, the service is assumed to have an external process managing its endpoints, which Kubernetes will not modify. Only applies to types ClusterIP, NodePort, and LoadBalancer. Ignored if type is ExternalName. More info: https://kubernetes.io/docs/concepts/services-networking/service/"
+                = { app = "nginx", .. },
+              type
+                | String
+                | doc "type determines how the Service is exposed. Defaults to ClusterIP. Valid options are ExternalName, ClusterIP, NodePort, and LoadBalancer. \"ClusterIP\" allocates a cluster-internal IP address for load-balancing to endpoints. Endpoints are determined by the selector or if that is not specified, by manual construction of an Endpoints object or EndpointSlice objects. If clusterIP is \"None\", no virtual IP is allocated and the endpoints are published as a set of endpoints rather than a virtual IP. \"NodePort\" builds on ClusterIP and allocates a port on every node which routes to the same endpoints as the clusterIP. \"LoadBalancer\" builds on NodePort and creates an external load-balancer (if supported in the current cloud) which routes to the same endpoints as the clusterIP. \"ExternalName\" aliases this service to the specified externalName. Several other fields do not apply to ExternalName services. More info: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types"
+                = "ClusterIP",
+            },
+      },
+}

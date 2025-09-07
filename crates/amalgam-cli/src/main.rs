@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use std::fs;
 use std::path::PathBuf;
-use tracing::info;
+use tracing::{info, warn};
 
 use amalgam_codegen::{go::GoCodegen, nickel::NickelCodegen, Codegen};
 use amalgam_parser::{
@@ -664,7 +664,14 @@ async fn handle_manifest_generation(
 
     // Filter packages if specific ones were requested
     if !packages.is_empty() {
-        manifest.packages.retain(|p| packages.contains(&p.name));
+        manifest.packages.retain(|p| {
+            if let Some(ref name) = p.name {
+                packages.contains(name)
+            } else {
+                // If no name, use the inferred package name from domain
+                false
+            }
+        });
         if manifest.packages.is_empty() {
             anyhow::bail!("No matching packages found for: {:?}", packages);
         }
@@ -674,7 +681,17 @@ async fn handle_manifest_generation(
         info!("Dry run mode - showing what would be generated:");
         for package in &manifest.packages {
             if package.enabled {
-                info!("  - {} -> {}", package.name, package.output);
+                // Normalize the package to get inferred information
+                match package.normalize().await {
+                    Ok(normalized) => {
+                        let output_path = normalized.output_path(&manifest.config.output_base);
+                        info!("  - {} -> {} (domain: {})", normalized.name, output_path.display(), normalized.domain);
+                    }
+                    Err(e) => {
+                        let display_name = package.name.as_deref().unwrap_or("unnamed");
+                        warn!("  - {} -> Failed to normalize: {}", display_name, e);
+                    }
+                }
             }
         }
         return Ok(());

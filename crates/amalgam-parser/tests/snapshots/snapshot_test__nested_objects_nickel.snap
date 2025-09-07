@@ -3,15 +3,29 @@ source: crates/amalgam-parser/tests/snapshot_test.rs
 expression: generated
 ---
 {
-  spec | optional | {
-    config | optional | {
-      cache | optional | {
-        ttl | optional | Number
-      },
-      database | optional | {
-        host | optional | String,
-        port | optional | Number
+  spec
+     | {
+    config
+       | {
+      cache
+         | {
+        ttl
+           | Number
+           | optional
       }
+         | optional,
+      database
+         | {
+        host
+           | String
+           | optional,
+        port
+           | Number
+           | optional
+      }
+         | optional
     }
+       | optional
   }
+     | optional
 }

@@ -1,37 +1,98 @@
-# Minimal Amalgam Package Generation Manifest for Testing
-# Tests universal dependency detection without special casing
-
 [config]
 # Output directory for generated packages
 output_base = "examples/pkgs"
-# Enable package mode for nickel-mine compatibility
+
+# Enable package mode (generates Nickel-pkg.ncl files)
 package_mode = true
+
 # Base package ID for dependencies
 base_package_id = "github:seryl/nickel-pkgs/pkgs"
-# Local package prefix for development - generates Path dependencies
-local_package_prefix = "examples/pkgs"
 
-# Core Kubernetes types - foundation for other packages
 [[packages]]
-name = "k8s-io"
-type = "k8s-core"
-version = "v1.33.4"  # Latest stable Kubernetes as of 2025-09-01
-output = "k8s_io"
-description = "Kubernetes core type definitions including apimachinery"
-keywords = ["kubernetes", "k8s", "types", "api", "core"]
-# No dependencies - this is the base package
-dependencies = {}
+# Kubernetes OpenAPI - domain inferred as k8s.io from definitions
+# NOTE: K8s uses Swagger 2.0 format which is now automatically converted to OpenAPI 3.0
+source = "https://raw.githubusercontent.com/kubernetes/kubernetes/v1.33.4/api/openapi-spec/swagger.json"
+# Everything else is automatic:
+# - Type: detected as OpenAPI from content
+# - Domain: extracted as k8s.io from definition keys like "io.k8s.api.core.v1.Pod"
+# - Output: k8s_io/ (from domain)
+# - Structure: determined by parsing
 
-# CrossPlane - should auto-detect k8s_io dependency
 [[packages]]
-name = "crossplane"
-type = "url"
-url = "https://github.com/crossplane/crossplane/tree/v2.0.2/cluster/crds"
-git_ref = "v2.0.2"  # Latest stable Crossplane as of 2025-09-01
-version = "2.0.2"   # Package version
-output = "crossplane"
-description = "Crossplane CRD type definitions for infrastructure as code"
-keywords = ["crossplane", "kubernetes", "infrastructure", "gitops"]
-# Explicit dependency constraints (auto-detected dependencies will use these)
-[packages.dependencies]
-k8s_io = { version = "1.33.4" }  # Match the k8s version above
+# CrossPlane CRDs have multiple domains, so we need separate entries
+# This will pick up apiextensions.crossplane.io (alphabetically first)
+source = "https://github.com/crossplane/crossplane/tree/v2.0.2/cluster/crds"
+# Domain: apiextensions.crossplane.io (from CRD spec.group)
+# TODO: Split into multiple manifest entries for each domain, or enhance system to handle multi-domain sources
+
+# =================== #
+# ADDITIONAL EXAMPLES #
+# =================== #
+
+# [[packages]]
+# # Cert Manager - multiple CRD files forming one package
+# source = [
+#   "https://raw.githubusercontent.com/cert-manager/cert-manager/v1.12.0/deploy/crds/crd-certificates.yaml",
+#   "https://raw.githubusercontent.com/cert-manager/cert-manager/v1.12.0/deploy/crds/crd-issuers.yaml",
+#   "https://raw.githubusercontent.com/cert-manager/cert-manager/v1.12.0/deploy/crds/crd-clusterissuers.yaml",
+# ]
+# # All CRDs have same domain (cert-manager.io) so they merge into one package
+
+# [[packages]]
+# # Istio Service Mesh CRDs
+# source = "https://github.com/istio/istio/tree/1.20.1/manifests/charts/base/crds"
+# # Domain: inferred as networking.istio.io, security.istio.io, etc.
+
+# [[packages]]
+# # ArgoCD CRDs
+# source = [
+#   "https://raw.githubusercontent.com/argoproj/argo-cd/v2.9.0/manifests/crds/application-crd.yaml",
+#   "https://raw.githubusercontent.com/argoproj/argo-cd/v2.9.0/manifests/crds/applicationset-crd.yaml",
+#   "https://raw.githubusercontent.com/argoproj/argo-cd/v2.9.0/manifests/crds/appproject-crd.yaml",
+# ]
+# # Domain: inferred as argoproj.io
+
+# [[packages]]
+# # Prometheus Operator CRDs
+# source = "https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v0.68.0/example/prometheus-operator-crd/monitoring.coreos.com_alertmanagers.yaml"
+# # Domain: inferred as monitoring.coreos.com
+
+# [[packages]]
+# # Local OpenAPI file
+# source = "file:///path/to/local/swagger.json"
+# # Type: auto-detected from content
+
+# [[packages]]
+# # Example with domain override (rarely needed)
+# source = "https://example.com/api/schema.json"
+# domain = "example.com"  # Only if it can't be inferred
+
+# [[packages]]
+# # Disabled package example
+# source = "https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v0.68.0/jsonnet/prometheus-operator/crds.yaml"
+# enabled = false  # Skip this one
+
+# [[packages]]
+# # Tekton Pipelines CRDs
+# source = [
+#   "https://raw.githubusercontent.com/tektoncd/pipeline/v0.53.0/config/300-crds/300-pipeline.yaml",
+#   "https://raw.githubusercontent.com/tektoncd/pipeline/v0.53.0/config/300-crds/300-pipelinerun.yaml",
+#   "https://raw.githubusercontent.com/tektoncd/pipeline/v0.53.0/config/300-crds/300-task.yaml",
+#   "https://raw.githubusercontent.com/tektoncd/pipeline/v0.53.0/config/300-crds/300-taskrun.yaml",
+# ]
+# # Domain: inferred as tekton.dev
+
+# [[packages]]
+# # Knative Serving CRDs
+# source = "https://github.com/knative/serving/tree/v1.12.0/config/core/300-crds"
+# # Domain: inferred as serving.knative.dev
+
+# [[packages]]
+# # Velero Backup CRDs
+# source = [
+#   "https://raw.githubusercontent.com/vmware-tanzu/velero/v1.12.0/config/crd/v1/bases/velero.io_backups.yaml",
+#   "https://raw.githubusercontent.com/vmware-tanzu/velero/v1.12.0/config/crd/v1/bases/velero.io_restores.yaml",
+#   "https://raw.githubusercontent.com/vmware-tanzu/velero/v1.12.0/config/crd/v1/bases/velero.io_schedules.yaml",
+# ]
+# # Domain: inferred as velero.io
+

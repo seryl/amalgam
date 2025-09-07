@@ -2,6 +2,7 @@
 
 pub mod debug;
 pub mod dependency_analyzer;
+pub mod discovery;
 pub mod error;
 pub mod fingerprint;
 pub mod import_calculator;

@@ -12,6 +12,7 @@ pub mod k8s_authoritative;
 pub mod k8s_types;
 pub mod openapi;
 pub mod package;
+pub mod swagger;
 pub mod package_walker;
 pub mod parsing_trace;
 pub mod walkers;

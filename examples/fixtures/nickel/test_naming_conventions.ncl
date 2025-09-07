@@ -1,35 +1,20 @@
 # Test that our naming conventions work correctly:
-# - PascalCase for file names (e.g., ObjectMeta.ncl)
-# - camelCase for import variables (e.g., let objectMeta = ...)
+# - Module files contain all types for that module
+# - Import variables use camelCase (e.g., let coreV1 = ...)
+# - Types are accessed via dot notation (e.g., coreV1.Container)
 
-# Import with camelCase variable names from PascalCase files
-let objectMeta = import "../../pkgs/k8s_io/v1/ObjectMeta.ncl" in
-let managedFieldsEntry = import "../../pkgs/k8s_io/v1/ManagedFieldsEntry.ncl" in
-let ownerReference = import "../../pkgs/k8s_io/v1/OwnerReference.ncl" in
+# Import the core/v1 module which contains Container and other types
+let coreV1 = import "../../pkgs/k8s_io/api/core/v1.ncl" in
 
-# Test that we can use the imported types with camelCase variables
-let testMeta = objectMeta & {
-  name = "test-resource",
-  namespace = "default",
-  managedFields = [
-    managedFieldsEntry & {
-      manager = "test-manager",
-      operation = "Update",
-      apiVersion = "v1"
-    }
-  ],
-  ownerReferences = [
-    ownerReference & {
-      apiVersion = "v1",
-      kind = "Pod",
-      name = "owner-pod",
-      uid = "12345"
-    }
-  ]
+# Test that we can use the imported types with dot notation
+let testContainer = coreV1.Container & {
+  name = "test-container",
+  image = "nginx:latest",
+  imagePullPolicy = "Always"
 } in
 
 # Return a marker to indicate the test passed
 {
   naming_test_passed = true,
-  metadata = testMeta
+  container = testContainer
 }

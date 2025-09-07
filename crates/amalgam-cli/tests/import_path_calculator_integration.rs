@@ -135,16 +135,16 @@ fn test_import_calculator_direct_usage() -> Result<(), Box<dyn std::error::Error
     let calc = ImportPathCalculator::new(Arc::new(ModuleRegistry::new()));
 
     // Test same package, same version - uses fallback logic
-    let path = calc.calculate("k8s.io", "v1", "k8s.io", "v1", "pod");
-    assert_eq!(path, "./pod.ncl");
+    let path = calc.calculate("k8s.io", "v1", "k8s.io", "v1", "Pod");
+    assert_eq!(path, "./Pod.ncl");
 
     // Test same package, different version - uses fallback logic
-    let path = calc.calculate("k8s.io", "v1beta1", "k8s.io", "v1", "objectmeta");
-    assert_eq!(path, "../v1/objectmeta.ncl");
+    let path = calc.calculate("k8s.io", "v1beta1", "k8s.io", "v1", "ObjectMeta");
+    assert_eq!(path, "../v1/ObjectMeta.ncl");
 
     // Test different packages - uses fallback logic
-    let path = calc.calculate("example.io", "v1", "k8s.io", "v1", "objectmeta");
-    assert_eq!(path, "../../k8s_io/v1/objectmeta.ncl");
+    let path = calc.calculate("example.io", "v1", "k8s.io", "v1", "ObjectMeta");
+    assert_eq!(path, "../../k8s_io/v1/ObjectMeta.ncl");
 
     // Test with crossplane - uses fallback logic
     let path = calc.calculate(
@@ -152,9 +152,11 @@ fn test_import_calculator_direct_usage() -> Result<(), Box<dyn std::error::Error
         "v1",
         "k8s.io",
         "v1",
-        "objectmeta",
+        "ObjectMeta",
     );
-    assert_eq!(path, "../../../../k8s_io/v1/objectmeta.ncl");
+    // CrossPlane packages now use version directories like other packages
+    // So path is: apiextensions_crossplane_io/v1/file.ncl -> ../../k8s_io/v1/ObjectMeta.ncl
+    assert_eq!(path, "../../k8s_io/v1/ObjectMeta.ncl");
     Ok(())
 }
 
@@ -198,7 +200,7 @@ fn test_walker_import_generation_consistency() -> Result<(), Box<dyn std::error:
             "k8s.io",
             "v1",
             "pod",
-            "../../k8s_io/v1/pod.ncl",
+            "../../k8s_io/v1/pod.ncl",  // CrossPlane now uses version directories
         ),
     ];
 

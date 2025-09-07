@@ -52,14 +52,26 @@ impl TypeReference {
                 return Some(Self::new(group, version, kind));
             }
         } else if name.contains('/') {
-            // Format: k8s.io/api/core/v1.ObjectMeta
+            // Format: k8s.io/api/core/v1.ObjectMeta or k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta
             let parts: Vec<&str> = name.split('/').collect();
             if let Some(last) = parts.last() {
                 let type_parts: Vec<&str> = last.split('.').collect();
                 if type_parts.len() == 2 {
                     let version = type_parts[0].to_string();
                     let kind = type_parts[1].to_string();
-                    let group = parts[0].to_string();
+                    
+                    // Determine the group based on the path structure
+                    let group = if name.starts_with("k8s.io/api/core/") {
+                        // Core API types should use "k8s.io" as the group
+                        "k8s.io".to_string()
+                    } else if name.starts_with("k8s.io/apimachinery/pkg/apis/meta/") {
+                        // Apimachinery types also use "k8s.io" as the group
+                        "k8s.io".to_string()
+                    } else {
+                        // For other APIs, use the first part as the group
+                        parts[0].to_string()
+                    };
+                    
                     return Some(Self::new(group, version, kind));
                 }
             }
@@ -201,10 +213,10 @@ mod tests {
         );
 
         // With our unified ImportPathCalculator, CrossPlane packages have nested structure
-        // crossplane/apiextensions.crossplane.io/crossplane/<version>/file.ncl
-        // So we go up 4 levels to reach the packages root
+        // crossplane/apiextensions.crossplane.io/crossplane/file.ncl (no version subdirectory)
+        // So we go up 3 levels to reach the packages root
         let path = type_ref.import_path("apiextensions.crossplane.io", "v1");
-        assert_eq!(path, "../../../../k8s_io/v1/ObjectMeta.ncl");
+        assert_eq!(path, "../../../k8s_io/v1/ObjectMeta.ncl");
 
         // Test with a simple group - same path structure
         let path2 = type_ref.import_path("example.io", "v1");

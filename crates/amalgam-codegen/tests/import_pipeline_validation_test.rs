@@ -276,11 +276,13 @@ fn test_same_module_import_resolution() -> Result<(), Box<dyn std::error::Error>
     let result = codegen.generate(&ir);
     assert!(result.is_ok());
 
-    // The generated code should have an import for TypeB in TypeA's file
-    // Since we're generating unified module output, we need to check
-    // that the import tracking captured this dependency
+    // Since TypeA and TypeB are in the same module, no import should be generated
+    // They can reference each other directly
     let generated = result?;
-    assert!(generated.contains("TypeB.ncl"));
+    // Check that TypeB is referenced directly (not imported)
+    assert!(generated.contains("TypeB"), "Should contain TypeB reference");
+    // But should NOT have an import for it
+    assert!(!generated.contains("TypeB.ncl"), "Should NOT import TypeB when it's in the same module");
     Ok(())
 }
 

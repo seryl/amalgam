@@ -113,21 +113,21 @@ fn test_crd_with_k8s_type_references() -> Result<(), Box<dyn std::error::Error>>
         &context,
     );
     assert_eq!(
-        resolved, "objectmeta.ObjectMeta",
+        resolved, "objectmeta",
         "ObjectMeta should resolve to the imported alias"
     );
 
     // Resolve k8s Volume reference
     let resolved = resolver.resolve("io.k8s.api.core.v1.Volume", &module, &context);
     assert_eq!(
-        resolved, "volume.Volume",
+        resolved, "volume",
         "Volume should resolve to the imported alias"
     );
 
     // Resolve k8s ResourceRequirements reference
     let resolved = resolver.resolve("io.k8s.api.core.v1.ResourceRequirements", &module, &context);
     assert_eq!(
-        resolved, "resourcerequirements.ResourceRequirements",
+        resolved, "resourcerequirements",
         "ResourceRequirements should resolve to the imported alias"
     );
     Ok(())
@@ -251,7 +251,7 @@ fn test_crd_with_mixed_type_references() -> Result<(), Box<dyn std::error::Error
         &context,
     );
     assert_eq!(
-        resolved, "k8s_meta.ObjectMeta",
+        resolved, "k8s_meta",
         "External k8s type should resolve to import alias"
     );
 
@@ -269,7 +269,7 @@ fn test_crd_with_mixed_type_references() -> Result<(), Box<dyn std::error::Error
         &context,
     );
     assert_eq!(
-        resolved, "k8s_selector.LabelSelector",
+        resolved, "k8s_selector",
         "LabelSelector should resolve to its import alias"
     );
     Ok(())
@@ -343,7 +343,7 @@ fn test_crd_with_unresolvable_references() -> Result<(), Box<dyn std::error::Err
         &module,
         &context,
     );
-    assert_eq!(resolved, "meta.ObjectMeta");
+    assert_eq!(resolved, "meta");
 
     // Non-imported type should be returned as-is
     let resolved = resolver.resolve("io.k8s.api.core.v1.PodSpec", &module, &context);
@@ -430,7 +430,7 @@ fn test_crd_with_versioned_imports() -> Result<(), Box<dyn std::error::Error>> {
         &context,
     );
     assert_eq!(
-        resolved, "meta_v1.ObjectMeta",
+        resolved, "meta_v1",
         "v1 ObjectMeta should use v1 import alias"
     );
 
@@ -441,7 +441,7 @@ fn test_crd_with_versioned_imports() -> Result<(), Box<dyn std::error::Error>> {
         &context,
     );
     assert_eq!(
-        resolved, "backend.IngressBackend",
+        resolved, "backend",
         "v1beta1 IngressBackend should use backend alias"
     );
     Ok(())

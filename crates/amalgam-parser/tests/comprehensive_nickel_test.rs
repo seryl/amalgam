@@ -308,7 +308,22 @@ let k8s = import "examples/pkgs/k8s_io/mod.ncl" in
 
     let (success, output) = evaluate_nickel_code(test_code).unwrap_or_else(|_| (false, "Failed to evaluate".to_string()));
 
-    let snapshot_content = format!("SUCCESS: {}\n\nOUTPUT:\n{}", success, output);
+    // Normalize file paths in output to make snapshots deterministic
+    let normalized_output = output
+        .lines()
+        .map(|line| {
+            // Replace temp file paths with a generic placeholder
+            if line.contains("test_comprehensive_temp_") {
+                let re = regex::Regex::new(r"test_comprehensive_temp_\d+_\d+\.ncl").unwrap();
+                re.replace_all(line, "test_comprehensive_temp.ncl").to_string()
+            } else {
+                line.to_string()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    let snapshot_content = format!("SUCCESS: {}\n\nOUTPUT:\n{}", success, normalized_output);
 
     assert_snapshot!("safe_type_operations", snapshot_content);
 
@@ -377,7 +392,22 @@ fn test_import_debugging() -> Result<(), Box<dyn std::error::Error>> {
 
     let (success, output) = evaluate_nickel_code(test_code).unwrap_or_else(|_| (false, "Failed to evaluate".to_string()));
 
-    let snapshot_content = format!("SUCCESS: {}\n\nOUTPUT:\n{}", success, output);
+    // Normalize file paths in output to make snapshots deterministic
+    let normalized_output = output
+        .lines()
+        .map(|line| {
+            // Replace temp file paths with a generic placeholder
+            if line.contains("test_comprehensive_temp_") {
+                let re = regex::Regex::new(r"test_comprehensive_temp_\d+_\d+\.ncl").unwrap();
+                re.replace_all(line, "test_comprehensive_temp.ncl").to_string()
+            } else {
+                line.to_string()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    let snapshot_content = format!("SUCCESS: {}\n\nOUTPUT:\n{}", success, normalized_output);
 
     assert_snapshot!("import_debugging", snapshot_content);
 

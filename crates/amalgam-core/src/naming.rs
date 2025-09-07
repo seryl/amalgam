@@ -24,6 +24,7 @@
 /// 
 /// # Examples
 /// ```
+/// use amalgam_core::naming::to_pascal_case;
 /// assert_eq!(to_pascal_case("pod"), "Pod");
 /// assert_eq!(to_pascal_case("Pod"), "Pod");
 /// assert_eq!(to_pascal_case("ObjectMeta"), "ObjectMeta"); // Already correct
@@ -60,6 +61,7 @@ pub fn to_pascal_case(name: &str) -> String {
 /// 
 /// # Examples
 /// ```
+/// use amalgam_core::naming::to_camel_case;
 /// assert_eq!(to_camel_case("Pod"), "pod");
 /// assert_eq!(to_camel_case("ObjectMeta"), "objectMeta");
 /// assert_eq!(to_camel_case("CELDeviceSelector"), "cELDeviceSelector");
@@ -80,6 +82,7 @@ pub fn to_camel_case(name: &str) -> String {
 /// 
 /// # Examples
 /// ```
+/// use amalgam_core::naming::snake_to_pascal_case;
 /// assert_eq!(snake_to_pascal_case("object_meta"), "ObjectMeta");
 /// assert_eq!(snake_to_pascal_case("pod_spec"), "PodSpec");
 /// ```
@@ -99,6 +102,7 @@ pub fn snake_to_pascal_case(name: &str) -> String {
 /// 
 /// # Examples
 /// ```
+/// use amalgam_core::naming::snake_to_camel_case;
 /// assert_eq!(snake_to_camel_case("object_meta"), "objectMeta");
 /// assert_eq!(snake_to_camel_case("pod_spec"), "podSpec");
 /// ```

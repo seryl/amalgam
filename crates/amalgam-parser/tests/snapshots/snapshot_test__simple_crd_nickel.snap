@@ -3,8 +3,14 @@ source: crates/amalgam-parser/tests/snapshot_test.rs
 expression: generated
 ---
 {
-  metadata | optional | objectMeta.ObjectMeta,
-  spec | optional | {
-    name | optional | String
+  metadata
+     | objectMeta
+     | optional,
+  spec
+     | {
+    name
+       | String
+       | optional
   }
+     | optional
 }

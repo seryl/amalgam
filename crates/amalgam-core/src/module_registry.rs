@@ -8,24 +8,73 @@ use std::path::PathBuf;
 
 use petgraph::graph::{DiGraph, NodeIndex};
 use petgraph::algo::{toposort, is_cyclic_directed, kosaraju_scc};
+use petgraph::Direction;
 use serde::{Deserialize, Serialize};
 
 use crate::ir::{Module, IR};
 use crate::error::CoreError;
+
+/// Semantic classification of module layout patterns
+/// Note: These are NOT mutually exclusive - a package can have complex
+/// combinations of namespace partitioning AND version directories!
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ModuleLayout {
+    /// Mixed structure with both versioned and non-versioned paths at root
+    /// K8s pattern: some dirs are versions (v1, v2), others are namespaces (resource)
+    /// Structure: package/{version|namespace}/type.ncl
+    MixedRoot,
+    
+    /// API groups with their own versions (full K8s pattern)
+    /// Structure: package/apigroup/version/type.ncl
+    /// Example: k8s_io/apps/v1/Deployment.ncl, k8s_io/core/v1/Pod.ncl
+    ApiGroupVersioned,
+    
+    /// Namespace directories with versions inside
+    /// Structure: package/namespace/version/type.ncl
+    NamespacedVersioned,
+    
+    /// Namespace directories without versions (CrossPlane pattern)
+    /// Structure: package/namespace/subnamespace/type.ncl
+    NamespacedFlat,
+    
+    /// Single flat directory with all types
+    /// Structure: package/type.ncl
+    Flat,
+    
+    /// Auto-detected from filesystem structure
+    /// Will be resolved to one of the above based on discovery
+    AutoDetect,
+}
 
 /// Information about a module's location in the filesystem
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ModuleInfo {
     /// The module's name (e.g., "k8s.io.v1")
     pub name: String,
-    /// The API group (e.g., "k8s.io")
+    
+    /// Source domain (e.g., "k8s.io", "github.com/crossplane", "local://")
+    /// This is the canonical source of the module
+    pub domain: String,
+    
+    /// Logical namespace within the domain (e.g., "api.core", "apiextensions")
+    /// This represents the API grouping
+    pub namespace: String,
+    
+    /// The API group (e.g., "k8s.io") - DEPRECATED: Use domain + namespace
     pub group: String,
+    
     /// The version (e.g., "v1")
     pub version: String,
+    
+    /// The module's layout classification
+    pub layout: ModuleLayout,
+    
     /// The normalized filesystem path (e.g., "k8s_io/v1")
     pub path: PathBuf,
+    
     /// The package root directory (e.g., "k8s_io" or "crossplane/apiextensions.crossplane.io/crossplane")
     pub package_root: PathBuf,
+    
     /// Set of type names in this module with their correct casing
     /// e.g., "ObjectMeta", "CELDeviceSelector", "Pod"
     #[serde(default)]
@@ -141,16 +190,66 @@ impl ModuleRegistry {
             graph.add_module(module_info.clone());
         }
         
-        // Add edges for dependencies
-        // This will be populated when we analyze module imports
-        // For now, we'll need to extract dependencies from the IR
+        // Add edges for dependencies by analyzing type references
+        self.analyze_dependencies(&mut graph);
         
         self.dependency_graph = Some(graph);
+    }
+    
+    /// Analyze module dependencies based on type references
+    fn analyze_dependencies(&self, graph: &mut ModuleDependencyGraph) {
+        use crate::types::Type;
+        
+        // For each module, look for type references to other modules
+        for (module_name, module_info) in &self.modules {
+            // Check all type definitions in this module
+            // Note: We'd need access to the actual Module/IR here to inspect types
+            // For now, we can detect cross-module references based on naming patterns
+            
+            // Common pattern: types referencing other modules will have qualified names
+            // e.g., "io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta"
+            for other_module in self.modules.keys() {
+                if module_name != other_module {
+                    // Check if this module might reference the other module
+                    // This is a simplified check - in practice we'd analyze the actual Type definitions
+                    if self.might_reference(module_name, other_module) {
+                        graph.add_dependency(module_name, other_module, DependencyType::TypeReference);
+                    }
+                }
+            }
+        }
+    }
+    
+    /// Check if one module might reference another based on naming patterns
+    fn might_reference(&self, from_module: &str, to_module: &str) -> bool {
+        // Common cross-references in K8s:
+        // - Most modules reference meta.v1 for ObjectMeta
+        // - Apps modules reference core.v1 for PodSpec
+        // - Many modules reference each other for shared types
+        
+        // If from_module is an API group and to_module is meta.v1, likely a reference
+        if to_module.contains("meta.v1") || to_module.contains("apimachinery") {
+            return true;
+        }
+        
+        // Apps references core
+        if from_module.contains("apps") && to_module.contains("core") {
+            return true;
+        }
+        
+        // Higher-level APIs often reference lower-level ones
+        if from_module.contains("batch") && to_module.contains("core") {
+            return true;
+        }
+        
+        false
     }
 
     /// Register a module in the registry
     pub fn register_module(&mut self, module: &Module) {
         let (group, version) = Self::parse_module_name(&module.name);
+        let (domain, namespace) = Self::extract_domain_namespace(&group);
+        let layout = Self::detect_layout(&group);
         let (package_root, module_path) = Self::calculate_paths(&group, &version);
         
         // Build the type names set from the module's types
@@ -162,8 +261,11 @@ impl ModuleRegistry {
         
         let info = ModuleInfo {
             name: module.name.clone(),
+            domain: domain.clone(),
+            namespace: namespace.clone(),
             group: group.clone(),
             version: version.clone(),
+            layout,
             path: module_path,
             package_root,
             type_names,
@@ -195,43 +297,42 @@ impl ModuleRegistry {
             return Some(format!("./{}.ncl", type_name));
         }
         
-        // Case 2: Same package, different version
-        if from_info.group == to_info.group {
+        // Case 2: Same API group, different version (for K8s ApiGroupVersioned)
+        // e.g., from io.k8s.api.apps.v1 to io.k8s.api.apps.v1beta1
+        if from_info.domain == to_info.domain && from_info.namespace == to_info.namespace {
+            // They're in the same API group directory, just different versions
             return Some(format!("../{}/{}.ncl", to_info.version, type_name));
         }
         
-        // Case 3: Different packages - calculate relative path
-        let relative_path = self.calculate_relative_path(&from_info.package_root, &to_info.package_root);
-        Some(format!("{}/{}/{}.ncl", relative_path, to_info.version, type_name))
-    }
-
-    /// Calculate relative path between two package roots
-    fn calculate_relative_path(&self, from_root: &PathBuf, to_root: &PathBuf) -> String {
-        // Calculate how many levels deep we are from the packages root
-        // From a file in from_root/<version>/<file>.ncl, we need to go up through:
-        // 1. The version directory
-        // 2. All components of the package root
-        
-        let from_depth = from_root.components().count() + 1; // +1 for version directory
+        // Case 3: Different API groups or packages - need full relative path
+        // Calculate from the actual module paths, not just package roots
+        let from_depth = from_info.path.components().count();
+        let to_path = to_info.path.clone();
         
         let mut path_parts = vec![];
         
-        // Go up to the packages root
+        // Go up from current module location to package root
         for _ in 0..from_depth {
             path_parts.push("..");
         }
         
-        // Go down to the target package
-        for component in to_root.components() {
+        // Go down to target module location
+        for component in to_path.components() {
             if let Some(s) = component.as_os_str().to_str() {
                 path_parts.push(s);
             }
         }
         
-        path_parts.join("/")
+        let relative_path = path_parts.join("/");
+        Some(format!("{}/{}.ncl", relative_path, type_name))
     }
 
+
     /// Parse module name into group and version
+    /// Handles patterns like:
+    /// - io.k8s.api.apps.v1 -> (io.k8s.api.apps, v1)
+    /// - io.k8s.api.core.v1 -> (io.k8s.api.core, v1)
+    /// - apiextensions.crossplane.io.crossplane -> (apiextensions.crossplane.io, crossplane)
     fn parse_module_name(module_name: &str) -> (String, String) {
         // Split on dots and find where the version starts
         let parts: Vec<&str> = module_name.split('.').collect();
@@ -258,29 +359,152 @@ impl ModuleRegistry {
         }
     }
 
-    /// Calculate the filesystem paths for a module
+    /// Calculate the filesystem paths for a module based on its layout
     fn calculate_paths(group: &str, version: &str) -> (PathBuf, PathBuf) {
-        let package_root = match group {
-            "k8s.io" => PathBuf::from("k8s_io"),
-            "" => PathBuf::from("core"),
-            // CrossPlane groups have nested directory structures
-            g if g.contains("crossplane.io") => {
-                let mut path = PathBuf::from("crossplane");
-                path.push(g);
-                path.push("crossplane");
-                path
-            }
-            g if g.contains('.') => {
-                // Convert dots to underscores for filesystem compatibility
-                PathBuf::from(g.replace('.', "_"))
-            }
-            g => PathBuf::from(g),
-        };
+        let _layout = Self::detect_layout(group);
+        let (_domain, _namespace) = Self::extract_domain_namespace(group);
         
-        let mut module_path = package_root.clone();
-        module_path.push(version);
+        // Handle K8s API groups properly
+        if group.starts_with("io.k8s.api.") {
+            // Extract the API group (e.g., "apps", "batch", "core")
+            let api_group = group.strip_prefix("io.k8s.api.")
+                .unwrap_or("")
+                .to_string();
+            
+            // K8s should use ApiGroupVersioned structure: k8s_io/{api_group}/{version}/
+            let root = PathBuf::from("k8s_io");
+            let mut module_path = root.clone();
+            
+            if !api_group.is_empty() && api_group != "core" {
+                // Non-core API groups get their own subdirectory
+                module_path.push(&api_group);
+            }
+            module_path.push(version);
+            
+            // Package root is still k8s_io, but module path includes the API group
+            return (root, module_path);
+        }
         
-        (package_root, module_path)
+        // Handle other apimachinery packages  
+        if group.starts_with("io.k8s.apimachinery.") {
+            // For apimachinery types, extract the sub-package
+            let sub_package = group.strip_prefix("io.k8s.apimachinery.")
+                .unwrap_or("")
+                .replace('.', "/");
+            
+            let root = PathBuf::from("k8s_io");
+            let mut module_path = root.clone();
+            module_path.push("apimachinery");
+            if !sub_package.is_empty() {
+                module_path.push(sub_package);
+            }
+            module_path.push(version);
+            
+            return (root, module_path);
+        }
+        
+        // CrossPlane handling
+        if group.contains("crossplane.io") {
+            // CrossPlane uses namespace without version dirs
+            // Structure: crossplane/{domain}/ (no redundant crossplane subdirectory)
+            let mut root = PathBuf::from("crossplane");
+            root.push(group);
+            return (root.clone(), root);
+        }
+        
+        // Default K8s handling for backward compatibility (for now)
+        if group == "k8s.io" {
+            let root = PathBuf::from("k8s_io");
+            let mut path = root.clone();
+            path.push(version);
+            return (root, path);
+        }
+        
+        // Generic fallback - simple versioned structure
+        let root = PathBuf::from(group.replace('.', "_"));
+        let mut path = root.clone();
+        path.push(version);
+        (root, path)
+    }
+    
+    /// Extract domain and namespace from a group
+    fn extract_domain_namespace(group: &str) -> (String, String) {
+        if group.is_empty() {
+            return ("local://".to_string(), "core".to_string());
+        }
+        
+        // Check for well-known domain patterns
+        let parts: Vec<&str> = group.split('.').collect();
+        
+        // Special case for k8s.io - it's just the domain with implicit core namespace
+        if group == "k8s.io" {
+            return ("k8s.io".to_string(), "core".to_string());
+        }
+        
+        // Check if this looks like a domain with namespace prefix
+        // Pattern: namespace.domain.tld or namespace.subdomain.domain.tld
+        if parts.len() >= 2 {
+            // Look for common TLDs
+            let tld = parts[parts.len() - 1];
+            if matches!(tld, "io" | "com" | "org" | "net" | "dev" | "app") {
+                // Check if we have at least domain.tld
+                if parts.len() >= 2 {
+                    // Determine where the domain starts
+                    // For patterns like apiextensions.crossplane.io, we want:
+                    // domain: crossplane.io, namespace: apiextensions
+                    let domain_parts = if parts.len() >= 3 && 
+                        (parts[parts.len() - 2] == "crossplane" || 
+                         parts[parts.len() - 2] == "kubernetes" ||
+                         parts[parts.len() - 2] == "istio" ||
+                         parts[parts.len() - 2] == "linkerd") {
+                        // Known projects with namespace.project.io pattern
+                        2
+                    } else {
+                        // Default: assume domain.tld
+                        2
+                    };
+                    
+                    let domain = parts[parts.len() - domain_parts..].join(".");
+                    let namespace = if parts.len() > domain_parts {
+                        parts[0..parts.len() - domain_parts].join(".")
+                    } else {
+                        "default".to_string()
+                    };
+                    
+                    return (domain, namespace);
+                }
+            }
+        }
+        
+        // Fallback: treat the whole thing as a local package
+        (format!("local://{}", group), "default".to_string())
+    }
+    
+    /// Detect the module layout pattern based on domain and structure
+    fn detect_layout(group: &str) -> ModuleLayout {
+        // TODO: This should use filesystem discovery once integrated
+        // For now, use heuristics based on known patterns
+        
+        let (domain, namespace) = Self::extract_domain_namespace(group);
+        
+        // Detect based on known patterns
+        match domain.as_str() {
+            "k8s.io" => {
+                // K8s uses complex structure:
+                // - Some paths are API groups with versions (apps/v1, batch/v1)
+                // - Some are just versions at root (v1 for core)
+                // - Some are special non-versioned (resource)
+                // For now, assume MixedRoot but ideally should be ApiGroupVersioned
+                ModuleLayout::MixedRoot
+            }
+            d if d.ends_with(".io") && namespace != "default" && namespace != "core" => {
+                // Projects with namespace prefixes typically use namespace partitioning
+                // but we don't know if they have versions without filesystem discovery
+                ModuleLayout::NamespacedFlat
+            }
+            d if d.starts_with("local://") => ModuleLayout::Flat,
+            _ => ModuleLayout::MixedRoot, // Default assumption
+        }
     }
 
     /// Check if an import is required between two modules
@@ -291,6 +515,54 @@ impl ModuleRegistry {
     /// Get all registered modules
     pub fn modules(&self) -> impl Iterator<Item = &ModuleInfo> {
         self.modules.values()
+    }
+    
+    /// Get the dependency graph (building it if needed)
+    pub fn get_dependency_graph(&mut self) -> &ModuleDependencyGraph {
+        if self.dependency_graph.is_none() {
+            self.build_dependency_graph();
+        }
+        self.dependency_graph.as_ref().unwrap()
+    }
+    
+    /// Get all modules in topological order (dependencies first)
+    pub fn get_modules_in_order(&mut self) -> Result<Vec<String>, CoreError> {
+        let graph = self.get_dependency_graph();
+        graph.topological_sort()
+    }
+    
+    /// Check for circular dependencies
+    pub fn check_for_cycles(&mut self) -> Vec<Vec<String>> {
+        let graph = self.get_dependency_graph();
+        graph.detect_cycles()
+    }
+    
+    /// Get all modules that depend on a given module
+    pub fn get_dependents(&self, module_name: &str) -> Vec<String> {
+        if let Some(graph) = &self.dependency_graph {
+            if let Some(&node_idx) = graph.module_indices.get(module_name) {
+                let dependents: Vec<String> = graph.graph
+                    .neighbors_directed(node_idx, Direction::Incoming)
+                    .map(|idx| graph.graph[idx].name.clone())
+                    .collect();
+                return dependents;
+            }
+        }
+        Vec::new()
+    }
+    
+    /// Get all modules that a given module depends on
+    pub fn get_dependencies(&self, module_name: &str) -> Vec<String> {
+        if let Some(graph) = &self.dependency_graph {
+            if let Some(&node_idx) = graph.module_indices.get(module_name) {
+                let dependencies: Vec<String> = graph.graph
+                    .neighbors_directed(node_idx, Direction::Outgoing)
+                    .map(|idx| graph.graph[idx].name.clone())
+                    .collect();
+                return dependencies;
+            }
+        }
+        Vec::new()
     }
     
     /// Find the module that contains a specific type name
@@ -426,6 +698,42 @@ mod tests {
             assert_eq!(version, expected_version, "Failed for {}", input);
         }
     }
+    
+    #[test]
+    fn test_extract_domain_namespace() {
+        let cases = vec![
+            ("k8s.io", ("k8s.io", "core")),
+            ("apiextensions.crossplane.io", ("crossplane.io", "apiextensions")),
+            ("pkg.crossplane.io", ("crossplane.io", "pkg")),
+            ("example.com", ("example.com", "default")),
+            ("api.example.com", ("example.com", "api")),
+            ("", ("local://", "core")),
+            ("mypackage", ("local://mypackage", "default")),
+        ];
+        
+        for (input, (expected_domain, expected_namespace)) in cases {
+            let (domain, namespace) = ModuleRegistry::extract_domain_namespace(input);
+            assert_eq!(domain, expected_domain, "Failed domain for {}", input);
+            assert_eq!(namespace, expected_namespace, "Failed namespace for {}", input);
+        }
+    }
+    
+    #[test]
+    fn test_detect_layout() {
+        let cases = vec![
+            ("k8s.io", ModuleLayout::MixedRoot),
+            ("apiextensions.crossplane.io", ModuleLayout::NamespacedFlat),
+            ("pkg.crossplane.io", ModuleLayout::NamespacedFlat),
+            ("example.com", ModuleLayout::MixedRoot),
+            ("", ModuleLayout::Flat),
+            ("mypackage", ModuleLayout::Flat),
+        ];
+        
+        for (input, expected_layout) in cases {
+            let layout = ModuleRegistry::detect_layout(input);
+            assert_eq!(layout, expected_layout, "Failed layout for {}", input);
+        }
+    }
 
     #[test]
     fn test_calculate_paths() {
@@ -437,7 +745,7 @@ mod tests {
                 "v1",
                 (
                     PathBuf::from("crossplane/apiextensions.crossplane.io/crossplane"),
-                    PathBuf::from("crossplane/apiextensions.crossplane.io/crossplane/v1"),
+                    PathBuf::from("crossplane/apiextensions.crossplane.io/crossplane"),
                 )
             ),
         ];
@@ -462,8 +770,11 @@ mod tests {
             "k8s.io.v1".to_string(),
             ModuleInfo {
                 name: "k8s.io.v1".to_string(),
+                domain: "k8s.io".to_string(),
+                namespace: "core".to_string(),
                 group: "k8s.io".to_string(),
                 version: "v1".to_string(),
+                layout: ModuleLayout::MixedRoot,
                 path: PathBuf::from("k8s_io/v1"),
                 package_root: PathBuf::from("k8s_io"),
                 type_names: k8s_v1_types,
@@ -477,8 +788,11 @@ mod tests {
             "k8s.io.v1alpha3".to_string(),
             ModuleInfo {
                 name: "k8s.io.v1alpha3".to_string(),
+                domain: "k8s.io".to_string(),
+                namespace: "core".to_string(),
                 group: "k8s.io".to_string(),
                 version: "v1alpha3".to_string(),
+                layout: ModuleLayout::MixedRoot,
                 path: PathBuf::from("k8s_io/v1alpha3"),
                 package_root: PathBuf::from("k8s_io"),
                 type_names: k8s_v1alpha3_types,
@@ -492,8 +806,11 @@ mod tests {
             "example.io.v1".to_string(),
             ModuleInfo {
                 name: "example.io.v1".to_string(),
+                domain: "example.io".to_string(),
+                namespace: "default".to_string(),
                 group: "example.io".to_string(),
                 version: "v1".to_string(),
+                layout: ModuleLayout::MixedRoot,
                 path: PathBuf::from("example_io/v1"),
                 package_root: PathBuf::from("example_io"),
                 type_names: example_types,
@@ -607,8 +924,11 @@ mod tests {
         // Add modules
         let module1 = ModuleInfo {
             name: "module1".to_string(),
+            domain: "test.com".to_string(),
+            namespace: "default".to_string(),
             group: "test".to_string(),
             version: "v1".to_string(),
+            layout: ModuleLayout::MixedRoot,
             path: PathBuf::from("test/v1"),
             package_root: PathBuf::from("test"),
             type_names: HashSet::new(),
@@ -616,8 +936,11 @@ mod tests {
         
         let module2 = ModuleInfo {
             name: "module2".to_string(),
+            domain: "test.com".to_string(),
+            namespace: "default".to_string(),
             group: "test".to_string(),
             version: "v2".to_string(),
+            layout: ModuleLayout::MixedRoot,
             path: PathBuf::from("test/v2"),
             package_root: PathBuf::from("test"),
             type_names: HashSet::new(),
@@ -644,8 +967,11 @@ mod tests {
         // Create modules
         let module1 = ModuleInfo {
             name: "module1".to_string(),
+            domain: "test.com".to_string(),
+            namespace: "default".to_string(),
             group: "test".to_string(),
             version: "v1".to_string(),
+            layout: ModuleLayout::MixedRoot,
             path: PathBuf::from("test/v1"),
             package_root: PathBuf::from("test"),
             type_names: HashSet::new(),
@@ -653,8 +979,11 @@ mod tests {
         
         let module2 = ModuleInfo {
             name: "module2".to_string(),
+            domain: "test.com".to_string(),
+            namespace: "default".to_string(),
             group: "test".to_string(),
             version: "v2".to_string(),
+            layout: ModuleLayout::MixedRoot,
             path: PathBuf::from("test/v2"),
             package_root: PathBuf::from("test"),
             type_names: HashSet::new(),

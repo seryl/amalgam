@@ -6,23 +6,16 @@ SUCCESS: false
 
 OUTPUT:
 STDERR:
-error: non mergeable terms
-   ┌─ /Users/jtoft/src/ai/amalgam/examples/pkgs/k8s_io/v0/intorstring.ncl:4:1
+error: missing definition for `type`
+   ┌─ /Users/jtoft/src/ai/amalgam/examples/pkgs/k8s_io/v2/MetricTarget.ncl:17:3
    │
- 4 │ String
-   │ ^^^^^^ cannot merge this expression
+17 │   type
+   │   ^^^^ required here
    │
-   ┌─ /Users/jtoft/src/ai/amalgam/test_snapshot_temp_23418_0.ncl:16:46
+   ┌─ /Users/jtoft/src/ai/amalgam/test_snapshot_temp_80558_4.ncl:20:19
    │
-16 │   int_or_string_check = k8s.v0.IntOrString & "80%",  # Test IntOrString accepts strings
-   │                         ---------------------^^^^^
-   │                         │                    │
-   │                         │                    with this expression
-   │                         originally merged here
-   │
-   = Merge operands have the same merge priority but they can't be combined.
-   = One value is of type String while the other is of type Type
-   = Values of different types can't be merged
+20 │   metric_target = k8s.v2.MetricTarget & {},
+   │                   ------------------------ in this record
 
 
 STDOUT:

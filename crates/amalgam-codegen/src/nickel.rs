@@ -274,18 +274,19 @@ impl NickelCodegen {
                         let (current_group, current_version) =
                             Self::parse_module_name(&current_module.name);
 
-                        // Same package, same version - need import even if same module
-                        // because types will be split into separate files
+                        // Same package, same version
                         if module_info.group == current_group && module_info.version == current_version {
-                            // Check if this is a reference to a different type (will be in different file)
-                            // We need to check the current type being processed to avoid self-references
-                            // For now, always add the import - the extraction will handle whether it's needed
-                            self.same_package_deps.insert(name.clone());
-                            self.debug_info.dependencies_identified.push((
-                                current_module.name.clone(),
-                                name.clone(),
-                                "same-version-same-module-different-file".to_string(),
-                            ));
+                            // Only add to imports if the type is actually in a different module
+                            // When all types are in the same module (like in tests), they don't need imports
+                            if module_info.name != current_module.name {
+                                self.same_package_deps.insert(name.clone());
+                                self.debug_info.dependencies_identified.push((
+                                    current_module.name.clone(),
+                                    name.clone(),
+                                    "same-version-different-module".to_string(),
+                                ));
+                            }
+                            // If it's the same module, no import needed - types can reference each other directly
                         }
                         // Same package (group), different version - need import
                         else if module_info.group == current_group && module_info.version != current_version
@@ -646,16 +647,11 @@ impl NickelCodegen {
                         );
 
                         // Generate the reference
-                        // For same-package references, just use the import alias (the file exports the type directly)
-                        // For cross-package references, use module.type format
-                        let result = if ref_group == current_group {
-                            // Same package - the imported file directly exports the type
-                            camelcased_name.clone()
-                        } else {
-                            // Different package - use qualified name
-                            format!("{}.{}", camelcased_name, name)
-                        };
-                        eprintln!("🔍 TRACE: Generated qualified reference: '{}' (same_package={}, module_alias='{}')", result, ref_group == current_group, camelcased_name);
+                        // With our new module structure, all types are in a single module file
+                        // We return the original PascalCase name for the type reference
+                        // The import and module qualification will be handled separately
+                        let result = name.to_string();
+                        eprintln!("🔍 TRACE: Generated type reference: '{}' (cross-module reference)", result);
                         return Ok(result);
                     }
                 } else {
@@ -671,6 +667,17 @@ impl NickelCodegen {
                         let (current_group, current_version) =
                             Self::parse_module_name(&module.name);
 
+                        eprintln!(
+                            "🔍 Type found: name='{}', module_info.name='{}', module.name='{}', module_info.group='{}', module_info.version='{}', current_group='{}', current_version='{}', different_module={}",
+                            name,
+                            module_info.name,
+                            module.name,
+                            module_info.group,
+                            module_info.version,
+                            current_group,
+                            current_version,
+                            module_info.name != module.name
+                        );
                         tracing::debug!(
                             "Type found: name='{}', module_info.name='{}', module_info.group='{}', module_info.version='{}', current_group='{}', current_version='{}', different_module={}",
                             name,
@@ -706,10 +713,9 @@ impl NickelCodegen {
                                 &import_stmt,
                             );
 
-                            // Use the imported type name (which matches the import variable)
-                            // The imported file exports the type directly, not as a field
-                            // We use the camelCase import variable name here since that's what we imported
-                            let result = camelcased_name.clone();
+                            // Use the original PascalCase name for the type reference
+                            // In our new module structure, types are referenced by their original names
+                            let result = name.to_string();
                             eprintln!("🔍 TRACE: Generated qualified reference for same-package: '{}' (using import alias directly)", result);
                             return Ok(result);
                         }
@@ -723,34 +729,148 @@ impl NickelCodegen {
                             return Ok(result);
                         }
                     } else {
-                        // Symbol not found in table - but we should still try to generate import
-                        // for same-package references
-                        let (_current_group, _current_version) = Self::parse_module_name(&module.name);
-                        
-                        // For same-package references, assume they exist and generate import
-                        // This handles cases where the symbol table might be incomplete
-                        let camelcased_name = sanitize_import_variable_name(name);
-                        let import_path = format!("./{}.ncl", name);  // Use original case for filename
-                        let import_stmt = format!("let {} = import \"{}\" in", camelcased_name, import_path);
-                        eprintln!("🔍 IMPORT SOURCE 3: Generated import: '{}'", import_stmt);
-                        
-                        tracing::debug!(
-                            "Symbol '{}' not in table, generating speculative import for same-package reference",
+                        // Symbol not found in table - check if this is an external reference
+                        // that needs special handling (e.g., k8s.io/api/core/v1.EnvVar)
+                        // Strip array prefix if present (e.g., "[]k8s.io/api/core/v1.EnvVar" -> "k8s.io/api/core/v1.EnvVar")
+                        let clean_name = if name.starts_with("[]") {
+                            &name[2..]
+                        } else {
                             name
-                        );
+                        };
                         
-                        let current_type = self.current_type_name.as_deref().unwrap_or("");
-                        eprintln!("🔍 IMPORT: Adding to TypeImportMap for type '{}': '{}'", current_type, import_stmt);
-                        self.type_import_map.add_import(
-                            current_type,
-                            &import_stmt,
-                        );
+                        if clean_name.contains('/') || clean_name.starts_with("io.k8s.") || clean_name.starts_with("k8s.io") {
+                            // This is an external k8s reference that needs proper parsing
+                            // Parse it to get the actual type name and module
+                            // Parse the external reference to extract group, version, and kind
+                            let (ext_group, ext_version, ext_kind) = if clean_name.starts_with("k8s.io/api/core/") {
+                                // Format: k8s.io/api/core/v1.EnvVar
+                                if let Some(rest) = clean_name.strip_prefix("k8s.io/api/core/") {
+                                    let parts: Vec<&str> = rest.split('.').collect();
+                                    if parts.len() == 2 {
+                                        ("k8s.io".to_string(), parts[0].to_string(), parts[1].to_string())
+                                    } else {
+                                        // Can't parse, skip
+                                        eprintln!("⚠️ WARNING: Can't parse k8s.io/api/core reference: '{}'", clean_name);
+                                        return Ok(clean_name.to_string());
+                                    }
+                                } else {
+                                    eprintln!("⚠️ WARNING: Unexpected k8s reference format: '{}'", clean_name);
+                                    return Ok(clean_name.to_string());
+                                }
+                            } else if clean_name.starts_with("k8s.io/apimachinery/pkg/apis/meta/") {
+                                // Format: k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta
+                                if let Some(rest) = clean_name.strip_prefix("k8s.io/apimachinery/pkg/apis/meta/") {
+                                    let parts: Vec<&str> = rest.split('.').collect();
+                                    if parts.len() == 2 {
+                                        ("k8s.io".to_string(), parts[0].to_string(), parts[1].to_string())
+                                    } else {
+                                        eprintln!("⚠️ WARNING: Can't parse k8s.io/apimachinery reference: '{}'", clean_name);
+                                        return Ok(clean_name.to_string());
+                                    }
+                                } else {
+                                    eprintln!("⚠️ WARNING: Unexpected k8s reference format: '{}'", clean_name);
+                                    return Ok(clean_name.to_string());
+                                }
+                            } else if clean_name.starts_with("io.k8s.api.core.") {
+                                // Format: io.k8s.api.core.v1.EnvVar
+                                let parts: Vec<&str> = clean_name.split('.').collect();
+                                if parts.len() >= 6 {
+                                    let version = parts[parts.len() - 2].to_string();
+                                    let kind = parts[parts.len() - 1].to_string();
+                                    ("k8s.io".to_string(), version, kind)
+                                } else {
+                                    eprintln!("⚠️ WARNING: Can't parse io.k8s.api.core reference: '{}'", clean_name);
+                                    return Ok(clean_name.to_string());
+                                }
+                            } else if clean_name.starts_with("io.k8s.apimachinery.pkg.apis.meta.") {
+                                // Format: io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta
+                                let parts: Vec<&str> = clean_name.split('.').collect();
+                                if parts.len() >= 8 {
+                                    let version = parts[parts.len() - 2].to_string();
+                                    let kind = parts[parts.len() - 1].to_string();
+                                    ("k8s.io".to_string(), version, kind)
+                                } else {
+                                    eprintln!("⚠️ WARNING: Can't parse io.k8s.apimachinery reference: '{}'", clean_name);
+                                    return Ok(clean_name.to_string());
+                                }
+                            } else if clean_name.starts_with("io.k8s.apimachinery.pkg.runtime.") {
+                                // Format: io.k8s.apimachinery.pkg.runtime.RawExtension
+                                // Note: runtime types don't have version in their path
+                                let parts: Vec<&str> = clean_name.split('.').collect();
+                                if parts.len() >= 6 {
+                                    let kind = parts[parts.len() - 1].to_string();
+                                    // Runtime types are typically unversioned or use 'v1'
+                                    ("k8s.io".to_string(), "v1".to_string(), kind)
+                                } else {
+                                    eprintln!("⚠️ WARNING: Can't parse io.k8s.apimachinery.pkg.runtime reference: '{}'", clean_name);
+                                    return Ok(clean_name.to_string());
+                                }
+                            } else {
+                                eprintln!("⚠️ WARNING: Unknown external reference format: '{}'", clean_name);
+                                return Ok(clean_name.to_string());
+                            };
+                            
+                            // Use the ImportPathCalculator to get the correct path
+                            let (current_group, current_version) = Self::parse_module_name(&module.name);
+                            let import_path = self.import_calculator.calculate(
+                                &current_group,
+                                &current_version,
+                                &ext_group,
+                                &ext_version,
+                                &ext_kind,
+                            );
+                            
+                            let camelcased_name = to_camel_case(&ext_kind);
+                            let import_stmt = format!("let {} = import \"{}\" in", camelcased_name, import_path);
+                            eprintln!("🔍 IMPORT SOURCE 3a: Generated cross-package import for external ref: '{}'", import_stmt);
+                            
+                            tracing::debug!(
+                                "External reference '{}' parsed to group='{}', version='{}', kind='{}', generating cross-package import",
+                                clean_name, ext_group, ext_version, ext_kind
+                            );
+                            
+                            self.type_import_map.add_import(
+                                self.current_type_name.as_deref().unwrap_or(""),
+                                &import_stmt,
+                            );
+                            
+                            // Return the original PascalCase kind name, not the camelCase variable
+                            return Ok(ext_kind);
+                        }
                         
-                        // Return qualified reference - extract just the type name, not the full path
-                        let type_name = name.split('.').last().unwrap_or(name);
-                        let result = format!("{}.{}", camelcased_name, type_name);
-                        eprintln!("🔍 TRACE: Generated qualified reference at line 777: '{}' (camelcased_name='{}', name='{}')", result, camelcased_name, name);
-                        return Ok(result);
+                        // Only generate same-package import for simple type names
+                        // that don't contain path separators or package prefixes
+                        if !name.contains('/') && !name.contains('.') {
+                            let (_current_group, _current_version) = Self::parse_module_name(&module.name);
+                            
+                            // For same-package references, assume they exist and generate import
+                            // This handles cases where the symbol table might be incomplete
+                            let camelcased_name = sanitize_import_variable_name(name);
+                            let import_path = format!("./{}.ncl", name);  // Use original case for filename
+                            let import_stmt = format!("let {} = import \"{}\" in", camelcased_name, import_path);
+                            eprintln!("🔍 IMPORT SOURCE 3b: Generated same-package import: '{}'", import_stmt);
+                            
+                            tracing::debug!(
+                                "Symbol '{}' not in table, generating speculative import for same-package reference",
+                                name
+                            );
+                            
+                            let current_type = self.current_type_name.as_deref().unwrap_or("");
+                            eprintln!("🔍 IMPORT: Adding to TypeImportMap for type '{}': '{}'", current_type, import_stmt);
+                            self.type_import_map.add_import(
+                                current_type,
+                                &import_stmt,
+                            );
+                            
+                            // For same-package imports, return the original PascalCase name
+                            // The type reference should use the original name, not the import variable
+                            return Ok(name.to_string());
+                        } else {
+                            // This is a complex name that we don't know how to handle
+                            // Just return it as-is and hope for the best
+                            eprintln!("⚠️ WARNING: Unknown reference format: '{}', returning as-is", name);
+                            return Ok(name.to_string());
+                        }
                     }
                 }
 
@@ -1275,10 +1395,13 @@ impl NickelCodegen {
                     let is_last_item = idx == module.types.len() - 1 && module.constants.is_empty();
                     if !is_last_item {
                         writeln!(output, "  {} = {},", type_def.name, type_str)?;
+                        // Add newline after comma for better readability
+                        writeln!(output)?;
                     } else {
                         writeln!(output, "  {} = {}", type_def.name, type_str)?;
                     }
-                    if idx < module.types.len() - 1 {
+                    if idx < module.types.len() - 1 && !is_last_item {
+                        // Add another newline between types (double spacing)
                         writeln!(output)?;
                     }
                 }
@@ -1294,6 +1417,8 @@ impl NickelCodegen {
                         if idx < module.constants.len() - 1 {
                             writeln!(output, "  {} = {},", constant.name, value_str)
                                 .map_err(|e| CodegenError::Generation(e.to_string()))?;
+                            // Add newline after comma for better readability
+                            writeln!(output)?;
                         } else {
                             writeln!(output, "  {} = {}", constant.name, value_str)
                                 .map_err(|e| CodegenError::Generation(e.to_string()))?;

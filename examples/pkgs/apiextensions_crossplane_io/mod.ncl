@@ -1,0 +1,8 @@
+# Auto-generated module index
+
+{
+  v1 = import "./v1/mod.ncl",
+  v1alpha1 = import "./v1alpha1/mod.ncl",
+  v1beta1 = import "./v1beta1/mod.ncl",
+  v2 = import "./v2/mod.ncl",
+}

@@ -1,0 +1,25 @@
+# Auto-generated module index
+
+{
+  admissionregistration = import "./admissionregistration/mod.ncl",
+  apiserverinternal = import "./apiserverinternal/mod.ncl",
+  apps = import "./apps/mod.ncl",
+  authentication = import "./authentication/mod.ncl",
+  authorization = import "./authorization/mod.ncl",
+  autoscaling = import "./autoscaling/mod.ncl",
+  batch = import "./batch/mod.ncl",
+  certificates = import "./certificates/mod.ncl",
+  coordination = import "./coordination/mod.ncl",
+  core = import "./core/mod.ncl",
+  discovery = import "./discovery/mod.ncl",
+  events = import "./events/mod.ncl",
+  flowcontrol = import "./flowcontrol/mod.ncl",
+  networking = import "./networking/mod.ncl",
+  node = import "./node/mod.ncl",
+  policy = import "./policy/mod.ncl",
+  rbac = import "./rbac/mod.ncl",
+  resource = import "./resource/mod.ncl",
+  scheduling = import "./scheduling/mod.ncl",
+  storage = import "./storage/mod.ncl",
+  storagemigration = import "./storagemigration/mod.ncl",
+}

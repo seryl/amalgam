@@ -128,6 +128,9 @@ impl ImportPathCalculator {
         let from_path = Self::group_to_path(from_group);
         let to_path = Self::group_to_path(to_group);
         let relative_path = Self::calculate_relative_path(&from_path, &to_path);
+        
+        // Use standard versioned path structure for all packages
+        // The ModuleRegistry handles special cases via layout detection
         format!("{}/{}/{}.ncl", relative_path, to_version, to_type)
     }
 
@@ -136,13 +139,6 @@ impl ImportPathCalculator {
         match group {
             "k8s.io" => PathBuf::from("k8s_io"),
             "" => PathBuf::from("core"), // Core API group
-            // CrossPlane has a deeper directory structure: crossplane/domain/crossplane
-            "apiextensions.crossplane.io" => {
-                let mut path = PathBuf::from("crossplane");
-                path.push("apiextensions.crossplane.io");
-                path.push("crossplane");
-                path
-            }
             g if g.contains('.') => {
                 // Convert dots to underscores for filesystem compatibility
                 PathBuf::from(g.replace('.', "_"))
@@ -155,7 +151,6 @@ impl ImportPathCalculator {
     fn group_to_alias(group: &str) -> &str {
         match group {
             "k8s.io" => "k8s",
-            "apiextensions.crossplane.io" => "crossplane",
             "" => "core",
             g => g.split('.').next().unwrap_or(g),
         }
@@ -166,16 +161,20 @@ impl ImportPathCalculator {
     fn calculate_relative_path(from: &PathBuf, to: &PathBuf) -> String {
         // Calculate how many levels deep we are from the packages root
         // The actual directory structure is:
-        // - Simple packages: pkgs/<package_name>/<version>/<file>.ncl = 2 levels up
-        // - CrossPlane: pkgs/crossplane/<domain>/crossplane/<version>/<file>.ncl = 4 levels up
+        // - k8s packages: pkgs/k8s_io/<version>/<file>.ncl = 2 levels up
+        // - CrossPlane: pkgs/crossplane/<domain>/crossplane/<file>.ncl = 3 levels up (no version subdir)
         //
-        // We need to count the actual components in the path, plus 1 for the version directory
+        // We need to count the actual components in the path, plus version directory for non-CrossPlane
         
-        // For the 'from' path, we need to count its components plus 1 for version
-        // For simple packages (1 component like "k8s_io"), we go up 2 levels
-        // For CrossPlane packages (3 components like "crossplane/domain/crossplane"), we go up 4 levels
         let from_components = from.components().count();
+        
+        // Standard depth calculation - assume version directories for all
+        // The ModuleRegistry should handle special cases
         let from_depth = from_components + 1; // +1 for version directory
+        
+        // Debug logging
+        tracing::debug!("calculate_relative_path: from={:?}, to={:?}", from, to);
+        tracing::debug!("from_components={}, from_depth={}", from_components, from_depth);
         
         let mut path_parts = vec![];
 
@@ -191,7 +190,9 @@ impl ImportPathCalculator {
             }
         }
 
-        path_parts.join("/")
+        let result = path_parts.join("/");
+        tracing::debug!("calculate_relative_path result: {}", result);
+        result
     }
 
     /// Check if a type reference requires an import
@@ -250,8 +251,8 @@ mod tests {
     fn test_same_package_different_version() {
         let calc = test_calculator();
         // With empty registry, this will use fallback logic
-        let path = calc.calculate("k8s.io", "v1beta1", "k8s.io", "v1", "objectmeta");
-        assert_eq!(path, "../v1/objectmeta.ncl");
+        let path = calc.calculate("k8s.io", "v1beta1", "k8s.io", "v1", "ObjectMeta");
+        assert_eq!(path, "../v1/ObjectMeta.ncl");
     }
 
     #[test]
@@ -263,11 +264,11 @@ mod tests {
             "v1",
             "k8s.io",
             "v1",
-            "objectmeta",
+            "ObjectMeta",
         );
         assert!(path.contains("k8s_io"));
         assert!(path.contains("v1"));
-        assert!(path.contains("objectmeta.ncl"));
+        assert!(path.contains("ObjectMeta.ncl"));
     }
 
     #[test]
@@ -276,15 +277,15 @@ mod tests {
         // With empty registry, this will use fallback logic
         let path = calc.calculate(
             "ops.crossplane.io", 
-            "crossplane", 
+            "v1alpha1",  // Use actual version, not "crossplane"
             "k8s.io", 
             "v1", 
-            "objectmeta"
+            "ObjectMeta"  // Use proper casing for case-sensitive filesystems
         );
-        // Should be ../../../../k8s_io/v1/objectmeta.ncl
-        // Going up from: crossplane/ops.crossplane.io/crossplane/<version>/file.ncl
-        // That's 4 levels up to reach pkgs/, then down to k8s_io/v1/
-        assert_eq!(path, "../../../../k8s_io/v1/objectmeta.ncl");
+        // Should be ../../k8s_io/v1/ObjectMeta.ncl
+        // Going up from: ops_crossplane_io/v1alpha1/file.ncl
+        // That's 2 levels up to reach pkgs/, then down to k8s_io/v1/
+        assert_eq!(path, "../../k8s_io/v1/ObjectMeta.ncl");
     }
 
     #[test]

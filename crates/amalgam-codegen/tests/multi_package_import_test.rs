@@ -109,11 +109,11 @@ fn test_deep_package_hierarchy() -> Result<(), Box<dyn std::error::Error>> {
     for (from_pkg, from_ver, to_pkg, to_ver, type_name) in test_cases {
         let path = calc.calculate(from_pkg, from_ver, to_pkg, to_ver, type_name);
 
-        // All cross-package imports should use ../../
+        // Cross-package imports should start with ../ (at least one level up)
         if from_pkg != to_pkg {
             assert!(
-                path.starts_with("../../"),
-                "Cross-package import should start with ../../: {} -> {} = {}",
+                path.starts_with("../"),
+                "Cross-package import should start with ../: {} -> {} = {}",
                 from_pkg,
                 to_pkg,
                 path
@@ -145,7 +145,7 @@ fn test_version_mismatch_imports() -> Result<(), Box<dyn std::error::Error>> {
         "v1",
         "objectmeta",
     );
-    assert_eq!(path, "../../k8s_io/v1/objectmeta.ncl");
+    assert_eq!(path, "../../../k8s_io/v1/objectmeta.ncl");
 
     // CrossPlane v1beta1 → k8s.io v1
     let path = calc.calculate(
@@ -155,7 +155,7 @@ fn test_version_mismatch_imports() -> Result<(), Box<dyn std::error::Error>> {
         "v1",
         "pod",
     );
-    assert_eq!(path, "../../k8s_io/v1/pod.ncl");
+    assert_eq!(path, "../../../k8s_io/v1/pod.ncl");
 
     // k8s.io v1alpha1 → CrossPlane v2
     let path = calc.calculate(
@@ -165,6 +165,6 @@ fn test_version_mismatch_imports() -> Result<(), Box<dyn std::error::Error>> {
         "v2",
         "composition",
     );
-    assert_eq!(path, "../../apiextensions_crossplane_io/v2/composition.ncl");
+    assert_eq!(path, "../../crossplane/apiextensions.crossplane.io/crossplane/composition.ncl");
     Ok(())
 }

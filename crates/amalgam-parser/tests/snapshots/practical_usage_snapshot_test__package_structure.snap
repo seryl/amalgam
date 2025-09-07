@@ -6,16 +6,28 @@ SUCCESS: false
 
 OUTPUT:
 STDERR:
-error: unexpected token
-  ┌─ /Users/jtoft/src/ai/amalgam/examples/pkgs/crossplane/ops.crossplane.io/crossplane/operation.ncl:3:15
-  │
-3 │ CronOperation = {
-  │               ^
-  │
-  ┌─ /Users/jtoft/src/ai/amalgam/examples/pkgs/crossplane/ops.crossplane.io/crossplane/mod.ncl:6:15
-  │
-6 │   Operation = import "./operation.ncl",
-  │               ------------------------ imported here
+error: non mergeable terms
+     ┌─ <stdlib/std.ncl>:1331:9
+     │  
+1331 │ ╭         %contract/custom% (fun label value =>
+1332 │ │           if pred value then
+1333 │ │             'Ok value
+1334 │ │           else
+1335 │ │             'Error {}
+1336 │ │         ),
+     │ ╰─────────^ cannot merge this expression
+     │  
+     ┌─ /Users/jtoft/src/ai/amalgam/test_snapshot_temp_80558_2.ncl:35:48
+     │
+  35 │     int_or_string_works = k8s.v0.IntOrString & "test",
+     │                           ---------------------^^^^^^
+     │                           │                    │
+     │                           │                    with this expression
+     │                           originally merged here
+     │
+     = Merge operands have the same merge priority but they can't be combined.
+     = One value is of type String while the other is of type CustomContract
+     = Values of different types can't be merged
 
 
 STDOUT:

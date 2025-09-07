@@ -5,7 +5,7 @@ use amalgam_core::{
     ir::{IRBuilder, IR},
     types::{Field, Type},
 };
-use openapiv3::{OpenAPI, Schema, SchemaKind, Type as OpenAPIType};
+use openapiv3::{OpenAPI, ReferenceOr, Schema, SchemaKind, Type as OpenAPIType};
 use std::collections::BTreeMap;
 
 pub struct OpenAPIParser;
@@ -19,10 +19,10 @@ impl Parser for OpenAPIParser {
         // Parse components/schemas
         if let Some(components) = input.components {
             for (name, schema_ref) in components.schemas {
-                if let openapiv3::ReferenceOr::Item(schema) = schema_ref {
-                    let ty = self.schema_to_type(&schema)?;
-                    builder = builder.add_type(name, ty);
-                }
+            if let openapiv3::ReferenceOr::Item(schema) = schema_ref {
+                let ty = self.schema_to_type(&schema)?;
+                builder = builder.add_type(name, ty);
+            }
             }
         }
 
@@ -43,19 +43,17 @@ impl OpenAPIParser {
             SchemaKind::Type(OpenAPIType::Integer(_)) => Ok(Type::Integer),
             SchemaKind::Type(OpenAPIType::Boolean(_)) => Ok(Type::Bool),
             SchemaKind::Type(OpenAPIType::Array(array_type)) => {
-                let item_type = array_type
-                    .items
-                    .as_ref()
-                    .and_then(|i| i.as_item())
-                    .map(|s| self.schema_to_type(s))
-                    .transpose()?
-                    .unwrap_or(Type::Any);
+                let item_type = if let Some(ReferenceOr::Item(item_schema)) = &array_type.items {
+                    self.schema_to_type(&**item_schema)?
+                } else {
+                    Type::Any
+                };
                 Ok(Type::Array(Box::new(item_type)))
             }
             SchemaKind::Type(OpenAPIType::Object(object_type)) => {
                 let mut fields = BTreeMap::new();
                 for (field_name, field_schema_ref) in &object_type.properties {
-                    if let openapiv3::ReferenceOr::Item(field_schema) = field_schema_ref {
+                    if let ReferenceOr::Item(field_schema) = field_schema_ref {
                         let field_type = self.schema_to_type(field_schema)?;
                         let required = object_type.required.contains(field_name);
                         fields.insert(
@@ -77,7 +75,7 @@ impl OpenAPIParser {
             SchemaKind::OneOf { one_of } => {
                 let mut types = Vec::new();
                 for schema_ref in one_of {
-                    if let openapiv3::ReferenceOr::Item(schema) = schema_ref {
+                    if let ReferenceOr::Item(schema) = schema_ref {
                         types.push(self.schema_to_type(schema)?);
                     }
                 }
@@ -93,7 +91,7 @@ impl OpenAPIParser {
             SchemaKind::AnyOf { any_of } => {
                 let mut types = Vec::new();
                 for schema_ref in any_of {
-                    if let openapiv3::ReferenceOr::Item(schema) = schema_ref {
+                    if let ReferenceOr::Item(schema) = schema_ref {
                         types.push(self.schema_to_type(schema)?);
                     }
                 }

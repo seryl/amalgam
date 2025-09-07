@@ -3,9 +3,7 @@
 use amalgam_codegen::Codegen;
 use amalgam_core::ir::{Module, TypeDefinition, IR};
 use amalgam_core::types::{Field, Type};
-use amalgam_core::ModuleRegistry;
 use std::collections::BTreeMap;
-use std::sync::Arc;
 
 /// Test: Type with multiple dependencies from same module
 #[test]
@@ -106,10 +104,14 @@ fn test_type_with_multiple_same_module_deps() -> Result<(), Box<dyn std::error::
     };
     
     // Generate code and verify imports are deduplicated
-    let mut codegen = amalgam_codegen::nickel::NickelCodegen::new(Arc::new(ModuleRegistry::new()));
+    // Use from_ir to properly populate the registry with types from the IR
+    let mut codegen = amalgam_codegen::nickel::NickelCodegen::from_ir(&ir);
     let output = codegen
         .generate(&ir)
         ?;
+    
+    // Debug: Print the actual output
+    eprintln!("Generated output for test_type_with_multiple_same_module_deps:\n{}", output);
     
     // Check that we have all the types defined
     assert!(output.contains("Container"), "Should have Container type");
@@ -117,13 +119,14 @@ fn test_type_with_multiple_same_module_deps() -> Result<(), Box<dyn std::error::
     assert!(output.contains("Volume"), "Should have Volume type");
     assert!(output.contains("PodSpec"), "Should have PodSpec type");
     
-    // Check that PodSpec references the other types (using qualified references)
-    assert!(output.contains("container.Container") || output.contains("optional | container.Container"), 
-        "PodSpec should reference Container");
-    assert!(output.contains("ephemeralContainer.EphemeralContainer") || output.contains("optional | ephemeralContainer.EphemeralContainer"), 
-        "PodSpec should reference EphemeralContainer");
-    assert!(output.contains("volume.Volume") || output.contains("optional | volume.Volume"), 
-        "PodSpec should reference Volume");
+    // Check that PodSpec references the other types
+    // Since all types are in the same module, they reference each other directly by name
+    assert!(output.contains("container") && output.contains("| Container"), 
+        "PodSpec should have a container field with Container type");
+    assert!(output.contains("ephemeralContainer") && output.contains("| EphemeralContainer"), 
+        "PodSpec should have an ephemeralContainer field with EphemeralContainer type");
+    assert!(output.contains("volume") && output.contains("| Volume"), 
+        "PodSpec should have a volume field with Volume type");
     Ok(())
 }
 
@@ -212,7 +215,7 @@ fn test_cross_version_import_chain() -> Result<(), Box<dyn std::error::Error>> {
         ],
     };
     
-    let mut codegen = amalgam_codegen::nickel::NickelCodegen::new(Arc::new(ModuleRegistry::new()));
+    let mut codegen = amalgam_codegen::nickel::NickelCodegen::from_ir(&ir);
     let output = codegen
         .generate(&ir)
         ?;
@@ -292,7 +295,7 @@ fn test_circular_dependency_handling() -> Result<(), Box<dyn std::error::Error>>
     };
     
     // Should not panic or go into infinite loop
-    let mut codegen = amalgam_codegen::nickel::NickelCodegen::new(Arc::new(ModuleRegistry::new()));
+    let mut codegen = amalgam_codegen::nickel::NickelCodegen::from_ir(&ir);
     let result = codegen.generate(&ir);
     assert!(result.is_ok(), "Should handle circular dependencies gracefully");
     Ok(())
@@ -354,23 +357,28 @@ fn test_nested_unions_and_arrays() -> Result<(), Box<dyn std::error::Error>> {
         modules: vec![module],
     };
     
-    let mut codegen = amalgam_codegen::nickel::NickelCodegen::new(Arc::new(ModuleRegistry::new()));
+    // Use from_ir to properly populate the registry with types from the IR
+    let mut codegen = amalgam_codegen::nickel::NickelCodegen::from_ir(&ir);
     let output = codegen
         .generate(&ir)
         ?;
     
-    // The type should contain references to Container, Volume, and Pod
+    // Debug: Print the actual output
+    eprintln!("Generated Nickel output:\n{}", output);
+    
+    // The type should contain references to Container, Volume, and Pod (PascalCase type names)
+    // Type references should use PascalCase, not the camelCase import variable names
     assert!(
-        output.contains("Container") || output.contains("Array Container"),
-        "Should reference Container type"
+        output.contains("Array Container") || output.contains("Container"),
+        "Should reference Container (imported type)"
     );
     assert!(
         output.contains("Volume"),
-        "Should reference Volume type"
+        "Should reference Volume (imported type)"
     );
     assert!(
         output.contains("Pod"),
-        "Should reference Pod type"
+        "Should reference Pod (imported type)"
     );
     Ok(())
 }
@@ -446,7 +454,7 @@ fn test_cross_package_imports() -> Result<(), Box<dyn std::error::Error>> {
         ],
     };
     
-    let mut codegen = amalgam_codegen::nickel::NickelCodegen::new(Arc::new(ModuleRegistry::new()));
+    let mut codegen = amalgam_codegen::nickel::NickelCodegen::from_ir(&ir);
     let output = codegen
         .generate(&ir)
         ?;
@@ -518,7 +526,7 @@ fn test_runtime_types_v0_import() -> Result<(), Box<dyn std::error::Error>> {
         ],
     };
     
-    let mut codegen = amalgam_codegen::nickel::NickelCodegen::new(Arc::new(ModuleRegistry::new()));
+    let mut codegen = amalgam_codegen::nickel::NickelCodegen::from_ir(&ir);
     let output = codegen
         .generate(&ir)
         ?;
@@ -584,29 +592,30 @@ fn test_optional_and_array_references() -> Result<(), Box<dyn std::error::Error>
         modules: vec![module],
     };
     
-    let mut codegen = amalgam_codegen::nickel::NickelCodegen::new(Arc::new(ModuleRegistry::new()));
+    let mut codegen = amalgam_codegen::nickel::NickelCodegen::from_ir(&ir);
     let output = codegen
         .generate(&ir)
         ?;
     
-    // The type should reference Container and Volume  
+    // The type should reference Container and Volume (PascalCase type names)
     assert!(
         output.contains("Container"),
-        "Should reference Container type"
+        "Should reference Container (imported type)"
     );
     assert!(
         output.contains("Volume"),
-        "Should reference Volume type"
+        "Should reference Volume (imported type)"
     );
     
-    // Check for array and optional handling (using qualified references)
+    // Check for array and optional handling
+    // Type references should use PascalCase, not the camelCase import variable names
     assert!(
-        output.contains("Array volume.Volume"),
-        "Should have Array of volume.Volume"
+        output.contains("Array Volume"),
+        "Should have Array of Volume"
     );
     assert!(
-        output.contains("container.Container | Null") || output.contains("optional | container.Container"),
-        "Should have optional container.Container"
+        output.contains("Container | Null") || output.contains("optional | Container"),
+        "Should have optional Container"
     );
     Ok(())
 }
