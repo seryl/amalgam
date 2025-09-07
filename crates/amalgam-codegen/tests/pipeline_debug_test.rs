@@ -1,9 +1,7 @@
 use amalgam_codegen::nickel::NickelCodegen;
 use amalgam_core::ir::{Metadata, Module, TypeDefinition, IR};
 use amalgam_core::types::{Field, Type};
-use amalgam_core::ModuleRegistry;
 use std::collections::BTreeMap;
-use std::sync::Arc;
 
 #[test]
 fn test_pipeline_debug() -> Result<(), Box<dyn std::error::Error>> {
@@ -60,7 +58,7 @@ fn test_pipeline_debug() -> Result<(), Box<dyn std::error::Error>> {
         }],
     };
 
-    let mut codegen = NickelCodegen::new(Arc::new(ModuleRegistry::new()));
+    let mut codegen = NickelCodegen::from_ir(&ir);
     let (_output, import_map) = codegen
         .generate_with_import_tracking(&ir)
         ?;

@@ -7,7 +7,7 @@ use crate::package_mode::PackageMode;
 use crate::resolver::{ResolutionContext, TypeResolver};
 use crate::{Codegen, CodegenError};
 use amalgam_core::{
-    debug::{CompilationDebugInfo, DebugConfig, ImportDebugEntry, ImportDebugInfo, ModuleNameTransform},
+    debug::{CompilationDebugInfo, DebugConfig, ImportDebugEntry, ImportDebugInfo},
     module_registry::ModuleRegistry,
     naming::to_camel_case,
     types::{Field, Type},
@@ -33,15 +33,6 @@ pub struct ImportGenerationDebug {
     pub missing_types: Vec<(String, String)>, // (module, type_name)
 }
 
-/// Symbol table entry for dependency analysis
-#[derive(Debug, Clone)]
-struct SymbolEntry {
-    #[allow(dead_code)]
-    name: String,
-    module: String,
-    version: String,
-    group: String,
-}
 
 /// Map tracking which imports each type needs
 #[derive(Debug, Clone, Default)]
@@ -96,8 +87,6 @@ pub struct NickelCodegen {
     import_calculator: ImportPathCalculator,
     /// Track cross-module imports needed for the current module
     current_imports: HashSet<(String, String)>, // (version, type_name)
-    /// Symbol table for dependency analysis (Phase 1)
-    symbol_table: HashMap<String, SymbolEntry>,
     /// Same-package dependencies for current module (Phase 2)
     same_package_deps: HashSet<String>, // type names that need imports
     /// Debug information for tracking import generation
@@ -124,7 +113,6 @@ impl NickelCodegen {
             registry,
             import_calculator,
             current_imports: HashSet::new(),
-            symbol_table: HashMap::new(),
             same_package_deps: HashSet::new(),
             debug_info: ImportGenerationDebug::default(),
             type_import_map: TypeImportMap::new(),
@@ -256,79 +244,6 @@ impl NickelCodegen {
         )
     }
 
-    /// Phase 1: Build symbol table from all modules in IR
-    #[instrument(skip(self, ir), level = "debug")]
-    fn build_symbol_table(&mut self, ir: &IR) {
-        self.symbol_table.clear();
-        self.debug_info.symbol_table_entries.clear();
-
-        for module in &ir.modules {
-            let (group, version) = Self::parse_module_name(&module.name);
-            debug!(
-                "Processing module: {} (group: {}, version: {})",
-                module.name, group, version
-            );
-            
-            // Record module name transformation if debugging
-            if self.debug_config.should_debug_imports() {
-                if module.name.starts_with("io.k8s") || module.name.contains("_") {
-                    let normalized = format!("{}.{}", group, version);
-                    self.compilation_debug.add_module_transform(ModuleNameTransform {
-                        original: module.name.clone(),
-                        normalized: normalized.clone(),
-                        group: group.clone(),
-                        version: version.clone(),
-                        reason: if module.name.starts_with("io.k8s.api") {
-                            "Legacy K8s API format".to_string()
-                        } else if module.name.starts_with("io.k8s.apimachinery") {
-                            "Legacy K8s apimachinery format".to_string()
-                        } else if module.name.contains("_") {
-                            "Underscore separator normalization".to_string()
-                        } else {
-                            "Standard format".to_string()
-                        },
-                    });
-                }
-                
-                tracing::info!(
-                    "Building symbol table for module: '{}' -> group='{}', version='{}'",
-                    module.name,
-                    group,
-                    version
-                );
-            }
-
-            for type_def in &module.types {
-                let entry = SymbolEntry {
-                    name: type_def.name.clone(),
-                    module: module.name.clone(),
-                    version: version.clone(),
-                    group: group.clone(),
-                };
-                // Use fully qualified name as key for symbol table
-                let fqn = format!("{}.{}.{}", group, version, type_def.name);
-                debug!(
-                    "Adding symbol: {} -> {} (fqn: {})",
-                    type_def.name, module.name, fqn
-                );
-                self.symbol_table.insert(fqn, entry.clone());
-
-                // Also add with just type name for same-module resolution
-                self.symbol_table
-                    .insert(type_def.name.clone(), entry.clone());
-
-                // Record in debug structure
-                self.debug_info.symbol_table_entries.insert(
-                    type_def.name.clone(),
-                    (module.name.clone(), group.clone(), version.clone()),
-                );
-
-                // Pipeline debug: record symbol
-                self.pipeline_debug
-                    .record_symbol(&type_def.name, &module.name, &group, &version);
-            }
-        }
-    }
 
     /// Phase 2: Analyze dependencies for a type and collect required imports
     #[instrument(skip(self, ty, current_module), level = "debug")]
@@ -341,7 +256,7 @@ impl NickelCodegen {
                 debug!("Found reference: {} (module: {:?})", name, ref_module);
 
                 // Record the reference in debug info
-                let resolved_location = self.symbol_table.get(name).map(|symbol| symbol.module.clone());
+                let resolved_location = self.registry.find_module_for_type(name).map(|module_info| module_info.name.clone());
                 self.debug_info.references_found.push((
                     current_module.name.clone(),
                     name.clone(),
@@ -350,18 +265,18 @@ impl NickelCodegen {
 
                 // If no module specified, it's a same-package reference
                 if ref_module.is_none() {
-                    // Check if this type exists in our symbol table but not in current module
-                    if let Some(symbol) = self.symbol_table.get(name) {
+                    // Check if this type exists in our registry but not in current module
+                    if let Some(module_info) = self.registry.find_module_for_type(name) {
                         debug!(
-                            "Found symbol in table: {} -> {} (current module: {})",
-                            name, symbol.module, current_module.name
+                            "Found type in registry: {} -> {} (current module: {})",
+                            name, module_info.name, current_module.name
                         );
                         let (current_group, current_version) =
                             Self::parse_module_name(&current_module.name);
 
                         // Same package, same version - need import even if same module
                         // because types will be split into separate files
-                        if symbol.group == current_group && symbol.version == current_version {
+                        if module_info.group == current_group && module_info.version == current_version {
                             // Check if this is a reference to a different type (will be in different file)
                             // We need to check the current type being processed to avoid self-references
                             // For now, always add the import - the extraction will handle whether it's needed
@@ -373,7 +288,7 @@ impl NickelCodegen {
                             ));
                         }
                         // Same package (group), different version - need import
-                        else if symbol.group == current_group && symbol.version != current_version
+                        else if module_info.group == current_group && module_info.version != current_version
                         {
                             self.same_package_deps.insert(name.clone());
                             self.debug_info.dependencies_identified.push((
@@ -746,31 +661,31 @@ impl NickelCodegen {
                 } else {
                     // Same-package reference - check if it needs an import
                     tracing::debug!(
-                        "Checking same-package reference: name='{}', module='{}', symbol_exists={}, current_type='{}'",
+                        "Checking same-package reference: name='{}', module='{}', type_exists={}, current_type='{}'",
                         name,
                         module.name,
-                        self.symbol_table.contains_key(name),
+                        self.registry.find_module_for_type(name).is_some(),
                         self.current_type_name.as_deref().unwrap_or("unknown")
                     );
-                    if let Some(symbol) = self.symbol_table.get(name) {
+                    if let Some(module_info) = self.registry.find_module_for_type(name) {
                         let (current_group, current_version) =
                             Self::parse_module_name(&module.name);
 
                         tracing::debug!(
-                            "Symbol found: name='{}', symbol.module='{}', symbol.group='{}', symbol.version='{}', current_group='{}', current_version='{}', different_module={}",
+                            "Type found: name='{}', module_info.name='{}', module_info.group='{}', module_info.version='{}', current_group='{}', current_version='{}', different_module={}",
                             name,
-                            symbol.module,
-                            symbol.group,
-                            symbol.version,
+                            module_info.name,
+                            module_info.group,
+                            module_info.version,
                             current_group,
                             current_version,
-                            symbol.module != module.name
+                            module_info.name != module.name
                         );
 
                         // If it's same package, same version, but different module - need import
-                        if symbol.group == current_group
-                            && symbol.version == current_version
-                            && symbol.module != module.name
+                        if module_info.group == current_group
+                            && module_info.version == current_version
+                            && module_info.name != module.name
                         {
                             // Generate import statement for same-package reference
                             // Use camelCase for the variable name but proper case for the filename
@@ -799,10 +714,10 @@ impl NickelCodegen {
                             return Ok(result);
                         }
                         // If it's same package but different version, use imported alias
-                        else if symbol.group == current_group && symbol.version != current_version
+                        else if module_info.group == current_group && module_info.version != current_version
                         {
                             let import_alias =
-                                format!("{}_{}_{}", symbol.version, name.to_lowercase(), "import");
+                                format!("{}_{}_{}", module_info.version, name.to_lowercase(), "import");
                             let result = format!("{}.{}", import_alias, name);
                             eprintln!("🔍 TRACE: Generated qualified reference at line 747: '{}' (import_alias='{}', name='{}')", result, import_alias, name);
                             return Ok(result);
@@ -949,9 +864,6 @@ impl Codegen for NickelCodegen {
     fn generate(&mut self, ir: &IR) -> Result<String, CodegenError> {
         let mut output = String::new();
 
-        // Phase 1: Build symbol table for all types in the IR
-        self.build_symbol_table(ir);
-
         for module in &ir.modules {
             // Clear imports for this module
             self.current_imports.clear();
@@ -1001,16 +913,16 @@ impl Codegen for NickelCodegen {
                 same_pkg_imports.sort();
 
                 for type_name in same_pkg_imports {
-                    if let Some(symbol) = self.symbol_table.get(type_name) {
+                    if let Some(module_info) = self.registry.find_module_for_type(type_name) {
                         // Generate appropriate alias and path based on whether it's same or different version
-                        let (import_alias, path) = if symbol.version == current_version {
+                        let (import_alias, path) = if module_info.version == current_version {
                             // Same version, different module - import directly as the type
                             let alias = format!("{}_{}", type_name, "type");
                             let path = self.import_calculator.calculate(
                                 &current_group,
                                 &current_version,
-                                &symbol.group,
-                                &symbol.version,
+                                &module_info.group,
+                                &module_info.version,
                                 type_name,  // Use original case for filename
                             );
                             (alias, path)
@@ -1018,15 +930,15 @@ impl Codegen for NickelCodegen {
                             // Different version - include version in alias
                             let alias = format!(
                                 "{}_{}_{}",
-                                symbol.version,
+                                module_info.version,
                                 type_name.to_lowercase(),
                                 "import"
                             );
                             let path = self.import_calculator.calculate(
                                 &current_group,
                                 &current_version,
-                                &symbol.group,
-                                &symbol.version,
+                                &module_info.group,
+                                &module_info.version,
                                 type_name,  // Use original case for filename
                             );
                             (alias, path)
@@ -1202,9 +1114,6 @@ impl NickelCodegen {
 
         let mut output = String::new();
 
-        // Phase 1: Build symbol table for all types in the IR
-        self.build_symbol_table(ir);
-
         for module in &ir.modules {
             // Clear imports for this module
             self.current_imports.clear();
@@ -1253,28 +1162,28 @@ impl NickelCodegen {
                     };
 
                     for dep_type_name in &type_specific_deps {
-                        if let Some(symbol) = self.symbol_table.get(dep_type_name) {
+                        if let Some(module_info) = self.registry.find_module_for_type(dep_type_name) {
                             // Generate import statement
                             tracing::debug!(
                                 "Calculating import path: from {}/{} to {}/{} for type {}",
                                 current_group,
                                 current_version,
-                                symbol.group,
-                                symbol.version,
+                                module_info.group,
+                                module_info.version,
                                 dep_type_name
                             );
                             tracing::debug!(
-                                "Symbol details: name={}, module={}, group={}, version={}",
-                                symbol.name,
-                                symbol.module,
-                                symbol.group,
-                                symbol.version
+                                "Module details: name={}, module={}, group={}, version={}",
+                                dep_type_name,
+                                module_info.name,
+                                module_info.group,
+                                module_info.version
                             );
                             let path = self.import_calculator.calculate(
                                 &current_group,
                                 &current_version,
-                                &symbol.group,
-                                &symbol.version,
+                                &module_info.group,
+                                &module_info.version,
                                 dep_type_name,  // Use original case for filename
                             );
                             tracing::debug!("Calculated path: {}", path);
@@ -1293,13 +1202,13 @@ impl NickelCodegen {
 
                             import_gen.path_calculations.push(PathCalculation {
                                 from_module: module.name.clone(),
-                                to_module: symbol.module.clone(),
+                                to_module: module_info.name.clone(),
                                 calculated_path: path.clone(),
-                                path_type: if symbol.group == current_group
-                                    && symbol.version == current_version
+                                path_type: if module_info.group == current_group
+                                    && module_info.version == current_version
                                 {
                                     "same-version".to_string()
-                                } else if symbol.group == current_group {
+                                } else if module_info.group == current_group {
                                     "cross-version".to_string()
                                 } else {
                                     "cross-package".to_string()
@@ -1431,8 +1340,8 @@ impl NickelCodegen {
 
                 // Check if this is a reference to another type
                 if ref_module.is_none() {
-                    // Same-package reference - check if it's in the symbol table
-                    if let Some(symbol) = self.symbol_table.get(name) {
+                    // Same-package reference - check if it's in the registry
+                    if let Some(module_info) = self.registry.find_module_for_type(name) {
                         let (current_group, current_version) =
                             Self::parse_module_name(&module.name);
 
@@ -1440,7 +1349,7 @@ impl NickelCodegen {
                         // With the unified module approach (one module per version),
                         // all types are in the same module but in different files
                         // So we need imports for any reference to another type
-                        if symbol.group == current_group && symbol.version == current_version {
+                        if module_info.group == current_group && module_info.version == current_version {
                             // Check if it's NOT a self-reference
                             if let Some(current_type_name) = &self.current_type_name {
                                 if name != current_type_name {
@@ -1559,13 +1468,13 @@ impl NickelCodegen {
             } => {
                 // Check if this is a reference to another type
                 if ref_module.is_none() {
-                    // Same-package reference - check if it's in the symbol table
-                    if let Some(symbol) = self.symbol_table.get(name) {
+                    // Same-package reference - check if it's in the registry
+                    if let Some(module_info) = self.registry.find_module_for_type(name) {
                         let (current_group, current_version) =
                             Self::parse_module_name(&module.name);
                         // If it's same package/version, it will be extracted to a separate file
                         // so we ALWAYS need an import for it (unless it's a self-reference)
-                        if symbol.group == current_group && symbol.version == current_version {
+                        if module_info.group == current_group && module_info.version == current_version {
                             // Don't add import for self-reference
                             if let Some(current_type) = &self.current_type_name {
                                 if name != current_type {

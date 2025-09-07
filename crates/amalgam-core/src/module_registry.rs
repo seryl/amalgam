@@ -293,6 +293,12 @@ impl ModuleRegistry {
         self.modules.values()
     }
     
+    /// Find the module that contains a specific type name
+    pub fn find_module_for_type(&self, type_name: &str) -> Option<&ModuleInfo> {
+        self.modules.values()
+            .find(|module| module.type_names.contains(type_name))
+    }
+    
     /// Process modules in dependency order using topological sort
     pub fn process_in_dependency_order<F>(&self, mut processor: F) -> Result<(), CoreError>
     where

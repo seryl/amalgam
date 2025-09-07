@@ -136,13 +136,6 @@ impl ImportPathCalculator {
         match group {
             "k8s.io" => PathBuf::from("k8s_io"),
             "" => PathBuf::from("core"), // Core API group
-            // CrossPlane groups have nested directory structures
-            g if g.contains("crossplane.io") => {
-                let mut path = PathBuf::from("crossplane");
-                path.push(g);
-                path.push("crossplane"); // The final directory is always "crossplane"
-                path
-            }
             g if g.contains('.') => {
                 // Convert dots to underscores for filesystem compatibility
                 PathBuf::from(g.replace('.', "_"))

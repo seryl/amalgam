@@ -1,9 +1,7 @@
 use amalgam_codegen::nickel::NickelCodegen;
 use amalgam_core::ir::{Metadata, Module, TypeDefinition, IR};
 use amalgam_core::types::{Field, Type};
-use amalgam_core::ModuleRegistry;
 use std::collections::BTreeMap;
-use std::sync::Arc;
 
 #[test]
 fn test_import_tracking_same_module_references() -> Result<(), Box<dyn std::error::Error>> {
@@ -60,7 +58,7 @@ fn test_import_tracking_same_module_references() -> Result<(), Box<dyn std::erro
         }],
     };
 
-    let mut codegen = NickelCodegen::new(Arc::new(ModuleRegistry::new()));
+    let mut codegen = NickelCodegen::from_ir(&ir);
 
     // Use the new method
     let (output, import_map) = codegen
@@ -87,10 +85,10 @@ fn test_import_tracking_same_module_references() -> Result<(), Box<dyn std::erro
         "Lifecycle should have imports for LifecycleHandler"
     );
 
-    // The import should be for same-version import (./lifecyclehandler.ncl)
+    // The import should be for same-version import (./LifecycleHandler.ncl)
     let import_str = &lifecycle_imports[0];
     assert!(
-        import_str.contains("./lifecyclehandler.ncl"),
+        import_str.contains("./LifecycleHandler.ncl"),
         "Import should be for same-version: {}",
         import_str
     );

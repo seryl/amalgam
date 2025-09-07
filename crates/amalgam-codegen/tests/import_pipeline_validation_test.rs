@@ -226,9 +226,7 @@ fn test_import_pipeline_with_debug_validation() -> Result<(), Box<dyn std::error
 #[test]
 fn test_same_module_import_resolution() -> Result<(), Box<dyn std::error::Error>> {
     let capture = TestDebugCapture::new();
-    let mut codegen = NickelCodegen::new(Arc::new(ModuleRegistry::new()))
-        .with_debug_config(capture.config().clone());
-
+    
     let mut ir = IR::new();
     let mut module = Module {
         name: "k8s.io.v1".to_string(),
@@ -271,6 +269,10 @@ fn test_same_module_import_resolution() -> Result<(), Box<dyn std::error::Error>
 
     ir.modules.push(module);
 
+    // Create codegen with registry populated from IR
+    let mut codegen = NickelCodegen::from_ir(&ir)
+        .with_debug_config(capture.config().clone());
+
     let result = codegen.generate(&ir);
     assert!(result.is_ok());
 
@@ -278,7 +280,7 @@ fn test_same_module_import_resolution() -> Result<(), Box<dyn std::error::Error>
     // Since we're generating unified module output, we need to check
     // that the import tracking captured this dependency
     let generated = result?;
-    assert!(generated.contains("typeb.ncl"));
+    assert!(generated.contains("TypeB.ncl"));
     Ok(())
 }
 
