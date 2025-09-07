@@ -12,7 +12,7 @@ error: non mergeable terms
 39 │ String
    │ ^^^^^^ cannot merge this expression
    │
-   ┌─ /Users/jtoft/src/ai/amalgam/test_comprehensive_temp_68348_0.ncl:21:31
+   ┌─ /Users/jtoft/src/ai/amalgam/test_comprehensive_temp_16633_2.ncl:21:31
    │
 21 │       k8s.resource.Quantity & "1Gi"
    │       ------------------------^^^^^
