@@ -11,7 +11,7 @@ OUTPUT:
         hpa_example =
           {
               metadata
-                | objectmeta
+                | objectMeta
                 | doc "metadata is the standard object metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata"
                 = {
                     name
@@ -20,7 +20,7 @@ OUTPUT:
                       = "web-hpa",
                   },
               spec
-                | horizontalpodautoscalerspec
+                | horizontalPodAutoscalerSpec
                 | doc "spec is the specification for the behaviour of the autoscaler. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status."
                 = {
                     maxReplicas
@@ -28,12 +28,12 @@ OUTPUT:
                       | doc "maxReplicas is the upper limit for the number of replicas to which the autoscaler can scale up. It cannot be less that minReplicas."
                       = 5,
                     metrics
-                      | Array metricspec
+                      | Array metricSpec
                       | doc "metrics contains the specifications for which to use to calculate the desired replica count (the maximum replica count across all metrics will be used).  The desired replica count is calculated multiplying the ratio between the target value and the current value by the current number of pods.  Ergo, metrics used must decrease as the pod count is increased, and vice-versa.  See the individual metric source types for more information about how each type of metric must respond. If not set, the default metric will be set to 80% average CPU utilization."
                       = [
                           {
                             resource
-                              | resourcemetricsource
+                              | resourceMetricSource
                               | doc "resource refers to a resource metric (such as those specified in requests and limits) known to Kubernetes describing each pod in the current scale target (e.g. CPU or memory). Such metrics are built in to Kubernetes, and have special scaling options on top of those available to normal per-pod metrics using the \"pods\" source."
                               = {
                                   name
@@ -41,7 +41,7 @@ OUTPUT:
                                     | doc "name is the name of the resource in question."
                                     = "cpu",
                                   target
-                                    | metrictarget
+                                    | metricTarget
                                     | doc "target specifies the target value for the given metric"
                                     = {
                                         averageUtilization
@@ -65,7 +65,7 @@ OUTPUT:
                       | doc "minReplicas is the lower limit for the number of replicas to which the autoscaler can scale down.  It defaults to 1 pod.  minReplicas is allowed to be 0 if the alpha feature gate HPAScaleToZero is enabled and at least one Object or External metric is configured.  Scaling is active as long as at least one metric value is available."
                       = 1,
                     scaleTargetRef
-                      | crossversionobjectreference
+                      | crossVersionObjectReference
                       | doc "scaleTargetRef points to the target resource to scale, and is used to the pods for which metrics should be collected, as well as to actually change the replica count."
                       = {
                           apiVersion
@@ -96,7 +96,7 @@ OUTPUT:
         minimal_pod =
           {
               metadata
-                | objectmeta
+                | objectMeta
                 | doc "Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata"
                 = {
                     name
@@ -105,7 +105,7 @@ OUTPUT:
                       = "test-pod",
                   },
               spec
-                | podspec
+                | podSpec
                 | doc "Specification of the desired behavior of the pod. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status"
                 = {
                     containers

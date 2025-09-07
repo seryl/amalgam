@@ -6,16 +6,23 @@ SUCCESS: false
 
 OUTPUT:
 STDERR:
-error: unexpected token
-  ┌─ /Users/jtoft/src/ai/amalgam/examples/pkgs/k8s_io/v1/affinity.ncl:5:13
-  │
-5 │ PodAffinity = {
-  │             ^
-  │
-  ┌─ /Users/jtoft/src/ai/amalgam/examples/pkgs/k8s_io/v1/mod.ncl:6:14
-  │
-6 │   Affinity = import "./affinity.ncl",
-  │              ----------------------- imported here
+error: non mergeable terms
+   ┌─ /Users/jtoft/src/ai/amalgam/examples/pkgs/k8s_io/resource/Quantity.ncl:39:1
+   │
+39 │ String
+   │ ^^^^^^ cannot merge this expression
+   │
+   ┌─ /Users/jtoft/src/ai/amalgam/test_comprehensive_temp_68348_0.ncl:21:31
+   │
+21 │       k8s.resource.Quantity & "1Gi"
+   │       ------------------------^^^^^
+   │       │                       │
+   │       │                       with this expression
+   │       originally merged here
+   │
+   = Merge operands have the same merge priority but they can't be combined.
+   = One value is of type String while the other is of type Type
+   = Values of different types can't be merged
 
 
 STDOUT:

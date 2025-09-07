@@ -14,7 +14,7 @@ expression: all_versions
   }
 }
 {
-  metadata | optional | objectmeta.ObjectMeta,
+  metadata | optional | objectMeta.ObjectMeta,
   spec | optional | {
     field1 | optional | String,
     field2 | optional | Number,
