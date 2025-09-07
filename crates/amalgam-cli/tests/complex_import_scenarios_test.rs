@@ -3,7 +3,9 @@
 use amalgam_codegen::Codegen;
 use amalgam_core::ir::{Module, TypeDefinition, IR};
 use amalgam_core::types::{Field, Type};
+use amalgam_core::ModuleRegistry;
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
 /// Test: Type with multiple dependencies from same module
 #[test]
@@ -104,7 +106,7 @@ fn test_type_with_multiple_same_module_deps() {
     };
     
     // Generate code and verify imports are deduplicated
-    let mut codegen = amalgam_codegen::nickel::NickelCodegen::new();
+    let mut codegen = amalgam_codegen::nickel::NickelCodegen::new(Arc::new(ModuleRegistry::new()));
     let output = codegen
         .generate(&ir)
         .expect("Code generation should succeed");
@@ -209,7 +211,7 @@ fn test_cross_version_import_chain() {
         ],
     };
     
-    let mut codegen = amalgam_codegen::nickel::NickelCodegen::new();
+    let mut codegen = amalgam_codegen::nickel::NickelCodegen::new(Arc::new(ModuleRegistry::new()));
     let output = codegen
         .generate(&ir)
         .expect("Code generation should succeed");
@@ -288,7 +290,7 @@ fn test_circular_dependency_handling() {
     };
     
     // Should not panic or go into infinite loop
-    let mut codegen = amalgam_codegen::nickel::NickelCodegen::new();
+    let mut codegen = amalgam_codegen::nickel::NickelCodegen::new(Arc::new(ModuleRegistry::new()));
     let result = codegen.generate(&ir);
     assert!(result.is_ok(), "Should handle circular dependencies gracefully");
 }
@@ -349,7 +351,7 @@ fn test_nested_unions_and_arrays() {
         modules: vec![module],
     };
     
-    let mut codegen = amalgam_codegen::nickel::NickelCodegen::new();
+    let mut codegen = amalgam_codegen::nickel::NickelCodegen::new(Arc::new(ModuleRegistry::new()));
     let output = codegen
         .generate(&ir)
         .expect("Code generation should succeed");
@@ -440,7 +442,7 @@ fn test_cross_package_imports() {
         ],
     };
     
-    let mut codegen = amalgam_codegen::nickel::NickelCodegen::new();
+    let mut codegen = amalgam_codegen::nickel::NickelCodegen::new(Arc::new(ModuleRegistry::new()));
     let output = codegen
         .generate(&ir)
         .expect("Code generation should succeed");
@@ -511,7 +513,7 @@ fn test_runtime_types_v0_import() {
         ],
     };
     
-    let mut codegen = amalgam_codegen::nickel::NickelCodegen::new();
+    let mut codegen = amalgam_codegen::nickel::NickelCodegen::new(Arc::new(ModuleRegistry::new()));
     let output = codegen
         .generate(&ir)
         .expect("Code generation should succeed");
@@ -576,7 +578,7 @@ fn test_optional_and_array_references() {
         modules: vec![module],
     };
     
-    let mut codegen = amalgam_codegen::nickel::NickelCodegen::new();
+    let mut codegen = amalgam_codegen::nickel::NickelCodegen::new(Arc::new(ModuleRegistry::new()));
     let output = codegen
         .generate(&ir)
         .expect("Code generation should succeed");

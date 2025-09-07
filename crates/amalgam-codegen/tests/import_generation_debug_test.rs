@@ -4,7 +4,9 @@ use amalgam_codegen::nickel::NickelCodegen;
 use amalgam_codegen::Codegen;
 use amalgam_core::ir::{Metadata, Module, TypeDefinition, IR};
 use amalgam_core::types::{Field, Type};
+use amalgam_core::ModuleRegistry;
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
 #[test]
 fn test_debug_import_generation() {
@@ -62,7 +64,7 @@ fn test_debug_import_generation() {
         }],
     };
 
-    let mut codegen = NickelCodegen::new();
+    let mut codegen = NickelCodegen::new(Arc::new(ModuleRegistry::new()));
     let result = codegen.generate(&ir).expect("Should generate code");
 
     // Print debug information

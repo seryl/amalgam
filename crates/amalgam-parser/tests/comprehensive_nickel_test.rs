@@ -73,7 +73,7 @@ fn evaluate_nickel_code(code: &str) -> (bool, String) {
 #[test]
 fn test_debug_ir_managedfields() {
     // Simple test to verify the problematic reference exists
-    let content = std::fs::read_to_string("examples/pkgs/k8s_io/v1/objectmeta.ncl").unwrap();
+    let content = std::fs::read_to_string("examples/pkgs/k8s_io/v1/ObjectMeta.ncl").unwrap();
     
     let has_problematic_ref = content.contains("managedfieldsentry.ManagedFieldsEntry");
     eprintln!("File contains problematic reference: {}", has_problematic_ref);
@@ -89,7 +89,9 @@ fn test_debug_ir_managedfields() {
 /// Test to debug what's actually in the generated files
 #[test] 
 fn test_debug_objectmeta_file() {
-    let content = std::fs::read_to_string("examples/pkgs/k8s_io/v1/ObjectMeta.ncl").unwrap();
+    // Tests run from the project root
+    let content = std::fs::read_to_string("examples/pkgs/k8s_io/v1/ObjectMeta.ncl")
+        .expect("Could not find ObjectMeta.ncl - ensure examples are generated");
     
     // Find the managedFields line
     for line in content.lines() {
@@ -213,7 +215,7 @@ let k8s = import "examples/pkgs/k8s_io/mod.ncl" in
 }
 "#;
 
-    let (success, output) = evaluate_nickel_code(test_code);
+    let (success, output) = evaluate_nickel_code(test_code).unwrap_or((false, "Failed to evaluate".to_string()));
 
     // Create comprehensive snapshot
     let snapshot_content = format!("SUCCESS: {}\n\nOUTPUT:\n{}", success, output);
@@ -271,7 +273,7 @@ let k8s = import "examples/pkgs/k8s_io/mod.ncl" in
 }
 "#;
 
-    let (success, output) = evaluate_nickel_code(test_code);
+    let (success, output) = evaluate_nickel_code(test_code).unwrap_or((false, "Failed to evaluate".to_string()));
 
     let snapshot_content = format!("SUCCESS: {}\n\nOUTPUT:\n{}", success, output);
 
@@ -339,7 +341,7 @@ fn test_import_debugging() {
 }
 "#;
 
-    let (success, output) = evaluate_nickel_code(test_code);
+    let (success, output) = evaluate_nickel_code(test_code).unwrap_or((false, "Failed to evaluate".to_string()));
 
     let snapshot_content = format!("SUCCESS: {}\n\nOUTPUT:\n{}", success, output);
 

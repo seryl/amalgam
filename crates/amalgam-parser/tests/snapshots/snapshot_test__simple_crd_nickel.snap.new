@@ -1,0 +1,11 @@
+---
+source: crates/amalgam-parser/tests/snapshot_test.rs
+assertion_line: 24
+expression: generated
+---
+{
+  metadata | optional | objectMeta.ObjectMeta,
+  spec | optional | {
+    name | optional | String
+  }
+}

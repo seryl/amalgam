@@ -7,7 +7,9 @@ use amalgam_codegen::{
 use amalgam_core::{
     ir::{Module, TypeDefinition, IR},
     types::{Field, Type},
+    ModuleRegistry,
 };
+use std::sync::Arc;
 
 /// Create a test IR with cross-module references
 fn create_test_ir_with_k8s_refs() -> IR {
@@ -185,7 +187,7 @@ fn test_import_pipeline_with_debug_validation() {
     let capture = TestDebugCapture::new().with_export();
     
     // Create codegen with debug config
-    let mut codegen = NickelCodegen::new()
+    let mut codegen = NickelCodegen::new(Arc::new(ModuleRegistry::new()))
         .with_debug_config(capture.config().clone());
 
     // Generate code - using direct generate, not package mode
@@ -223,7 +225,7 @@ fn test_import_pipeline_with_debug_validation() {
 #[test]
 fn test_same_module_import_resolution() {
     let capture = TestDebugCapture::new();
-    let mut codegen = NickelCodegen::new()
+    let mut codegen = NickelCodegen::new(Arc::new(ModuleRegistry::new()))
         .with_debug_config(capture.config().clone());
 
     let mut ir = IR::new();
@@ -281,7 +283,7 @@ fn test_same_module_import_resolution() {
 #[test] 
 fn test_underscore_module_name_handling() {
     let capture = TestDebugCapture::new();
-    let mut codegen = NickelCodegen::new()
+    let mut codegen = NickelCodegen::new(Arc::new(ModuleRegistry::new()))
         .with_debug_config(capture.config().clone());
 
     let mut ir = IR::new();

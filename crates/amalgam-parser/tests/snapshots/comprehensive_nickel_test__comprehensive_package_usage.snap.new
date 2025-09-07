@@ -1,0 +1,163 @@
+---
+source: crates/amalgam-parser/tests/comprehensive_nickel_test.rs
+assertion_line: 221
+expression: snapshot_content
+---
+SUCCESS: true
+
+OUTPUT:
+{
+  cross_version_usage =
+    {
+        hpa_example =
+          {
+              metadata
+                | objectMeta
+                | doc "metadata is the standard object metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata"
+                = {
+                    name
+                      | String
+                      | doc "Name must be unique within a namespace. Is required when creating resources, although some resources may allow a client to request the generation of an appropriate name automatically. Name is primarily intended for creation idempotence and configuration definition. Cannot be updated. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names"
+                      = "web-hpa",
+                  },
+              spec
+                | horizontalPodAutoscalerSpec
+                | doc "spec is the specification for the behaviour of the autoscaler. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status."
+                = {
+                    maxReplicas
+                      | Number
+                      | doc "maxReplicas is the upper limit for the number of replicas to which the autoscaler can scale up. It cannot be less that minReplicas."
+                      = 5,
+                    metrics
+                      | Array metricSpec
+                      | doc "metrics contains the specifications for which to use to calculate the desired replica count (the maximum replica count across all metrics will be used).  The desired replica count is calculated multiplying the ratio between the target value and the current value by the current number of pods.  Ergo, metrics used must decrease as the pod count is increased, and vice-versa.  See the individual metric source types for more information about how each type of metric must respond. If not set, the default metric will be set to 80% average CPU utilization."
+                      = [
+                          {
+                            resource
+                              | resourceMetricSource
+                              | doc "resource refers to a resource metric (such as those specified in requests and limits) known to Kubernetes describing each pod in the current scale target (e.g. CPU or memory). Such metrics are built in to Kubernetes, and have special scaling options on top of those available to normal per-pod metrics using the \"pods\" source."
+                              = {
+                                  name
+                                    | String
+                                    | doc "name is the name of the resource in question."
+                                    = "cpu",
+                                  target
+                                    | metricTarget
+                                    | doc "target specifies the target value for the given metric"
+                                    = {
+                                        averageUtilization
+                                          | Number
+                                          | doc "averageUtilization is the target value of the average of the resource metric across all relevant pods, represented as a percentage of the requested value of the resource for the pods. Currently only valid for Resource metric source type"
+                                          = 70,
+                                        type
+                                          | String
+                                          | doc "type represents whether the metric type is Utilization, Value, or AverageValue"
+                                          = "Utilization",
+                                      },
+                                },
+                            type
+                              | String
+                              | doc "type is the type of metric source.  It should be one of \"ContainerResource\", \"External\", \"Object\", \"Pods\" or \"Resource\", each mapping to a matching field in the object."
+                              = "Resource",
+                          }
+                        ],
+                    minReplicas
+                      | Number
+                      | doc "minReplicas is the lower limit for the number of replicas to which the autoscaler can scale down.  It defaults to 1 pod.  minReplicas is allowed to be 0 if the alpha feature gate HPAScaleToZero is enabled and at least one Object or External metric is configured.  Scaling is active as long as at least one metric value is available."
+                      = 1,
+                    scaleTargetRef
+                      | crossVersionObjectReference
+                      | doc "scaleTargetRef points to the target resource to scale, and is used to the pods for which metrics should be collected, as well as to actually change the replica count."
+                      = {
+                          apiVersion
+                            | String
+                            | doc "apiVersion is the API version of the referent"
+                            = "apps/v1",
+                          kind
+                            | String
+                            | doc "kind is the kind of the referent; More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds"
+                            = "Deployment",
+                          name
+                            | String
+                            | doc "name is the name of the referent; More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names"
+                            = "web-deployment",
+                        },
+                  },
+            },
+      },
+  kubernetes_objects =
+    {
+        app_selector =
+          {
+              matchLabels
+                | {  .. }
+                | doc "matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is \"key\", the operator is \"In\", and the values array contains only \"value\". The requirements are ANDed."
+                = { app = "web", tier = "frontend", .. },
+            },
+        minimal_pod =
+          {
+              metadata
+                | objectMeta
+                | doc "Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata"
+                = {
+                    name
+                      | String
+                      | doc "Name must be unique within a namespace. Is required when creating resources, although some resources may allow a client to request the generation of an appropriate name automatically. Name is primarily intended for creation idempotence and configuration definition. Cannot be updated. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names"
+                      = "test-pod",
+                  },
+              spec
+                | podSpec
+                | doc "Specification of the desired behavior of the pod. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status"
+                = {
+                    containers
+                      | Array container
+                      | doc "List of containers belonging to the pod. Containers cannot currently be added or removed. There must be at least one container in a Pod. Cannot be updated."
+                      = [
+                          {
+                            image
+                              | String
+                              | doc "Container image name. More info: https://kubernetes.io/docs/concepts/containers/images This field is optional to allow higher level config management to default or override container images in workload controllers like Deployments and StatefulSets."
+                              = "nginx",
+                            name
+                              | String
+                              | doc "Name of the container specified as a DNS_LABEL. Each container in a pod must have a unique name (DNS_LABEL). Cannot be updated."
+                              = "app",
+                          }
+                        ],
+                  },
+            },
+        volume_class =
+          {
+              driverName
+                | String
+                | doc "Name of the CSI driver This field is immutable."
+                = "csi.example.com",
+              parameters
+                | {  .. }
+                | doc m%"
+                  parameters hold volume attributes defined by the CSI driver. These values are opaque to the Kubernetes and are passed directly to the CSI driver. The underlying storage provider supports changing these attributes on an existing volume, however the parameters field itself is immutable. To invoke a volume update, a new VolumeAttributesClass should be created with new parameters, and the PersistentVolumeClaim should be updated to reference the new VolumeAttributesClass.
+                  This field is required and must contain at least one key/value pair. The keys cannot be empty, and the maximum number of parameters is 512, with a cumulative max size of 256K. If the CSI driver rejects invalid parameters, the target PersistentVolumeClaim will be set to an "Infeasible" state in the modifyVolumeStatus field.
+                "%
+                = { type = "ssd", .. },
+            },
+      },
+  package_structure =
+    {
+        k8s_versions =
+          [ "resource", "v0", "v1", "v1alpha1", "v1alpha3", "v1beta1", "v2" ],
+      },
+  type_validation =
+    {
+        has_all_k8s_versions =
+          { v0 = true, v1 = true, v1alpha1 = true, v1beta1 = true, v2 = true, },
+        resource_types = [ "Quantity" ],
+        v0_types = [ "IntOrString", "RawExtension" ],
+        v1_type_count = 287,
+      },
+  unversioned_types =
+    {
+        int_or_string_number | k8s.v0.IntOrString = 42,
+        int_or_string_text | k8s.v0.IntOrString = "80%",
+        raw_extension = {},
+      },
+}

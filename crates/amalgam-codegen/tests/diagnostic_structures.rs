@@ -2,8 +2,10 @@
 use amalgam_codegen::{nickel::NickelCodegen, Codegen};
 use amalgam_core::ir::{Module, TypeDefinition, IR};
 use amalgam_core::types::{Field, Type};
+use amalgam_core::ModuleRegistry;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
 /// Diagnostic output structure that captures everything about the codegen process
 #[derive(Debug, Serialize, Deserialize)]
@@ -92,7 +94,7 @@ pub fn create_diagnostics(ir: &IR) -> CodegenDiagnostics {
     let ir_snapshot = create_ir_snapshot(ir);
 
     // Run codegen and capture output
-    let mut codegen = NickelCodegen::new();
+    let mut codegen = NickelCodegen::new(Arc::new(ModuleRegistry::new()));
     let final_output = codegen
         .generate(ir)
         .unwrap_or_else(|e| format!("ERROR: {}", e));

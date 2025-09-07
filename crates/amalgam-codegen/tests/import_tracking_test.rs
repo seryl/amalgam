@@ -1,7 +1,9 @@
 use amalgam_codegen::nickel::NickelCodegen;
 use amalgam_core::ir::{Metadata, Module, TypeDefinition, IR};
 use amalgam_core::types::{Field, Type};
+use amalgam_core::ModuleRegistry;
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
 #[test]
 fn test_import_tracking_same_module_references() {
@@ -58,7 +60,7 @@ fn test_import_tracking_same_module_references() {
         }],
     };
 
-    let mut codegen = NickelCodegen::new();
+    let mut codegen = NickelCodegen::new(Arc::new(ModuleRegistry::new()));
 
     // Use the new method
     let (output, import_map) = codegen

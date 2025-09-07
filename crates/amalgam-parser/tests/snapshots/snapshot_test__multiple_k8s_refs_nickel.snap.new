@@ -1,0 +1,13 @@
+---
+source: crates/amalgam-parser/tests/snapshot_test.rs
+assertion_line: 77
+expression: content
+---
+{
+  metadata | optional | objectMeta.ObjectMeta,
+  spec | optional | {
+    resources | optional | io.k8s.api.core.v1.ResourceRequirements.io.k8s.api.core.v1.ResourceRequirements,
+    selector | optional | io.k8s.apimachinery.pkg.apis.meta.v1.LabelSelector.io.k8s.apimachinery.pkg.apis.meta.v1.LabelSelector,
+    volumes | optional | Array io.k8s.api.core.v1.Volume.io.k8s.api.core.v1.Volume
+  }
+}

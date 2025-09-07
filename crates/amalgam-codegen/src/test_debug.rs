@@ -69,18 +69,20 @@ impl DebugAssertions {
         debug_info: &CompilationDebugInfo,
         original: &str,
         expected_normalized: &str,
-    ) {
+    ) -> Result<(), String> {
         let transform = debug_info
             .module_name_transforms
             .iter()
             .find(|t| t.original == original)
-            .expect(&format!("No transform found for module '{}'", original));
+            .ok_or_else(|| format!("No transform found for module '{}'", original))?;
         
-        assert_eq!(
-            transform.normalized, expected_normalized,
-            "Module transform mismatch for '{}': expected '{}', got '{}'",
-            original, expected_normalized, transform.normalized
-        );
+        if transform.normalized != expected_normalized {
+            return Err(format!(
+                "Module transform mismatch for '{}': expected '{}', got '{}'",
+                original, expected_normalized, transform.normalized
+            ));
+        }
+        Ok(())
     }
 
     /// Assert that imports were generated for a type
@@ -89,22 +91,24 @@ impl DebugAssertions {
         module: &str,
         type_name: &str,
         expected_count: usize,
-    ) {
+    ) -> Result<(), String> {
         let module_debug = debug_info
             .modules
             .get(module)
-            .expect(&format!("No debug info for module '{}'", module));
+            .ok_or_else(|| format!("No debug info for module '{}'", module))?;
         
         let type_debug = module_debug
             .iter()
             .find(|d| d.type_name == type_name)
-            .expect(&format!("No debug info for type '{}'", type_name));
+            .ok_or_else(|| format!("No debug info for type '{}'", type_name))?;
         
-        assert_eq!(
-            type_debug.imports.len(), expected_count,
-            "Import count mismatch for type '{}': expected {}, got {}",
-            type_name, expected_count, type_debug.imports.len()
-        );
+        if type_debug.imports.len() != expected_count {
+            return Err(format!(
+                "Import count mismatch for type '{}': expected {}, got {}",
+                type_name, expected_count, type_debug.imports.len()
+            ));
+        }
+        Ok(())
     }
 
     /// Assert that a specific import exists
@@ -114,28 +118,30 @@ impl DebugAssertions {
         type_name: &str,
         dependency: &str,
         expected_path: &str,
-    ) {
+    ) -> Result<(), String> {
         let module_debug = debug_info
             .modules
             .get(module)
-            .expect(&format!("No debug info for module '{}'", module));
+            .ok_or_else(|| format!("No debug info for module '{}'", module))?;
         
         let type_debug = module_debug
             .iter()
             .find(|d| d.type_name == type_name)
-            .expect(&format!("No debug info for type '{}'", type_name));
+            .ok_or_else(|| format!("No debug info for type '{}'", type_name))?;
         
         let import = type_debug
             .imports
             .iter()
             .find(|i| i.dependency == dependency)
-            .expect(&format!("No import found for dependency '{}'", dependency));
+            .ok_or_else(|| format!("No import found for dependency '{}'", dependency))?;
         
-        assert_eq!(
-            import.import_path, expected_path,
-            "Import path mismatch for dependency '{}': expected '{}', got '{}'",
-            dependency, expected_path, import.import_path
-        );
+        if import.import_path != expected_path {
+            return Err(format!(
+                "Import path mismatch for dependency '{}': expected '{}', got '{}'",
+                dependency, expected_path, import.import_path
+            ));
+        }
+        Ok(())
     }
 
     /// Assert that extraction was successful
@@ -143,18 +149,20 @@ impl DebugAssertions {
         debug_info: &CompilationDebugInfo,
         module: &str,
         type_name: &str,
-    ) {
+    ) -> Result<(), String> {
         let extraction = debug_info
             .import_extractions
             .iter()
             .find(|e| e.module == module && e.type_name == type_name)
-            .expect(&format!("No extraction attempt for type '{}'", type_name));
+            .ok_or_else(|| format!("No extraction attempt for type '{}'", type_name))?;
         
-        assert!(
-            extraction.success,
-            "Extraction failed for type '{}' with strategy '{}': {:?}",
-            type_name, extraction.strategy, extraction.error
-        );
+        if !extraction.success {
+            return Err(format!(
+                "Extraction failed for type '{}' with strategy '{}': {:?}",
+                type_name, extraction.strategy, extraction.error
+            ));
+        }
+        Ok(())
     }
 }
 
@@ -169,7 +177,7 @@ mod tests {
     }
 
     #[test]
-    fn test_debug_export() {
+    fn test_debug_export() -> Result<(), Box<dyn std::error::Error>> {
         let capture = TestDebugCapture::new().with_export();
         assert!(capture.capture_path.is_some());
         
@@ -178,12 +186,13 @@ mod tests {
         debug_info.add_error("Test error".to_string());
         
         if let Some(path) = &capture.capture_path {
-            debug_info.export_to_file(path).unwrap();
+            debug_info.export_to_file(path)?;
             
             // Load it back
-            let loaded = capture.load_captured().unwrap();
+            let loaded = capture.load_captured()?;
             assert_eq!(loaded.errors.len(), 1);
             assert_eq!(loaded.errors[0], "Test error");
         }
+        Ok(())
     }
 }

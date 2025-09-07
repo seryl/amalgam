@@ -1,0 +1,15 @@
+---
+source: crates/amalgam-parser/tests/snapshot_test.rs
+assertion_line: 103
+expression: content
+---
+{
+  metadata | optional | objectMeta.ObjectMeta,
+  spec | optional | {
+    configs | optional | Array {
+      name | optional | String,
+      value | optional | String
+    },
+    items | optional | Array String
+  }
+}

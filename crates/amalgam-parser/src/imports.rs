@@ -204,18 +204,18 @@ mod tests {
         // crossplane/apiextensions.crossplane.io/crossplane/<version>/file.ncl
         // So we go up 4 levels to reach the packages root
         let path = type_ref.import_path("apiextensions.crossplane.io", "v1");
-        assert_eq!(path, "../../../../k8s_io/v1/objectmeta.ncl");
+        assert_eq!(path, "../../../../k8s_io/v1/ObjectMeta.ncl");
 
         // Test with a simple group - same path structure
         let path2 = type_ref.import_path("example.io", "v1");
-        assert_eq!(path2, "../../k8s_io/v1/objectmeta.ncl");
+        assert_eq!(path2, "../../k8s_io/v1/ObjectMeta.ncl");
 
         // Test same-package cross-version
         let path3 = type_ref.import_path("k8s.io", "v1beta1");
-        assert_eq!(path3, "../v1/objectmeta.ncl");
+        assert_eq!(path3, "../v1/ObjectMeta.ncl");
 
         // Test same-package same-version
         let path4 = type_ref.import_path("k8s.io", "v1");
-        assert_eq!(path4, "./objectmeta.ncl");
+        assert_eq!(path4, "./ObjectMeta.ncl");
     }
 }

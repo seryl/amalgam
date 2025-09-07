@@ -1,0 +1,13 @@
+---
+source: crates/amalgam-parser/tests/snapshot_test.rs
+assertion_line: 116
+expression: generated
+---
+{
+  metadata | optional | objectMeta.ObjectMeta,
+  spec | {
+    image | String,
+    port | Number | default = 8080,
+    replicas | Number
+  }
+}

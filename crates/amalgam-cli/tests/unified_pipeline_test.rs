@@ -10,7 +10,7 @@ use std::fs;
 use tempfile::tempdir;
 
 #[test]
-fn test_crd_walker_produces_ir() {
+fn test_crd_walker_produces_ir() -> Result<(), Box<dyn std::error::Error>> {
     // Test that CRDWalker produces valid IR
     let crd_yaml = r#"
 apiVersion: apiextensions.k8s.io/v1
@@ -41,15 +41,14 @@ spec:
                 type: string
 "#;
 
-    let crd: amalgam_parser::crd::CRD =
-        serde_yaml::from_str(crd_yaml).expect("Failed to parse CRD YAML");
+    let crd: amalgam_parser::crd::CRD = serde_yaml::from_str(crd_yaml)?;
 
     // Convert the CRD schema to the expected format
     let schema = crd.spec.versions[0]
         .schema
         .as_ref()
         .map(|s| &s.openapi_v3_schema)
-        .expect("CRD should have schema");
+        .ok_or("CRD should have schema")?;
 
     let walker = CRDWalker::new("example.com");
     // The CRDWalker expects the full schema including openAPIV3Schema wrapper
@@ -62,7 +61,7 @@ spec:
             }),
         }],
     };
-    let ir = walker.walk(input).expect("Failed to walk CRD");
+    let ir = walker.walk(input)?;
 
     // Verify IR contains expected module
     assert!(!ir.modules.is_empty(), "IR should contain modules");
@@ -73,10 +72,11 @@ spec:
         "Module name should contain group"
     );
     assert!(!module.types.is_empty(), "Module should contain types");
+    Ok(())
 }
 
 #[test]
-fn test_openapi_walker_produces_ir() {
+fn test_openapi_walker_produces_ir() -> Result<(), Box<dyn std::error::Error>> {
     // Test that OpenAPIWalker produces valid IR
     let openapi_json = r#"{
         "openapi": "3.0.0",
@@ -102,11 +102,10 @@ fn test_openapi_walker_produces_ir() {
         }
     }"#;
 
-    let spec: openapiv3::OpenAPI =
-        serde_json::from_str(openapi_json).expect("Failed to parse OpenAPI JSON");
+    let spec: openapiv3::OpenAPI = serde_json::from_str(openapi_json)?;
 
     let walker = OpenAPIWalker::new("test.api");
-    let ir = walker.walk(spec).expect("Failed to walk OpenAPI");
+    let ir = walker.walk(spec)?;
 
     // Verify IR contains expected module and type
     assert!(!ir.modules.is_empty(), "IR should contain modules");
@@ -118,6 +117,7 @@ fn test_openapi_walker_produces_ir() {
         module.types[0].name, "TestType",
         "Type name should be TestType"
     );
+    Ok(())
 }
 
 #[test]
@@ -155,31 +155,29 @@ fn test_namespaced_package_uses_walker_pipeline() {
 }
 
 #[tokio::test]
-async fn test_k8s_core_import_uses_unified_pipeline() {
+async fn test_k8s_core_import_uses_unified_pipeline() -> Result<(), Box<dyn std::error::Error>> {
     // Test that k8s-core import uses the unified walker pipeline
-    let temp_dir = tempdir().expect("Failed to create temp dir");
+    let temp_dir = tempdir()?;
     let output_dir = temp_dir.path();
 
     // This should use the unified pipeline internally
-    handle_k8s_core_import("v1.33.4", output_dir, false)
-        .await
-        .expect("Failed to generate k8s core types");
+    handle_k8s_core_import("v1.33.4", output_dir, false).await?;
 
     // Verify cross-version imports are generated
     // Check that v1alpha3 imports from v1
     let v1alpha3_path = output_dir.join("v1alpha3");
     if v1alpha3_path.exists() {
         // Find a file that should import from v1
-        let entries = fs::read_dir(&v1alpha3_path).expect("Failed to read v1alpha3 directory");
+        let entries = fs::read_dir(&v1alpha3_path)?;
 
         for entry in entries {
-            let entry = entry.expect("Failed to read directory entry");
-            let content = fs::read_to_string(entry.path()).expect("Failed to read file");
+            let entry = entry?;
+            let content = fs::read_to_string(entry.path())?;
 
             // Check if any v1alpha3 files import from v1
             if content.contains("import") && content.contains("v1/") {
                 // Found a cross-version import - test passes
-                return;
+                return Ok(());
             }
         }
     }
@@ -187,18 +185,19 @@ async fn test_k8s_core_import_uses_unified_pipeline() {
     // If no v1alpha3, check v1beta1
     let v1beta1_path = output_dir.join("v1beta1");
     if v1beta1_path.exists() {
-        let entries = fs::read_dir(&v1beta1_path).expect("Failed to read v1beta1 directory");
+        let entries = fs::read_dir(&v1beta1_path)?;
 
         for entry in entries {
-            let entry = entry.expect("Failed to read directory entry");
-            let content = fs::read_to_string(entry.path()).expect("Failed to read file");
+            let entry = entry?;
+            let content = fs::read_to_string(entry.path())?;
 
             if content.contains("import") && content.contains("v1/") {
                 // Found a cross-version import - test passes
-                return;
+                return Ok(());
             }
         }
     }
+    Ok(())
 }
 
 #[test]
@@ -212,7 +211,7 @@ fn test_all_walkers_implement_trait() {
 }
 
 #[test]
-fn test_walker_cross_module_imports() {
+fn test_walker_cross_module_imports() -> Result<(), Box<dyn std::error::Error>> {
     // Test that walkers properly generate cross-module imports
     let crd_yaml = r#"
 apiVersion: apiextensions.k8s.io/v1
@@ -241,15 +240,14 @@ spec:
                 type: string
 "#;
 
-    let crd: amalgam_parser::crd::CRD =
-        serde_yaml::from_str(crd_yaml).expect("Failed to parse CRD YAML");
+    let crd: amalgam_parser::crd::CRD = serde_yaml::from_str(crd_yaml)?;
 
     // Convert the CRD schema to the expected format
     let schema = crd.spec.versions[0]
         .schema
         .as_ref()
         .map(|s| &s.openapi_v3_schema)
-        .expect("CRD should have schema");
+        .ok_or("CRD should have schema")?;
 
     let walker = CRDWalker::new("example.com");
     // The CRDWalker expects the full schema including openAPIV3Schema wrapper
@@ -262,7 +260,7 @@ spec:
             }),
         }],
     };
-    let ir = walker.walk(input).expect("Failed to walk CRD");
+    let ir = walker.walk(input)?;
 
     // Check that the IR contains proper imports
     for module in &ir.modules {
@@ -287,4 +285,5 @@ spec:
             }
         }
     }
+    Ok(())
 }

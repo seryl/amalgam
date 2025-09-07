@@ -1,6 +1,7 @@
 //! Integration test to verify all walkers use ImportPathCalculator correctly
 
-use amalgam_core::ImportPathCalculator;
+use amalgam_core::{ImportPathCalculator, ModuleRegistry};
+use std::sync::Arc;
 use amalgam_parser::walkers::{
     crd::{CRDInput, CRDVersion, CRDWalker},
     SchemaWalker,
@@ -130,7 +131,7 @@ fn test_import_path_calculator_walker_integration() {
 
 #[test]
 fn test_import_calculator_direct_usage() {
-    let calc = ImportPathCalculator::new();
+    let calc = ImportPathCalculator::new(Arc::new(ModuleRegistry::new()));
 
     // Test same package, same version
     let path = calc.calculate("k8s.io", "v1", "k8s.io", "v1", "pod");
@@ -160,7 +161,7 @@ fn test_walker_import_generation_consistency() {
     // This test verifies that different walkers generate consistent import paths
     // when using the ImportPathCalculator
 
-    let calc = ImportPathCalculator::new();
+    let calc = ImportPathCalculator::new(Arc::new(ModuleRegistry::new()));
 
     // Simulate what each walker should generate
     let test_cases = vec![

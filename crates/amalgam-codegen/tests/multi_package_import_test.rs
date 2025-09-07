@@ -3,8 +3,10 @@
 use amalgam_core::{
     ir::TypeDefinition,
     types::{Field, Type},
+    ModuleRegistry,
 };
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
 #[test]
 fn test_multi_package_alias_generation() {
@@ -79,7 +81,7 @@ fn test_deep_package_hierarchy() {
     // Test deep package hierarchies
     use amalgam_core::ImportPathCalculator;
 
-    let calc = ImportPathCalculator::new();
+    let calc = ImportPathCalculator::new(Arc::new(ModuleRegistry::new()));
 
     // Test: pkg.crossplane.io → apiextensions.crossplane.io → k8s.io
     let test_cases = vec![
@@ -131,7 +133,7 @@ fn test_version_mismatch_imports() {
     // Test imports with version mismatches between packages
     use amalgam_core::ImportPathCalculator;
 
-    let calc = ImportPathCalculator::new();
+    let calc = ImportPathCalculator::new(Arc::new(ModuleRegistry::new()));
 
     // CrossPlane v2 → k8s.io v1
     let path = calc.calculate(

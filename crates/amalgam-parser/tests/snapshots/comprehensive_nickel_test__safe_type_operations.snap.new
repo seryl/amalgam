@@ -8,12 +8,12 @@ SUCCESS: false
 OUTPUT:
 STDERR:
 error: non mergeable terms
-   ┌─ /Users/jtoft/src/ai/amalgam/examples/pkgs/k8s_io/resource/quantity.ncl:39:1
+   ┌─ /Users/jtoft/src/ai/amalgam/examples/pkgs/k8s_io/resource/Quantity.ncl:39:1
    │
 39 │ String
    │ ^^^^^^ cannot merge this expression
    │
-   ┌─ /Users/jtoft/src/ai/amalgam/test_comprehensive_temp_5660_1.ncl:21:31
+   ┌─ /Users/jtoft/src/ai/amalgam/test_comprehensive_temp_68348_0.ncl:21:31
    │
 21 │       k8s.resource.Quantity & "1Gi"
    │       ------------------------^^^^^
