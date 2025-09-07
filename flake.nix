@@ -21,12 +21,12 @@
           inherit system;
           config.allowUnfree = true;
         };
-        
+
         # Build Nickel with package support by overriding the derivation
         nickel-with-packages = pkgs.nickel.overrideAttrs (oldAttrs: {
           # Add package-experimental to the build features
           buildFeatures = (oldAttrs.buildFeatures or [ "default" ]) ++ [ "package-experimental" ];
-          
+
           # Update the pname to distinguish it
           pname = "nickel-with-packages";
         });
@@ -275,18 +275,18 @@
         # Release helper that validates everything before version bump
         release = pkgs.writeShellScriptBin "release" ''
           set -euo pipefail
-          
+
           # Color output
           RED='\033[0;31m'
           GREEN='\033[0;32m'
           YELLOW='\033[1;33m'
           NC='\033[0m' # No Color
-          
+
           BUMP_TYPE="''${1:-patch}"
-          
+
           echo -e "''${YELLOW}Starting release process for $BUMP_TYPE version bump...''${NC}"
           echo ""
-          
+
           # Step 1: Run CI checks
           echo -e "''${YELLOW}Step 1: Running CI checks...''${NC}"
           if ! ci-runner ci; then
@@ -294,7 +294,7 @@
             exit 1
           fi
           echo ""
-          
+
           # Step 2: Check snapshot tests
           echo -e "''${YELLOW}Step 2: Checking snapshot tests...''${NC}"
           if ! ${rustWithComponents}/bin/cargo insta test; then
@@ -303,29 +303,29 @@
           fi
           echo -e "''${GREEN}✓ Snapshot tests passed''${NC}"
           echo ""
-          
+
           # Step 3: Get current version
           CURRENT_VERSION=$(${pkgs.toml2json}/bin/toml2json < Cargo.toml | ${pkgs.jq}/bin/jq -r '.workspace.package.version')
           echo -e "''${GREEN}Current version: $CURRENT_VERSION''${NC}"
-          
+
           # Step 4: Bump version
           echo -e "''${YELLOW}Step 4: Bumping $BUMP_TYPE version...''${NC}"
           if ! version-bump $BUMP_TYPE; then
             echo -e "''${RED}✗ Failed to bump version!''${NC}"
             exit 1
           fi
-          
+
           # Get the new version
           NEW_VERSION=$(${pkgs.toml2json}/bin/toml2json < Cargo.toml | ${pkgs.jq}/bin/jq -r '.workspace.package.version')
           echo -e "''${GREEN}✓ Version bumped to $NEW_VERSION''${NC}"
           echo ""
-          
+
           # Step 5: Update Cargo.lock
           echo -e "''${YELLOW}Step 5: Updating Cargo.lock...''${NC}"
           ${rustWithComponents}/bin/cargo update
           echo -e "''${GREEN}✓ Cargo.lock updated''${NC}"
           echo ""
-          
+
           # Step 6: Check publish readiness
           echo -e "''${YELLOW}Step 6: Checking publish readiness...''${NC}"
           if ! publish check --skip-checks; then
@@ -334,20 +334,20 @@
           fi
           echo -e "''${GREEN}✓ Ready to publish''${NC}"
           echo ""
-          
+
           # Step 7: Commit changes
           echo -e "''${YELLOW}Step 7: Committing version bump...''${NC}"
           ${pkgs.git}/bin/git add -A
           ${pkgs.git}/bin/git commit -m "release: v$NEW_VERSION"
           echo -e "''${GREEN}✓ Changes committed''${NC}"
           echo ""
-          
+
           # Step 8: Tag the release
           echo -e "''${YELLOW}Step 8: Creating git tag...''${NC}"
           ${pkgs.git}/bin/git tag "v$NEW_VERSION"
           echo -e "''${GREEN}✓ Tagged as v$NEW_VERSION''${NC}"
           echo ""
-          
+
           echo -e "''${GREEN}🎉 Release v$NEW_VERSION prepared successfully!''${NC}"
           echo ""
           echo -e "''${YELLOW}Next steps:''${NC}"
@@ -453,7 +453,7 @@
             (craneLib.filterCargoSources path type) ||
             # Include test fixture files
             (builtins.match ".*/tests/fixtures/.*\\.yaml$" path != null) ||
-            # Include test snapshot files  
+            # Include test snapshot files
             (builtins.match ".*/tests/snapshots/.*\\.snap$" path != null) ||
             # Include any other test resources
             (builtins.match ".*/tests/.*\\.(toml|json|yaml|ncl)$" path != null);
@@ -494,12 +494,12 @@
           default = amalgam;
           amalgam = amalgam;
           nickel-with-packages = nickel-with-packages;
-          
+
           # Docker images
           amalgam-image = dockerImages.amalgamImage;
           packages-image = dockerImages.packagesImage;
           amalgam-layered = dockerImages.amalgamLayeredImage;
-          
+
           # Helper scripts for pushing images
           push-to-registry = dockerImages.pushToRegistry;
           push-with-skopeo = dockerImages.pushWithSkopeo;
@@ -568,7 +568,7 @@
             kubectl
             kind
 
-            # For testing generated Nickel files (with package support)
+            # For publishing Nickel packages (experimental)
             nickel-with-packages
 
           ]) ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [];
