@@ -2,5 +2,8 @@
 
 # NodeSwapStatus represents swap memory information.
 {
-  capacity | optional | Number | doc "Total amount of swap memory in bytes."
+  capacity
+     | Number
+     | doc "Total amount of swap memory in bytes."
+     | optional
 }

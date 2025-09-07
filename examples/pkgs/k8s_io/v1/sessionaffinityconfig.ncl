@@ -4,5 +4,8 @@ let clientIPConfig = import "./ClientIPConfig.ncl" in
 
 # SessionAffinityConfig represents the configurations of session affinity.
 {
-  clientIP | optional | clientIPConfig | doc "clientIP contains the configurations of Client IP based session affinity."
+  clientIP
+     | clientIPConfig
+     | doc "clientIP contains the configurations of Client IP based session affinity."
+     | optional
 }

@@ -2,6 +2,12 @@
 
 # PodDNSConfigOption defines DNS resolver options of a pod.
 {
-  name | optional | String | doc "Name is this DNS resolver option's name. Required.",
-  value | optional | String | doc "Value is this DNS resolver option's value."
+  name
+     | String
+     | doc "Name is this DNS resolver option's name. Required."
+     | optional,
+  value
+     | String
+     | doc "Value is this DNS resolver option's value."
+     | optional
 }

@@ -4,7 +4,9 @@ let parentReference = import "./ParentReference.ncl" in
 
 # IPAddressSpec describe the attributes in an IP Address.
 {
-  parentRef | parentReference | doc m%"
+  parentRef
+     | parentReference
+     | doc m%"
 ParentRef references the resource that an IPAddress is attached to. An IPAddress must reference a parent object.
 "%
 }

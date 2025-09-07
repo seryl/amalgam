@@ -2,7 +2,9 @@
 
 # ApplyConfiguration defines the desired configuration values of an object.
 {
-  expression | optional | String | doc m%"
+  expression
+     | String
+     | doc m%"
 expression will be evaluated by CEL to create an apply configuration. ref: https://github.com/google/cel-spec
 Apply configurations are declared in CEL using object initialization. For example, this CEL expression returns an apply configuration to set a single field:
 	Object{
@@ -23,4 +25,5 @@ CEL expressions have access to the contents of the API request, organized into C
 The `apiVersion`, `kind`, `metadata.name` and `metadata.generateName` are always accessible from the root of the object. No other metadata properties are accessible.
 Only property names of the form `[a-zA-Z_.-/][a-zA-Z0-9_.-/]*` are accessible. Required.
 "%
+     | optional
 }

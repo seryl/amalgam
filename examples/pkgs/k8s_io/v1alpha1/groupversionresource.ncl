@@ -2,7 +2,16 @@
 
 # The names of the group, the version, and the resource.
 {
-  group | optional | String | doc "The name of the group.",
-  resource | optional | String | doc "The name of the resource.",
-  version | optional | String | doc "The name of the version."
+  group
+     | String
+     | doc "The name of the group."
+     | optional,
+  resource
+     | String
+     | doc "The name of the resource."
+     | optional,
+  version
+     | String
+     | doc "The name of the version."
+     | optional
 }

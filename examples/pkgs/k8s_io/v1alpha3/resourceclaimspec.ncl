@@ -4,5 +4,8 @@ let deviceClaim = import "./DeviceClaim.ncl" in
 
 # ResourceClaimSpec defines what is being requested in a ResourceClaim and how to configure it.
 {
-  devices | optional | deviceClaim | doc "Devices defines how to request devices."
+  devices
+     | deviceClaim
+     | doc "Devices defines how to request devices."
+     | optional
 }

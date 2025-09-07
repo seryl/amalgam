@@ -2,6 +2,12 @@
 
 # Preconditions must be fulfilled before an operation (update, delete, etc.) is carried out.
 {
-  resourceVersion | optional | String | doc "Specifies the target ResourceVersion",
-  uid | optional | String | doc "Specifies the target UID."
+  resourceVersion
+     | String
+     | doc "Specifies the target ResourceVersion"
+     | optional,
+  uid
+     | String
+     | doc "Specifies the target UID."
+     | optional
 }

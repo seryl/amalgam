@@ -4,6 +4,12 @@ let nodeRuntimeHandlerFeatures = import "./NodeRuntimeHandlerFeatures.ncl" in
 
 # NodeRuntimeHandler is a set of runtime handler information.
 {
-  features | optional | nodeRuntimeHandlerFeatures | doc "Supported features.",
-  name | optional | String | doc "Runtime handler name. Empty for the default runtime handler."
+  features
+     | nodeRuntimeHandlerFeatures
+     | doc "Supported features."
+     | optional,
+  name
+     | String
+     | doc "Runtime handler name. Empty for the default runtime handler."
+     | optional
 }

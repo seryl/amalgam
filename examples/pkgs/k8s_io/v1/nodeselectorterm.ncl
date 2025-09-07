@@ -4,6 +4,12 @@ let nodeSelectorRequirement = import "./NodeSelectorRequirement.ncl" in
 
 # A null or empty node selector term matches no objects. The requirements of them are ANDed. The TopologySelectorTerm type implements a subset of the NodeSelectorTerm.
 {
-  matchExpressions | optional | Array nodeSelectorRequirement | doc "A list of node selector requirements by node's labels.",
-  matchFields | optional | Array nodeSelectorRequirement | doc "A list of node selector requirements by node's fields."
+  matchExpressions
+     | Array nodeSelectorRequirement
+     | doc "A list of node selector requirements by node's labels."
+     | optional,
+  matchFields
+     | Array nodeSelectorRequirement
+     | doc "A list of node selector requirements by node's fields."
+     | optional
 }

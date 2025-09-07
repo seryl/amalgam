@@ -2,5 +2,7 @@
 
 # SleepAction describes a "sleep" action.
 {
-  seconds | Number | doc "Seconds is the number of seconds to sleep."
+  seconds
+     | Number
+     | doc "Seconds is the number of seconds to sleep."
 }

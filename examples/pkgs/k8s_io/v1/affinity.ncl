@@ -6,11 +6,20 @@ let podAntiAffinity = import "./PodAntiAffinity.ncl" in
 
 # Affinity is a group of affinity scheduling rules.
 {
-  nodeAffinity | optional | nodeAffinity | doc "Describes node affinity scheduling rules for the pod.",
-  podAffinity | optional | podAffinity | doc m%"
+  nodeAffinity
+     | nodeAffinity
+     | doc "Describes node affinity scheduling rules for the pod."
+     | optional,
+  podAffinity
+     | podAffinity
+     | doc m%"
 Describes pod affinity scheduling rules (e.g. co-locate this pod in the same node, zone, etc. as some other pod(s)).
-"%,
-  podAntiAffinity | optional | podAntiAffinity | doc m%"
+"%
+     | optional,
+  podAntiAffinity
+     | podAntiAffinity
+     | doc m%"
 Describes pod anti-affinity scheduling rules (e.g. avoid putting this pod in the same node, zone, etc. as some other pod(s)).
 "%
+     | optional
 }

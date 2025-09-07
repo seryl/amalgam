@@ -17,11 +17,20 @@ let endpointPort = import "./EndpointPort.ncl" in
 # 
 # Deprecated: This API is deprecated in v1.33+.
 {
-  addresses | optional | Array endpointAddress | doc m%"
+  addresses
+     | Array endpointAddress
+     | doc m%"
 IP addresses which offer the related ports that are marked as ready. These endpoints should be considered safe for load balancers and clients to utilize.
-"%,
-  notReadyAddresses | optional | Array endpointAddress | doc m%"
+"%
+     | optional,
+  notReadyAddresses
+     | Array endpointAddress
+     | doc m%"
 IP addresses which offer the related ports but are not currently marked as ready because they have not yet finished starting, have recently failed a readiness check, or have recently failed a liveness check.
-"%,
-  ports | optional | Array endpointPort | doc "Port numbers available on the related IP addresses."
+"%
+     | optional,
+  ports
+     | Array endpointPort
+     | doc "Port numbers available on the related IP addresses."
+     | optional
 }

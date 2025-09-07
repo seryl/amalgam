@@ -5,8 +5,14 @@ let loadBalancerStatus = import "./LoadBalancerStatus.ncl" in
 
 # ServiceStatus represents the current status of a service.
 {
-  conditions | optional | Array condition | doc "Current service state",
-  loadBalancer | optional | loadBalancerStatus | doc m%"
+  conditions
+     | Array condition
+     | doc "Current service state"
+     | optional,
+  loadBalancer
+     | loadBalancerStatus
+     | doc m%"
 LoadBalancer contains the current status of the load-balancer, if one is present.
 "%
+     | optional
 }

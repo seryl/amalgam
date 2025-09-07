@@ -4,10 +4,16 @@ let rollingUpdateDeployment = import "./RollingUpdateDeployment.ncl" in
 
 # DeploymentStrategy describes how to replace existing pods with new ones.
 {
-  rollingUpdate | optional | rollingUpdateDeployment | doc m%"
+  rollingUpdate
+     | rollingUpdateDeployment
+     | doc m%"
 Rolling update config params. Present only if DeploymentStrategyType = RollingUpdate.
-"%,
-  type | optional | String | doc m%"
+"%
+     | optional,
+  type
+     | String
+     | doc m%"
 Type of deployment. Can be "Recreate" or "RollingUpdate". Default is RollingUpdate.
 "%
+     | optional
 }

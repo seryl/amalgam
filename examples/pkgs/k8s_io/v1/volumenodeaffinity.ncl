@@ -4,5 +4,8 @@ let nodeSelector = import "./NodeSelector.ncl" in
 
 # VolumeNodeAffinity defines constraints that limit what nodes this volume can be accessed from.
 {
-  required | optional | nodeSelector | doc "required specifies hard node constraints that must be met."
+  required
+     | nodeSelector
+     | doc "required specifies hard node constraints that must be met."
+     | optional
 }

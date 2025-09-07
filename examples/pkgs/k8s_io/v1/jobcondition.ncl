@@ -2,10 +2,26 @@
 
 # JobCondition describes current state of a job.
 {
-  lastProbeTime | optional | String | doc "Last time the condition was checked.",
-  lastTransitionTime | optional | String | doc "Last time the condition transit from one status to another.",
-  message | optional | String | doc "Human readable message indicating details about last transition.",
-  reason | optional | String | doc "(brief) reason for the condition's last transition.",
-  status | String | doc "Status of the condition, one of True, False, Unknown.",
-  type | String | doc "Type of job condition, Complete or Failed."
+  lastProbeTime
+     | String
+     | doc "Last time the condition was checked."
+     | optional,
+  lastTransitionTime
+     | String
+     | doc "Last time the condition transit from one status to another."
+     | optional,
+  message
+     | String
+     | doc "Human readable message indicating details about last transition."
+     | optional,
+  reason
+     | String
+     | doc "(brief) reason for the condition's last transition."
+     | optional,
+  status
+     | String
+     | doc "Status of the condition, one of True, False, Unknown.",
+  type
+     | String
+     | doc "Type of job condition, Complete or Failed."
 }

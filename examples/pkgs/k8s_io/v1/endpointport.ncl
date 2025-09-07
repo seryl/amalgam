@@ -2,7 +2,9 @@
 
 # EndpointPort is a tuple that describes a single port. Deprecated: This API is deprecated in v1.33+.
 {
-  appProtocol | optional | String | doc m%"
+  appProtocol
+     | String
+     | doc m%"
 The application protocol for this port. This is used as a hint for implementations to offer richer behavior for protocols that they understand. This field follows standard Kubernetes label syntax. Valid values are either:
 * Un-prefixed protocol names - reserved for IANA standard service names (as per RFC-6335 and https://www.iana.org/assignments/service-names).
 * Kubernetes-defined prefixed names:
@@ -10,10 +12,19 @@ The application protocol for this port. This is used as a hint for implementatio
   * 'kubernetes.io/ws'  - WebSocket over cleartext as described in https://www.rfc-editor.org/rfc/rfc6455
   * 'kubernetes.io/wss' - WebSocket over TLS as described in https://www.rfc-editor.org/rfc/rfc6455
 * Other protocols should use implementation-defined prefixed names such as mycompany.com/my-custom-protocol.
-"%,
-  name | optional | String | doc m%"
+"%
+     | optional,
+  name
+     | String
+     | doc m%"
 The name of this port.  This must match the 'name' field in the corresponding ServicePort. Must be a DNS_LABEL. Optional only if one port is defined.
-"%,
-  port | Number | doc "The port number of the endpoint.",
-  protocol | optional | String | doc "The IP protocol for this port. Must be UDP, TCP, or SCTP. Default is TCP."
+"%
+     | optional,
+  port
+     | Number
+     | doc "The port number of the endpoint.",
+  protocol
+     | String
+     | doc "The IP protocol for this port. Must be UDP, TCP, or SCTP. Default is TCP."
+     | optional
 }

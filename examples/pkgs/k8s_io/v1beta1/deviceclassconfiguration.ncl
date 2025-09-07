@@ -4,5 +4,8 @@ let opaqueDeviceConfiguration = import "./OpaqueDeviceConfiguration.ncl" in
 
 # DeviceClassConfiguration is used in DeviceClass.
 {
-  opaque | optional | opaqueDeviceConfiguration | doc "Opaque provides driver-specific configuration parameters."
+  opaque
+     | opaqueDeviceConfiguration
+     | doc "Opaque provides driver-specific configuration parameters."
+     | optional
 }

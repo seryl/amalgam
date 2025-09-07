@@ -4,5 +4,8 @@ let ingressLoadBalancerStatus = import "./IngressLoadBalancerStatus.ncl" in
 
 # IngressStatus describe the current state of the Ingress.
 {
-  loadBalancer | optional | ingressLoadBalancerStatus | doc "loadBalancer contains the current status of the load-balancer."
+  loadBalancer
+     | ingressLoadBalancerStatus
+     | doc "loadBalancer contains the current status of the load-balancer."
+     | optional
 }

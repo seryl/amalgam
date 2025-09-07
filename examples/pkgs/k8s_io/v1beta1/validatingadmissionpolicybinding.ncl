@@ -9,14 +9,26 @@ let validatingAdmissionPolicyBindingSpec = import "./ValidatingAdmissionPolicyBi
 # 
 # The CEL expressions of a policy must have a computed CEL cost below the maximum CEL budget. Each evaluation of the policy is given an independent CEL cost budget. Adding/removing policies, bindings, or params can not affect whether a given (policy, binding, param) combination is within its own CEL budget.
 {
-  apiVersion | optional | String | doc m%"
+  apiVersion
+     | String
+     | doc m%"
 APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
-"%,
-  kind | optional | String | doc m%"
+"%
+     | optional,
+  kind
+     | String
+     | doc m%"
 Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
-"%,
-  metadata | optional | objectMeta | doc m%"
+"%
+     | optional,
+  metadata
+     | objectMeta
+     | doc m%"
 Standard object metadata; More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata.
-"%,
-  spec | optional | validatingAdmissionPolicyBindingSpec | doc "Specification of the desired behavior of the ValidatingAdmissionPolicyBinding."
+"%
+     | optional,
+  spec
+     | validatingAdmissionPolicyBindingSpec
+     | doc "Specification of the desired behavior of the ValidatingAdmissionPolicyBinding."
+     | optional
 }

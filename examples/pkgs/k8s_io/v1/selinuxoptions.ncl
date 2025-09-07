@@ -2,8 +2,20 @@
 
 # SELinuxOptions are the labels to be applied to the container
 {
-  level | optional | String | doc "Level is SELinux level label that applies to the container.",
-  role | optional | String | doc "Role is a SELinux role label that applies to the container.",
-  type | optional | String | doc "Type is a SELinux type label that applies to the container.",
-  user | optional | String | doc "User is a SELinux user label that applies to the container."
+  level
+     | String
+     | doc "Level is SELinux level label that applies to the container."
+     | optional,
+  role
+     | String
+     | doc "Role is a SELinux role label that applies to the container."
+     | optional,
+  type
+     | String
+     | doc "Type is a SELinux type label that applies to the container."
+     | optional,
+  user
+     | String
+     | doc "User is a SELinux user label that applies to the container."
+     | optional
 }

@@ -4,7 +4,16 @@ let ingressPortStatus = import "./IngressPortStatus.ncl" in
 
 # IngressLoadBalancerIngress represents the status of a load-balancer ingress point.
 {
-  hostname | optional | String | doc "hostname is set for load-balancer ingress points that are DNS based.",
-  ip | optional | String | doc "ip is set for load-balancer ingress points that are IP based.",
-  ports | optional | Array ingressPortStatus | doc "ports provides information about the ports exposed by this LoadBalancer."
+  hostname
+     | String
+     | doc "hostname is set for load-balancer ingress points that are DNS based."
+     | optional,
+  ip
+     | String
+     | doc "ip is set for load-balancer ingress points that are IP based."
+     | optional,
+  ports
+     | Array ingressPortStatus
+     | doc "ports provides information about the ports exposed by this LoadBalancer."
+     | optional
 }

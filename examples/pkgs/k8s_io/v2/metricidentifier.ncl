@@ -4,8 +4,13 @@ let labelSelector = import "../v1/LabelSelector.ncl" in
 
 # MetricIdentifier defines the name and optionally selector for a metric
 {
-  name | String | doc "name is the name of the given metric",
-  selector | optional | labelSelector | doc m%"
+  name
+     | String
+     | doc "name is the name of the given metric",
+  selector
+     | labelSelector
+     | doc m%"
 selector is the string-encoded form of a standard kubernetes label selector for the given metric When set, it is passed as an additional parameter to the metrics server for more specific metrics scoping. When unset, just the metricName will be used to gather metrics.
 "%
+     | optional
 }

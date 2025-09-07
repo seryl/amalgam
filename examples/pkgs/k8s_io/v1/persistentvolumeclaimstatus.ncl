@@ -5,10 +5,15 @@ let modifyVolumeStatus = import "./ModifyVolumeStatus.ncl" in
 
 # PersistentVolumeClaimStatus is the current status of a persistent volume claim.
 {
-  accessModes | optional | Array String | doc m%"
+  accessModes
+     | Array String
+     | doc m%"
 accessModes contains the actual access modes the volume backing the PVC has. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#access-modes-1
-"%,
-  allocatedResourceStatuses | optional | { .. } | doc m%"
+"%
+     | optional,
+  allocatedResourceStatuses
+     | { .. }
+     | doc m%"
 allocatedResourceStatuses stores status of resource being resized for the given PVC. Key names follow standard Kubernetes label syntax. Valid values are either:
 	* Un-prefixed keys:
 		- storage - the capacity of the volume.
@@ -36,8 +41,11 @@ For example: if expanding a PVC for more capacity - this field can be one of the
 When this field is not set, it means that no resize operation is in progress for the given PVC.
 A controller that receives PVC update with previously unknown resourceName or ClaimResourceStatus should ignore the update for the purpose it was designed. For example - a controller that only is responsible for resizing capacity of the volume, should ignore PVC updates that change other valid resources associated with PVC.
 This is an alpha field and requires enabling RecoverVolumeExpansionFailure feature.
-"%,
-  allocatedResources | optional | { .. } | doc m%"
+"%
+     | optional,
+  allocatedResources
+     | { .. }
+     | doc m%"
 allocatedResources tracks the resources allocated to a PVC including its capacity. Key names follow standard Kubernetes label syntax. Valid values are either:
 	* Un-prefixed keys:
 		- storage - the capacity of the volume.
@@ -46,16 +54,32 @@ Apart from above values - keys that are unprefixed or have kubernetes.io prefix 
 Capacity reported here may be larger than the actual capacity when a volume expansion operation is requested. For storage quota, the larger value from allocatedResources and PVC.spec.resources is used. If allocatedResources is not set, PVC.spec.resources alone is used for quota calculation. If a volume expansion capacity request is lowered, allocatedResources is only lowered if there are no expansion operations in progress and if the actual volume capacity is equal or lower than the requested capacity.
 A controller that receives PVC update with previously unknown resourceName should ignore the update for the purpose it was designed. For example - a controller that only is responsible for resizing capacity of the volume, should ignore PVC updates that change other valid resources associated with PVC.
 This is an alpha field and requires enabling RecoverVolumeExpansionFailure feature.
-"%,
-  capacity | optional | { .. } | doc "capacity represents the actual resources of the underlying volume.",
-  conditions | optional | Array persistentVolumeClaimCondition | doc m%"
+"%
+     | optional,
+  capacity
+     | { .. }
+     | doc "capacity represents the actual resources of the underlying volume."
+     | optional,
+  conditions
+     | Array persistentVolumeClaimCondition
+     | doc m%"
 conditions is the current Condition of persistent volume claim. If underlying persistent volume is being resized then the Condition will be set to 'Resizing'.
-"%,
-  currentVolumeAttributesClassName | optional | String | doc m%"
+"%
+     | optional,
+  currentVolumeAttributesClassName
+     | String
+     | doc m%"
 currentVolumeAttributesClassName is the current name of the VolumeAttributesClass the PVC is using. When unset, there is no VolumeAttributeClass applied to this PersistentVolumeClaim This is a beta field and requires enabling VolumeAttributesClass feature (off by default).
-"%,
-  modifyVolumeStatus | optional | modifyVolumeStatus | doc m%"
+"%
+     | optional,
+  modifyVolumeStatus
+     | modifyVolumeStatus
+     | doc m%"
 ModifyVolumeStatus represents the status object of ControllerModifyVolume operation. When this is unset, there is no ModifyVolume operation being attempted. This is a beta field and requires enabling VolumeAttributesClass feature (off by default).
-"%,
-  phase | optional | String | doc "phase represents the current phase of PersistentVolumeClaim."
+"%
+     | optional,
+  phase
+     | String
+     | doc "phase represents the current phase of PersistentVolumeClaim."
+     | optional
 }

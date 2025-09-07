@@ -4,5 +4,8 @@ let daemonEndpoint = import "./DaemonEndpoint.ncl" in
 
 # NodeDaemonEndpoints lists ports opened by daemons running on the Node.
 {
-  kubeletEndpoint | optional | daemonEndpoint | doc "Endpoint on which Kubelet is listening."
+  kubeletEndpoint
+     | daemonEndpoint
+     | doc "Endpoint on which Kubelet is listening."
+     | optional
 }

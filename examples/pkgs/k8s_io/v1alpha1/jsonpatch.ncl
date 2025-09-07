@@ -2,7 +2,9 @@
 
 # JSONPatch defines a JSON Patch.
 {
-  expression | optional | String | doc m%"
+  expression
+     | String
+     | doc m%"
 expression will be evaluated by CEL to create a [JSON patch](https://jsonpatch.com/). ref: https://github.com/google/cel-spec
 expression must return an array of JSONPatch values.
 For example, this CEL expression returns a JSON patch to conditionally modify a value:
@@ -44,4 +46,5 @@ CEL expressions have access to [Kubernetes CEL function libraries](https://kuber
 - 'jsonpatch.escapeKey' - Performs JSONPatch key escaping. '~' and  '/' are escaped as '~0' and `~1' respectively).
 Only property names of the form `[a-zA-Z_.-/][a-zA-Z0-9_.-/]*` are accessible. Required.
 "%
+     | optional
 }

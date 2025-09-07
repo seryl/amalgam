@@ -2,7 +2,9 @@
 
 # ModifyVolumeStatus represents the status object of ControllerModifyVolume operation
 {
-  status | String | doc m%"
+  status
+     | String
+     | doc m%"
 status is the status of the ControllerModifyVolume operation. It can be in any of following states:
  - Pending
    Pending indicates that the PersistentVolumeClaim cannot be modified due to unmet requirements, such as
@@ -14,7 +16,10 @@ status is the status of the ControllerModifyVolume operation. It can be in any o
 	  resolve the error, a valid VolumeAttributesClass needs to be specified.
 Note: New statuses can be added in the future. Consumers should check for unknown statuses and fail appropriately.
 "%,
-  targetVolumeAttributesClassName | optional | String | doc m%"
+  targetVolumeAttributesClassName
+     | String
+     | doc m%"
 targetVolumeAttributesClassName is the name of the VolumeAttributesClass the PVC currently being reconciled
 "%
+     | optional
 }

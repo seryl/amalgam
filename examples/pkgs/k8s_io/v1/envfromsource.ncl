@@ -5,9 +5,18 @@ let secretEnvSource = import "./SecretEnvSource.ncl" in
 
 # EnvFromSource represents the source of a set of ConfigMaps or Secrets
 {
-  configMapRef | optional | configMapEnvSource | doc "The ConfigMap to select from",
-  prefix | optional | String | doc m%"
+  configMapRef
+     | configMapEnvSource
+     | doc "The ConfigMap to select from"
+     | optional,
+  prefix
+     | String
+     | doc m%"
 Optional text to prepend to the name of each environment variable. Must be a C_IDENTIFIER.
-"%,
-  secretRef | optional | secretEnvSource | doc "The Secret to select from"
+"%
+     | optional,
+  secretRef
+     | secretEnvSource
+     | doc "The Secret to select from"
+     | optional
 }

@@ -7,10 +7,22 @@ let tCPSocketAction = import "./TCPSocketAction.ncl" in
 
 # LifecycleHandler defines a specific action that should be taken in a lifecycle hook. One and only one of the fields, except TCPSocket must be specified.
 {
-  exec | optional | execAction | doc "Exec specifies a command to execute in the container.",
-  httpGet | optional | hTTPGetAction | doc "HTTPGet specifies an HTTP GET request to perform.",
-  sleep | optional | sleepAction | doc "Sleep represents a duration that the container should sleep.",
-  tcpSocket | optional | tCPSocketAction | doc m%"
+  exec
+     | execAction
+     | doc "Exec specifies a command to execute in the container."
+     | optional,
+  httpGet
+     | hTTPGetAction
+     | doc "HTTPGet specifies an HTTP GET request to perform."
+     | optional,
+  sleep
+     | sleepAction
+     | doc "Sleep represents a duration that the container should sleep."
+     | optional,
+  tcpSocket
+     | tCPSocketAction
+     | doc m%"
 Deprecated. TCPSocket is NOT supported as a LifecycleHandler and kept for backward compatibility. There is no validation of this field and lifecycle hooks will fail at runtime when it is specified.
 "%
+     | optional
 }
