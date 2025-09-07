@@ -574,13 +574,16 @@
           ]) ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [];
 
           shellHook = ''
+            # Add simple alias for ci
+            alias ci='ci-runner ci'
+            
             echo "🦀 Amalgam Development Environment"
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             VERSION=$(${pkgs.toml2json}/bin/toml2json < Cargo.toml 2>/dev/null | ${pkgs.jq}/bin/jq -r '.workspace.package.version' || echo "unknown")
             echo "Version $VERSION"
             echo ""
             echo "Essential Commands:"
-            echo "  ci-runner ci         - Run complete test suite (tests, clippy, fmt)"
+            echo "  ci                   - Run complete test suite (tests, clippy, fmt)"
             echo "  fix                  - Auto-fix formatting and clippy issues"
             echo "  regenerate-examples  - Rebuild and regenerate example CRDs"
             echo "  release patch        - Bump version and create release"
@@ -588,7 +591,7 @@
             echo ""
             echo "Workflow:"
             echo "  1. fix                           # Auto-fix issues"
-            echo "  2. ci-runner ci                  # Validate everything"
+            echo "  2. ci                            # Validate everything"
             echo "  3. release [patch|minor|major]   # Create release"
             echo "  4. publish                       # Publish to crates.io"
             echo "  5. git push && git push --tags  # Push to GitHub"

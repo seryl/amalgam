@@ -7,19 +7,19 @@ SUCCESS: false
 OUTPUT:
 STDERR:
 error: unexpected token
-   ┌─ /Users/jtoft/src/ai/amalgam/test_comprehensive_temp_16633_1.ncl:19:7
+   ┌─ /Users/jtoft/src/ai/amalgam/test_comprehensive_temp_38022_0.ncl:19:7
    │
 19 │       let k8s = import "examples/pkgs/k8s_io/mod.ncl" in
    │       ^^^
 
 error: unexpected token
-   ┌─ /Users/jtoft/src/ai/amalgam/test_comprehensive_temp_16633_1.ncl:21:82
+   ┌─ /Users/jtoft/src/ai/amalgam/test_comprehensive_temp_38022_0.ncl:21:82
    │
 21 │         label_selector = k8s.v1.LabelSelector & { matchLabels = { app = "test" } },
    │                                                                                  ^
 
 error: unexpected token
-   ┌─ /Users/jtoft/src/ai/amalgam/test_comprehensive_temp_16633_1.ncl:21:83
+   ┌─ /Users/jtoft/src/ai/amalgam/test_comprehensive_temp_38022_0.ncl:21:83
    │
 21 │         label_selector = k8s.v1.LabelSelector & { matchLabels = { app = "test" } },
    │                                                                                   ^

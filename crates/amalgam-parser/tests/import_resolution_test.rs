@@ -260,7 +260,7 @@ fn test_import_path_calculation() -> Result<(), Box<dyn std::error::Error>> {
             .ok_or("Failed to get parent directory")?;
 
     let import_path = type_ref.import_path("example.io", "v1");
-    assert_eq!(import_path, "../../k8s_io/v1/objectmeta.ncl");
+    assert_eq!(import_path, "../../k8s_io/v1/ObjectMeta.ncl");
 
     let alias = type_ref.module_alias();
     assert_eq!(alias, "k8s_io_v1");

@@ -191,11 +191,11 @@ fn test_package_structure_and_import_paths() -> Result<(), Box<dyn std::error::E
     validate_general_import_patterns(examples_dir, &mut validation_errors);
 
     if !validation_errors.is_empty() {
-        return Err(
+        return Err(format!(
             "Package structure regression test failed with {} errors:\n{}",
-            validation_errors.len(.into()),
+            validation_errors.len(),
             validation_errors.join("\n")
-        );
+        ).into());
     }
     Ok(())
 }
@@ -579,11 +579,11 @@ fn test_package_manifest_structure() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     if !validation_errors.is_empty() {
-        return Err(
+        return Err(format!(
             "Package manifest validation failed with {} errors:\n{}",
-            validation_errors.len(.into()),
+            validation_errors.len(),
             validation_errors.join("\n")
-        );
+        ).into());
     }
     Ok(())
 }

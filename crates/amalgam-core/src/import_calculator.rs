@@ -101,22 +101,22 @@ impl ImportPathCalculator {
 
         // Generate alias based on the context
         let alias = if from_group == to_group {
-            // Same package: just use the type name
-            to_type.to_lowercase()
+            // Same package: just use the type name in camelCase
+            Self::to_camel_case(to_type)
         } else {
             // Different package: include version if not default
             if to_version == "v1" {
                 format!(
                     "{}_{}",
                     Self::group_to_alias(to_group),
-                    to_type.to_lowercase()
+                    Self::to_camel_case(to_type)
                 )
             } else {
                 format!(
                     "{}_{}_{}",
                     Self::group_to_alias(to_group),
                     to_version,
-                    to_type.to_lowercase()
+                    Self::to_camel_case(to_type)
                 )
             }
         };
@@ -151,6 +151,15 @@ impl ImportPathCalculator {
             "apiextensions.crossplane.io" => "crossplane",
             "" => "core",
             g => g.split('.').next().unwrap_or(g),
+        }
+    }
+
+    /// Convert PascalCase to camelCase for import variable names
+    fn to_camel_case(name: &str) -> String {
+        let mut chars = name.chars();
+        match chars.next() {
+            None => String::new(),
+            Some(first) => first.to_lowercase().collect::<String>() + chars.as_str(),
         }
     }
 
@@ -282,14 +291,14 @@ mod tests {
 
         // Same package
         let (path, alias) = calc.calculate_with_alias("k8s.io", "v1", "k8s.io", "v1", "Pod");
-        assert_eq!(path, "./pod.ncl");
+        assert_eq!(path, "./Pod.ncl");
         assert_eq!(alias, "pod");
 
         // Cross-version
         let (path, alias) =
             calc.calculate_with_alias("k8s.io", "v1beta1", "k8s.io", "v1", "ObjectMeta");
-        assert_eq!(path, "../v1/objectmeta.ncl");
-        assert_eq!(alias, "objectmeta");
+        assert_eq!(path, "../v1/ObjectMeta.ncl");
+        assert_eq!(alias, "objectMeta");
 
         // Cross-package
         let (path, alias) = calc.calculate_with_alias(
@@ -299,8 +308,8 @@ mod tests {
             "v1",
             "ObjectMeta",
         );
-        assert!(path.contains("objectmeta.ncl"));
-        assert_eq!(alias, "k8s_objectmeta");
+        assert!(path.contains("ObjectMeta.ncl"));
+        assert_eq!(alias, "k8s_objectMeta");
     }
 
     #[test]

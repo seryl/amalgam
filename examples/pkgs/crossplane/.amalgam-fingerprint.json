@@ -1,10 +1,10 @@
 {
   "content_hash": "cd372fb85148700fa88095e3492d3f9f5beb43e555e5ff26d95f5a6adc36f8e6",
   "metadata_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "combined_hash": "058d1a7b6974ddfd6e96b4b82846ed8b40509b12a6229fffa103e62cbf76cf17",
-  "output_hash": "dd66b6c83684848a3b131b434cfd9fae604fcd67b7d0d78dc05fbcf03f67d6ae",
+  "combined_hash": "cc9a70f9d989f85677521b9ea1d67f5d216e918e6dac055d58a0f61a65b6f7ba",
+  "output_hash": "1e0e79fccc0533e384bd1e25e9e6f48cf36847df46d5e5d776ec0a37083d0da7",
   "manifest_hash": "9e80c7051f76686cc88109ee4285d9f08939008616fff9fbff4da310945f8923",
-  "created_at": "2025-09-07T02:05:25.028834Z",
+  "created_at": "2025-09-07T02:53:30.062565Z",
   "source_info": {
     "UrlCollection": {
       "base_url": "https://github.com/crossplane/crossplane/tree/v2.0.2/cluster/crds@v2.0.2",
@@ -31,7 +31,7 @@
     "apiextensions.crossplane.io/crossplane/Usage.ncl": "62076f62643bfa54ef3bc0b6591178020e20a8a57308e82342a01a187a6906d0",
     "apiextensions.crossplane.io/crossplane/mod.ncl": "a4b96501294fbf4abaf332d178f73d7ba94765be4aae0b20b0ac0bcd67e70738",
     "apiextensions.crossplane.io/mod.ncl": "4af1da508b08481f6e2d5937e3f661c8216158638a00170017a1fe37100f4853",
-    "mod.ncl": "bda508ab306e9887f0c087faf421b51afe6f2d3cd43bf4fdeb49377110c97fe2",
+    "mod.ncl": "3ae69174084b229f56295bdf6f582dde75338fd7810660d02184ae078bc54ba5",
     "ops.crossplane.io/crossplane/CronOperation.ncl": "1a57cc240a91f6a090300602cc6ee6c21e2ef9c3eb7b7656f085fc5c0cef144e",
     "ops.crossplane.io/crossplane/Operation.ncl": "1f2a1c1290cb5855c08013c7ccb8d0518aa37eedec4ec593ab0c2d36cbe41ab9",
     "ops.crossplane.io/crossplane/WatchOperation.ncl": "3c25ee1617732e7598315778a00fcb518031defd95f2406144548b111ccc4d2d",
