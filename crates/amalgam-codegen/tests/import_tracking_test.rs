@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 #[test]
-fn test_import_tracking_same_module_references() {
+fn test_import_tracking_same_module_references() -> Result<(), Box<dyn std::error::Error>> {
     // Create an IR with two types where one references the other
     let ir = IR {
         modules: vec![Module {
@@ -65,7 +65,7 @@ fn test_import_tracking_same_module_references() {
     // Use the new method
     let (output, import_map) = codegen
         .generate_with_import_tracking(&ir)
-        .expect("Should generate code");
+        ?;
 
     println!("=== Generated Output ===");
     println!("{}", output);
@@ -94,4 +94,5 @@ fn test_import_tracking_same_module_references() {
         "Import should be for same-version: {}",
         import_str
     );
+    Ok(())
 }

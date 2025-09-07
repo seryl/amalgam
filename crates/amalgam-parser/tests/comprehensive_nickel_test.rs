@@ -149,7 +149,7 @@ fn test_objectmeta_file_structure() -> Result<(), Box<dyn std::error::Error>> {
 
 /// Test comprehensive package usage including cross-version references
 #[test]
-fn test_comprehensive_package_usage() {
+fn test_comprehensive_package_usage() -> Result<(), Box<dyn std::error::Error>> {
     let test_code = r#"
 # Comprehensive test of regenerated K8s packages
 let k8s = import "examples/pkgs/k8s_io/mod.ncl" in
@@ -257,11 +257,12 @@ let k8s = import "examples/pkgs/k8s_io/mod.ncl" in
     // This test documents current behavior - some types may have missing dependencies
     // but the core functionality should work
     println!("Comprehensive test completed. Success: {}", success);
+    Ok(())
 }
 
 /// Test safe type operations that should always work
 #[test]
-fn test_safe_type_operations() {
+fn test_safe_type_operations() -> Result<(), Box<dyn std::error::Error>> {
     let test_code = r#"
 # Test only safe types that don't have dependency issues
 let k8s = import "examples/pkgs/k8s_io/mod.ncl" in
@@ -317,11 +318,12 @@ let k8s = import "examples/pkgs/k8s_io/mod.ncl" in
         "Safe type operations success: {} (failures expected due to missing imports)",
         success
     );
+    Ok(())
 }
 
 /// Test import debugging scenarios
 #[test]
-fn test_import_debugging() {
+fn test_import_debugging() -> Result<(), Box<dyn std::error::Error>> {
     let test_code = r#"
 # Debug test to validate import patterns work correctly
 {
@@ -385,4 +387,5 @@ fn test_import_debugging() {
         "Import debugging success: {} (failures expected due to missing imports)",
         success
     );
+    Ok(())
 }

@@ -7,19 +7,18 @@ static INIT: Once = Once::new();
 static mut PACKAGES_GENERATED: bool = false;
 
 /// Get the project root directory
-fn project_root() -> PathBuf {
+fn project_root() -> Result<PathBuf, Box<dyn std::error::Error>> {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     PathBuf::from(manifest_dir)
         .parent()
-        .unwrap()
-        .parent()
-        .unwrap()
-        .to_path_buf()
+        .and_then(|p| p.parent())
+        .map(|p| p.to_path_buf())
+        .ok_or_else(|| "Failed to find project root".into())
 }
 
 /// Get the examples directory
-fn examples_dir() -> PathBuf {
-    project_root().join("examples")
+fn examples_dir() -> Result<PathBuf, Box<dyn std::error::Error>> {
+    Ok(project_root()?.join("examples"))
 }
 
 /// Helper to run amalgam command
@@ -53,40 +52,50 @@ fn check_nickel_available() -> bool {
 }
 
 /// Clean up and prepare examples directory for testing
-fn ensure_test_packages_generated() -> PathBuf {
-    let examples = examples_dir();
+fn ensure_test_packages_generated() -> Result<PathBuf, Box<dyn std::error::Error>> {
+    let examples = examples_dir()?;
     let packages_dir = examples.join("pkgs_test");
+    let mut generation_error: Option<String> = None;
 
     INIT.call_once(|| {
         let _ = fs::remove_dir_all(&packages_dir);
-        fs::create_dir_all(&packages_dir).expect("Failed to create pkgs_test directory");
+        if let Err(e) = fs::create_dir_all(&packages_dir) {
+            generation_error = Some(format!("Failed to create pkgs_test directory: {}", e));
+            return;
+        }
 
         let k8s_dir = packages_dir.join("k8s_io");
         println!("Generating k8s_io package at {:?}", k8s_dir);
-        let result = run_amalgam(&[
-            "import",
-            "k8s-core",
-            "--version",
-            "v1.33.4",
-            "--output",
-            k8s_dir.to_str().unwrap(),
-        ]);
-        if let Err(e) = result {
-            panic!("Failed to generate k8s_io package: {:?}", e);
+        let k8s_output = k8s_dir.to_str().ok_or("Invalid path".to_string()).and_then(|path| {
+            run_amalgam(&[
+                "import",
+                "k8s-core",
+                "--version",
+                "v1.33.4",
+                "--output",
+                path,
+            ])
+        });
+        if let Err(e) = k8s_output {
+            generation_error = Some(format!("Failed to generate k8s_io package: {:?}", e));
+            return;
         }
 
         let crossplane_dir = packages_dir.join("crossplane");
         println!("Generating crossplane package at {:?}", crossplane_dir);
-        let result = run_amalgam(&[
-            "import",
-            "url",
-            "--url",
-            "https://github.com/crossplane/crossplane/tree/v1.14.5/cluster/crds",
-            "--output",
-            crossplane_dir.to_str().unwrap(),
-        ]);
-        if let Err(e) = result {
-            panic!("Failed to generate crossplane package: {:?}", e);
+        let crossplane_output = crossplane_dir.to_str().ok_or("Invalid path".to_string()).and_then(|path| {
+            run_amalgam(&[
+                "import",
+                "url",
+                "--url",
+                "https://github.com/crossplane/crossplane/tree/v1.14.5/cluster/crds",
+                "--output",
+                path,
+            ])
+        });
+        if let Err(e) = crossplane_output {
+            generation_error = Some(format!("Failed to generate crossplane package: {:?}", e));
+            return;
         }
 
         unsafe {
@@ -95,18 +104,22 @@ fn ensure_test_packages_generated() -> PathBuf {
         println!("✓ Test packages generated successfully");
     });
 
+    if let Some(error) = generation_error {
+        return Err(error.into());
+    }
+
     unsafe {
         if !PACKAGES_GENERATED {
-            panic!("Package generation failed");
+            return Err("Package generation failed".into());
         }
     }
 
-    packages_dir
+    Ok(packages_dir)
 }
 
 #[test]
-fn test_k8s_package_structure() {
-    let packages_dir = ensure_test_packages_generated();
+fn test_k8s_package_structure() -> Result<(), Box<dyn std::error::Error>> {
+    let packages_dir = ensure_test_packages_generated()?;
     let k8s_dir = packages_dir.join("k8s_io");
 
     // Verify package structure
@@ -119,8 +132,7 @@ fn test_k8s_package_structure() {
 
     // Check if Nickel package manifest was generated (optional)
     if k8s_dir.join("Nickel-pkg.ncl").exists() {
-        let manifest =
-            fs::read_to_string(k8s_dir.join("Nickel-pkg.ncl")).expect("Failed to read manifest");
+        let manifest = fs::read_to_string(k8s_dir.join("Nickel-pkg.ncl"))?;
 
         assert!(
             manifest.contains("name = \"k8s_io\"") || manifest.contains("name = \"k8s-io\""),
@@ -129,24 +141,25 @@ fn test_k8s_package_structure() {
     }
 
     println!("✓ k8s_io package structure validated");
+    Ok(())
 }
 
 #[test]
-fn test_generate_crossplane_package_with_k8s_dependency() {
-    let packages_dir = ensure_test_packages_generated();
+fn test_generate_crossplane_package_with_k8s_dependency() -> Result<(), Box<dyn std::error::Error>> {
+    let packages_dir = ensure_test_packages_generated()?;
 
     let k8s_dir = packages_dir.join("k8s_io");
     if !k8s_dir.join("Nickel-pkg.ncl").exists() {
         println!("Generating k8s_io package first...");
+        let k8s_path = k8s_dir.to_str().ok_or("Invalid k8s_dir path")?;
         run_amalgam(&[
             "import",
             "k8s-core",
             "--version",
             "v1.33.4",
             "--output",
-            k8s_dir.to_str().unwrap(),
-        ])
-        .expect("Failed to generate k8s_io package");
+            k8s_path,
+        ])?;
     }
 
     // Generate crossplane package
@@ -154,22 +167,17 @@ fn test_generate_crossplane_package_with_k8s_dependency() {
 
     println!("Generating crossplane package at {:?}", crossplane_dir);
 
-    let result = run_amalgam(&[
+    let crossplane_path = crossplane_dir.to_str().ok_or("Invalid crossplane_dir path")?;
+    run_amalgam(&[
         "import",
         "url",
         "--url",
         "https://raw.githubusercontent.com/crossplane/crossplane/master/cluster/crds/apiextensions.crossplane.io_compositions.yaml",
         "--output",
-        crossplane_dir.to_str().unwrap(),
+        crossplane_path,
         "--package",
         "crossplane",
-    ]);
-
-    assert!(
-        result.is_ok(),
-        "Failed to generate crossplane package: {:?}",
-        result
-    );
+    ])?;
 
     // Verify package structure
     assert!(crossplane_dir.join("mod.ncl").exists(), "Missing mod.ncl");
@@ -184,8 +192,7 @@ fn test_generate_crossplane_package_with_k8s_dependency() {
 
     // Check if Nickel package manifest was generated (optional)
     if crossplane_dir.join("Nickel-pkg.ncl").exists() {
-        let manifest = fs::read_to_string(crossplane_dir.join("Nickel-pkg.ncl"))
-            .expect("Failed to read manifest");
+        let manifest = fs::read_to_string(crossplane_dir.join("Nickel-pkg.ncl"))?;
 
         // The manifest generation is optional, but if it exists, check it's valid
         assert!(
@@ -195,11 +202,12 @@ fn test_generate_crossplane_package_with_k8s_dependency() {
     }
 
     println!("✓ crossplane package generated successfully with k8s_io dependency");
+    Ok(())
 }
 
 #[test]
-fn test_create_app_using_packages() {
-    let packages_dir = ensure_test_packages_generated();
+fn test_create_app_using_packages() -> Result<(), Box<dyn std::error::Error>> {
+    let packages_dir = ensure_test_packages_generated()?;
 
     // Both packages are already generated by ensure_test_packages_generated()
     let _k8s_dir = packages_dir.join("k8s_io");
@@ -207,7 +215,7 @@ fn test_create_app_using_packages() {
 
     // Create test app that uses both packages
     let test_app_dir = packages_dir.join("test_app");
-    fs::create_dir_all(&test_app_dir).expect("Failed to create test app dir");
+    fs::create_dir_all(&test_app_dir)?;
 
     // Create app manifest that depends on both packages
     let app_manifest = r#"{
@@ -222,8 +230,7 @@ fn test_create_app_using_packages() {
 } | std.package.Manifest
 "#;
 
-    fs::write(test_app_dir.join("Nickel-pkg.ncl"), app_manifest)
-        .expect("Failed to write app manifest");
+    fs::write(test_app_dir.join("Nickel-pkg.ncl"), app_manifest)?;
 
     // Create main.ncl that uses both packages
     let main_content = r#"# Test application using amalgam-generated packages
@@ -295,7 +302,7 @@ let crossplane = import crossplane in
 }
 "#;
 
-    fs::write(test_app_dir.join("main.ncl"), main_content).expect("Failed to write main.ncl");
+    fs::write(test_app_dir.join("main.ncl"), main_content)?;
 
     println!("✓ Test app created at {:?}", test_app_dir);
 
@@ -338,20 +345,22 @@ let crossplane = import crossplane in
     println!("  crossplane/   - Crossplane CRD types");
     println!("  test_app/     - Example app using both packages");
     println!("\nThese packages can be tested as if they were published to nickel-mine!");
+    Ok(())
 }
 
 #[test]
-fn test_full_package_workflow() {
+fn test_full_package_workflow() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n🚀 Running full package generation workflow...\n");
 
     // Ensure packages are generated
-    ensure_test_packages_generated();
+    ensure_test_packages_generated()?;
 
     // Run validation tests
-    test_k8s_package_structure();
-    test_generate_crossplane_package_with_k8s_dependency();
-    test_create_app_using_packages();
+    test_k8s_package_structure()?;
+    test_generate_crossplane_package_with_k8s_dependency()?;
+    test_create_app_using_packages()?;
 
     println!("\n✅ All package tests completed successfully!");
     println!("\nPackages are available in examples/pkgs/ for manual testing.");
+    Ok(())
 }

@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 /// Test: Type with multiple dependencies from same module
 #[test]
-fn test_type_with_multiple_same_module_deps() {
+fn test_type_with_multiple_same_module_deps() -> Result<(), Box<dyn std::error::Error>> {
     // Create referenced types first
     let container = TypeDefinition {
         name: "Container".to_string(),
@@ -109,7 +109,7 @@ fn test_type_with_multiple_same_module_deps() {
     let mut codegen = amalgam_codegen::nickel::NickelCodegen::new(Arc::new(ModuleRegistry::new()));
     let output = codegen
         .generate(&ir)
-        .expect("Code generation should succeed");
+        ?;
     
     // Check that we have all the types defined
     assert!(output.contains("Container"), "Should have Container type");
@@ -124,11 +124,12 @@ fn test_type_with_multiple_same_module_deps() {
         "PodSpec should reference EphemeralContainer");
     assert!(output.contains("volume | Volume") || output.contains("volume | optional | Volume"), 
         "PodSpec should reference Volume");
+    Ok(())
 }
 
 /// Test: Cross-version import chain (v1alpha3 -> v1beta1 -> v1)
 #[test]
-fn test_cross_version_import_chain() {
+fn test_cross_version_import_chain() -> Result<(), Box<dyn std::error::Error>> {
     // Create types that form a cross-version dependency chain
     let v1_type = TypeDefinition {
         name: "CoreType".to_string(),
@@ -214,7 +215,7 @@ fn test_cross_version_import_chain() {
     let mut codegen = amalgam_codegen::nickel::NickelCodegen::new(Arc::new(ModuleRegistry::new()));
     let output = codegen
         .generate(&ir)
-        .expect("Code generation should succeed");
+        ?;
     
     // Verify all types are present and references are correct
     assert!(output.contains("CoreType") || output.contains("String"), "Should have CoreType or String (since CoreType is String)");
@@ -223,11 +224,12 @@ fn test_cross_version_import_chain() {
     
     // Since these are cross-module references, they should be using Type::Reference with module
     // The codegen might handle these differently
+    Ok(())
 }
 
 /// Test: Circular dependency detection (should handle gracefully)
 #[test]
-fn test_circular_dependency_handling() {
+fn test_circular_dependency_handling() -> Result<(), Box<dyn std::error::Error>> {
     // Create two types that reference each other
     let mut type_a_fields = BTreeMap::new();
     type_a_fields.insert(
@@ -293,11 +295,12 @@ fn test_circular_dependency_handling() {
     let mut codegen = amalgam_codegen::nickel::NickelCodegen::new(Arc::new(ModuleRegistry::new()));
     let result = codegen.generate(&ir);
     assert!(result.is_ok(), "Should handle circular dependencies gracefully");
+    Ok(())
 }
 
 /// Test: Complex nested unions and arrays with references
 #[test]
-fn test_nested_unions_and_arrays() {
+fn test_nested_unions_and_arrays() -> Result<(), Box<dyn std::error::Error>> {
     let nested_type = TypeDefinition {
         name: "ComplexType".to_string(),
         ty: Type::Union {
@@ -354,7 +357,7 @@ fn test_nested_unions_and_arrays() {
     let mut codegen = amalgam_codegen::nickel::NickelCodegen::new(Arc::new(ModuleRegistry::new()));
     let output = codegen
         .generate(&ir)
-        .expect("Code generation should succeed");
+        ?;
     
     // The type should contain references to Container, Volume, and Pod
     assert!(
@@ -369,11 +372,12 @@ fn test_nested_unions_and_arrays() {
         output.contains("Pod"),
         "Should reference Pod type"
     );
+    Ok(())
 }
 
 /// Test: Cross-package imports (k8s.io + crossplane)
 #[test]
-fn test_cross_package_imports() {
+fn test_cross_package_imports() -> Result<(), Box<dyn std::error::Error>> {
     // Create a CrossPlane type that references k8s types
     let mut composition_fields = BTreeMap::new();
     
@@ -445,7 +449,7 @@ fn test_cross_package_imports() {
     let mut codegen = amalgam_codegen::nickel::NickelCodegen::new(Arc::new(ModuleRegistry::new()));
     let output = codegen
         .generate(&ir)
-        .expect("Code generation should succeed");
+        ?;
     
     // Should have both Composition and ObjectMeta types
     assert!(
@@ -456,11 +460,12 @@ fn test_cross_package_imports() {
         output.contains("ObjectMeta"),
         "Should have ObjectMeta type"
     );
+    Ok(())
 }
 
 /// Test: Runtime types (RawExtension) importing from v0
 #[test]
-fn test_runtime_types_v0_import() {
+fn test_runtime_types_v0_import() -> Result<(), Box<dyn std::error::Error>> {
     // Create a type that uses RawExtension (which should be in v0)
     let mut spec_fields = BTreeMap::new();
     
@@ -516,17 +521,18 @@ fn test_runtime_types_v0_import() {
     let mut codegen = amalgam_codegen::nickel::NickelCodegen::new(Arc::new(ModuleRegistry::new()));
     let output = codegen
         .generate(&ir)
-        .expect("Code generation should succeed");
+        ?;
     
     // Should have RawExtension reference
     assert!(
         output.contains("RawExtension"),
         "Should have RawExtension type reference"
     );
+    Ok(())
 }
 
 #[test]
-fn test_optional_and_array_references() {
+fn test_optional_and_array_references() -> Result<(), Box<dyn std::error::Error>> {
     // Test that optional and array types with references generate correct imports
     let mut fields = BTreeMap::new();
     
@@ -581,7 +587,7 @@ fn test_optional_and_array_references() {
     let mut codegen = amalgam_codegen::nickel::NickelCodegen::new(Arc::new(ModuleRegistry::new()));
     let output = codegen
         .generate(&ir)
-        .expect("Code generation should succeed");
+        ?;
     
     // The type should reference Container and Volume  
     assert!(
@@ -601,4 +607,5 @@ fn test_optional_and_array_references() {
         output.contains("optional | container.Container"),
         "Should have optional container.Container"
     );
+    Ok(())
 }

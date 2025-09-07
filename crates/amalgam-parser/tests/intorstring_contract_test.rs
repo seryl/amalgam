@@ -10,7 +10,7 @@ use std::fs;
 use tempfile::TempDir;
 
 #[test]
-fn test_intorstring_exports_directly_as_contract() {
+fn test_intorstring_exports_directly_as_contract() -> Result<(), Box<dyn std::error::Error>> {
     // Create a single-type module (IntOrString)
     let mut ir = IR::new();
     let module = Module {
@@ -31,7 +31,7 @@ fn test_intorstring_exports_directly_as_contract() {
 
     // Generate Nickel code
     let mut codegen = NickelCodegen::from_ir(&ir);
-    let result = codegen.generate(&ir).expect("Failed to generate code");
+    let result = codegen.generate(&ir)?;
 
     // The generated code should be just the type, not wrapped in a record
     assert!(
@@ -50,10 +50,11 @@ fn test_intorstring_exports_directly_as_contract() {
         !result.contains("IntOrString ="),
         "Should not have field assignment syntax"
     );
+    Ok(())
 }
 
 #[test]
-fn test_rawextension_exports_directly() {
+fn test_rawextension_exports_directly() -> Result<(), Box<dyn std::error::Error>> {
     // Create another single-type module (RawExtension)
     let mut ir = IR::new();
     let module = Module {
@@ -75,7 +76,7 @@ fn test_rawextension_exports_directly() {
 
     // Generate Nickel code
     let mut codegen = NickelCodegen::from_ir(&ir);
-    let result = codegen.generate(&ir).expect("Failed to generate code");
+    let result = codegen.generate(&ir)?;
 
     // Should export the record type directly, not wrapped in another record
     assert!(
@@ -86,10 +87,11 @@ fn test_rawextension_exports_directly() {
         result.contains("{..}") || result.contains("{ .. }"),
         "Open record syntax should be present"
     );
+    Ok(())
 }
 
 #[test]
-fn test_multi_type_module_uses_record_wrapper() {
+fn test_multi_type_module_uses_record_wrapper() -> Result<(), Box<dyn std::error::Error>> {
     // Create a multi-type module
     let mut ir = IR::new();
     let module = Module {
@@ -122,7 +124,7 @@ fn test_multi_type_module_uses_record_wrapper() {
 
     // Generate Nickel code
     let mut codegen = NickelCodegen::from_ir(&ir);
-    let result = codegen.generate(&ir).expect("Failed to generate code");
+    let result = codegen.generate(&ir)?;
 
     // Multi-type modules should be wrapped in a record
     assert!(
@@ -134,14 +136,15 @@ fn test_multi_type_module_uses_record_wrapper() {
         "Should have Container field"
     );
     assert!(result.contains("Pod ="), "Should have Pod field");
+    Ok(())
 }
 
 #[test]
-fn test_intorstring_contract_can_merge_with_string() {
+fn test_intorstring_contract_can_merge_with_string() -> Result<(), Box<dyn std::error::Error>> {
     // This test simulates how IntOrString should be usable as a contract
-    let temp_dir = TempDir::new().unwrap();
+    let temp_dir = TempDir::new()?;
     let k8s_dir = temp_dir.path().join("k8s_io").join("v0");
-    fs::create_dir_all(&k8s_dir).unwrap();
+    fs::create_dir_all(&k8s_dir)?;
 
     // Generate IntOrString as a single-type module
     let mut ir = IR::new();
@@ -162,10 +165,10 @@ fn test_intorstring_contract_can_merge_with_string() {
     let mut codegen = NickelCodegen::from_ir(&ir);
     let intorstring_content = codegen
         .generate(&ir)
-        .expect("Failed to generate IntOrString");
+        ?;
 
     // Write IntOrString file (should be just "String")
-    fs::write(k8s_dir.join("intorstring.ncl"), &intorstring_content).unwrap();
+    fs::write(k8s_dir.join("intorstring.ncl"), &intorstring_content)?;
 
     // Write mod.ncl that imports it
     let mod_content = r#"# k8s.io/v0 types
@@ -175,7 +178,7 @@ fn test_intorstring_contract_can_merge_with_string() {
   IntOrString = import "./intorstring.ncl",
 }
 "#;
-    fs::write(k8s_dir.join("mod.ncl"), mod_content).unwrap();
+    fs::write(k8s_dir.join("mod.ncl"), mod_content)?;
 
     // Write main k8s_io module
     let main_mod_content = r#"{
@@ -186,7 +189,7 @@ fn test_intorstring_contract_can_merge_with_string() {
         temp_dir.path().join("k8s_io").join("mod.ncl"),
         main_mod_content,
     )
-    .unwrap();
+    ?;
 
     // Create a test Nickel file that uses IntOrString as a contract
     let test_content = format!(
@@ -203,21 +206,22 @@ fn test_intorstring_contract_can_merge_with_string() {
     );
 
     let test_file = temp_dir.path().join("test.ncl");
-    fs::write(&test_file, test_content).unwrap();
+    fs::write(&test_file, test_content)?;
 
     // The test passes if the file structure is correct
     // In a real scenario, we'd run `nickel eval` on this file
     // For now, we verify the generated structure is correct
-    let generated_intorstring = fs::read_to_string(k8s_dir.join("intorstring.ncl")).unwrap();
+    let generated_intorstring = fs::read_to_string(k8s_dir.join("intorstring.ncl"))?;
     assert_eq!(
         generated_intorstring.trim(),
         "String",
         "IntOrString should be exported as just 'String'"
     );
+    Ok(())
 }
 
 #[test]
-fn test_module_with_constants_uses_record_wrapper() {
+fn test_module_with_constants_uses_record_wrapper() -> Result<(), Box<dyn std::error::Error>> {
     // Even a single type with constants should use record wrapper
     let mut ir = IR::new();
     let module = Module {
@@ -240,7 +244,7 @@ fn test_module_with_constants_uses_record_wrapper() {
     ir.add_module(module);
 
     let mut codegen = NickelCodegen::from_ir(&ir);
-    let result = codegen.generate(&ir).expect("Failed to generate code");
+    let result = codegen.generate(&ir)?;
 
     // Should be wrapped because it has constants
     assert!(
@@ -252,10 +256,11 @@ fn test_module_with_constants_uses_record_wrapper() {
         result.contains("DEFAULT_NAMESPACE ="),
         "Should have constant field"
     );
+    Ok(())
 }
 
 #[test]
-fn test_regression_prevention_intorstring_bug() {
+fn test_regression_prevention_intorstring_bug() -> Result<(), Box<dyn std::error::Error>> {
     // This test ensures the specific bug reported cannot happen again
     // Bug: IntOrString was { IntOrString = String } instead of just String
     // Impact: Could not use as contract: value | k8s.v0.IntOrString = "80%"
@@ -291,9 +296,7 @@ fn test_regression_prevention_intorstring_bug() {
         single_ir.add_module(module);
 
         let mut codegen = NickelCodegen::from_ir(&single_ir);
-        let result = codegen
-            .generate(&single_ir)
-            .unwrap_or_else(|_| panic!("Failed to generate {}", typename));
+        let result = codegen.generate(&single_ir)?;
 
         // Verify no record wrapper
         assert!(
@@ -307,4 +310,5 @@ fn test_regression_prevention_intorstring_bug() {
             typename
         );
     }
+    Ok(())
 }

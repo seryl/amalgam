@@ -157,12 +157,12 @@ fn validate_array_reference(line: &str) -> Result<(), Box<dyn std::error::Error>
 
 /// Check if a string is PascalCase
 fn is_pascal_case(s: &str) -> bool {
-    !s.is_empty() && s.chars().next().unwrap().is_uppercase()
+    !s.is_empty() && s.chars().next().map_or(false, |c| c.is_uppercase())
 }
 
 /// Check if a string is camelCase
 fn is_camel_case(s: &str) -> bool {
-    !s.is_empty() && s.chars().next().unwrap().is_lowercase()
+    !s.is_empty() && s.chars().next().map_or(false, |c| c.is_lowercase())
 }
 
 /// Convert PascalCase to camelCase

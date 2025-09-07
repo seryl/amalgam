@@ -72,21 +72,21 @@ fn create_v1alpha3_types() -> HashMap<String, TypeDefinition> {
 }
 
 #[test]
-fn test_v1alpha3_same_version_imports() {
+fn test_v1alpha3_same_version_imports() -> Result<(), Box<dyn std::error::Error>> {
     let types = create_v1alpha3_types();
 
     // Build registry and dependencies
     let registry = PackageWalkerAdapter::build_registry(&types, "k8s.io", "v1alpha3")
-        .expect("Should build registry");
+        ?;
     let deps = PackageWalkerAdapter::build_dependencies(&registry);
 
     // Generate IR
     let ir = PackageWalkerAdapter::generate_ir(registry, deps, "k8s.io", "v1alpha3")
-        .expect("Should generate IR");
+        ?;
 
     // Generate Nickel code
     let mut codegen = NickelCodegen::from_ir(&ir);
-    let nickel_code = codegen.generate(&ir).expect("Should generate Nickel");
+    let nickel_code = codegen.generate(&ir)?;
 
     // Verify deviceselector.ncl has correct import
     // The import should be "./celdeviceselector.ncl" for same version
@@ -100,10 +100,11 @@ fn test_v1alpha3_same_version_imports() {
         !nickel_code.contains("../v1alpha3/"),
         "Should not have cross-version import to same version"
     );
+    Ok(())
 }
 
 #[test]
-fn test_import_path_calculator_same_version() {
+fn test_import_path_calculator_same_version() -> Result<(), Box<dyn std::error::Error>> {
     let calc = ImportPathCalculator::new_standalone();
 
     // Test the specific v1alpha3 case
@@ -128,10 +129,11 @@ fn test_import_path_calculator_same_version() {
         "composition",
     );
     assert_eq!(path, "./composition.ncl");
+    Ok(())
 }
 
 #[test]
-fn test_same_version_multiple_references() {
+fn test_same_version_multiple_references() -> Result<(), Box<dyn std::error::Error>> {
     // Test a more complex scenario with multiple same-version references
     let mut types = HashMap::new();
 
@@ -200,10 +202,10 @@ fn test_same_version_multiple_references() {
 
     // Generate IR
     let registry = PackageWalkerAdapter::build_registry(&types, "test.io", "v1")
-        .expect("Should build registry");
+        ?;
     let deps = PackageWalkerAdapter::build_dependencies(&registry);
     let ir = PackageWalkerAdapter::generate_ir(registry, deps, "test.io", "v1")
-        .expect("Should generate IR");
+        ?;
 
     // Check that TypeA module has local imports for B and C
     for module in &ir.modules {
@@ -227,4 +229,5 @@ fn test_same_version_multiple_references() {
             }
         }
     }
+    Ok(())
 }

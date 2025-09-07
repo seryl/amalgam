@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 #[test]
-fn test_pipeline_debug() {
+fn test_pipeline_debug() -> Result<(), Box<dyn std::error::Error>> {
     // Create a simple IR with Lifecycle referencing LifecycleHandler
     let ir = IR {
         modules: vec![Module {
@@ -63,7 +63,7 @@ fn test_pipeline_debug() {
     let mut codegen = NickelCodegen::new(Arc::new(ModuleRegistry::new()));
     let (_output, import_map) = codegen
         .generate_with_import_tracking(&ir)
-        .expect("Should generate code");
+        ?;
 
     // Output the pipeline debug
     println!("=== Pipeline Debug Summary ===");
@@ -88,7 +88,7 @@ fn test_pipeline_debug() {
         "Lifecycle should have dependency analysis"
     );
 
-    let deps = lifecycle_deps.unwrap();
+    let deps = lifecycle_deps.ok_or("Lifecycle deps not found")?;
     assert!(
         !deps.dependencies_identified.is_empty(),
         "Lifecycle should have LifecycleHandler as dependency. Found: {:?}",
@@ -102,7 +102,8 @@ fn test_pipeline_debug() {
         "Lifecycle should have import generation record"
     );
     assert!(
-        !imports.unwrap().import_statements.is_empty(),
+        !imports.ok_or("Imports not found")?.import_statements.is_empty(),
         "Lifecycle should have import statements generated"
     );
+    Ok(())
 }

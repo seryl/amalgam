@@ -182,7 +182,7 @@ fn create_test_ir_with_k8s_refs() -> IR {
 }
 
 #[test]
-fn test_import_pipeline_with_debug_validation() {
+fn test_import_pipeline_with_debug_validation() -> Result<(), Box<dyn std::error::Error>> {
     // Create debug capture
     let capture = TestDebugCapture::new().with_export();
     
@@ -199,11 +199,11 @@ fn test_import_pipeline_with_debug_validation() {
 
     // Export debug info
     if let Some(path) = capture.config().export_path.as_ref() {
-        codegen.compilation_debug_mut().export_to_file(path).unwrap();
+        codegen.compilation_debug_mut().export_to_file(path)?;
     }
 
     // Validate the actual generated output
-    let generated = result.unwrap();
+    let generated = result?;
     
     // Check that module names are normalized
     assert!(generated.contains("# Module: k8s.io.v1") || generated.contains("k8s.io.v1"),
@@ -220,10 +220,11 @@ fn test_import_pipeline_with_debug_validation() {
     if std::env::var("RUST_TEST_VERBOSE").is_ok() {
         println!("Debug info exported to: {:?}", capture.config().export_path);
     }
+    Ok(())
 }
 
 #[test]
-fn test_same_module_import_resolution() {
+fn test_same_module_import_resolution() -> Result<(), Box<dyn std::error::Error>> {
     let capture = TestDebugCapture::new();
     let mut codegen = NickelCodegen::new(Arc::new(ModuleRegistry::new()))
         .with_debug_config(capture.config().clone());
@@ -276,12 +277,13 @@ fn test_same_module_import_resolution() {
     // The generated code should have an import for TypeB in TypeA's file
     // Since we're generating unified module output, we need to check
     // that the import tracking captured this dependency
-    let generated = result.unwrap();
+    let generated = result?;
     assert!(generated.contains("typeb.ncl"));
+    Ok(())
 }
 
 #[test] 
-fn test_underscore_module_name_handling() {
+fn test_underscore_module_name_handling() -> Result<(), Box<dyn std::error::Error>> {
     let capture = TestDebugCapture::new();
     let mut codegen = NickelCodegen::new(Arc::new(ModuleRegistry::new()))
         .with_debug_config(capture.config().clone());
@@ -308,9 +310,10 @@ fn test_underscore_module_name_handling() {
     assert!(result.is_ok());
 
     // Check that generation succeeded
-    let generated = result.unwrap();
+    let generated = result?;
     // For a single-type module with just a String type, the output will be just "String"
     // The normalization happens internally but doesn't show in the output for single-type modules
     assert!(generated == "String" || generated.contains("String"),
             "Generated output should be String for a simple String type. Got:\n{}", generated);
+    Ok(())
 }

@@ -162,11 +162,11 @@ fn create_complex_ref_crd() -> CRDInput {
 }
 
 #[test]
-fn test_basic_ref_resolution() {
+fn test_basic_ref_resolution() -> Result<(), Box<dyn std::error::Error>> {
     let crd = create_crd_with_refs();
     let walker = CRDWalker::new("test.example.io");
 
-    let ir = walker.walk(crd).expect("Should process CRD with refs");
+    let ir = walker.walk(crd)?;
 
     // Should have the main module (local types are embedded in it)
     assert!(!ir.modules.is_empty(), "Should have at least one module");
@@ -176,7 +176,7 @@ fn test_basic_ref_resolution() {
         .modules
         .iter()
         .find(|m| m.name.contains("test.example.io.v1"))
-        .expect("Should have main module");
+        .ok_or("Module not found")?;
 
     // Should have imports for K8s types
     assert!(
@@ -205,14 +205,15 @@ fn test_basic_ref_resolution() {
             println!("    imports: {}", import.path);
         }
     }
+    Ok(())
 }
 
 #[test]
-fn test_local_vs_external_refs() {
+fn test_local_vs_external_refs() -> Result<(), Box<dyn std::error::Error>> {
     let crd = create_crd_with_refs();
     let walker = CRDWalker::new("test.example.io");
 
-    let registry = walker.extract_types(&crd).expect("Should extract types");
+    let registry = walker.extract_types(&crd)?;
 
     assert!(!registry.types.is_empty(), "Registry should have types");
 
@@ -229,14 +230,15 @@ fn test_local_vs_external_refs() {
     });
 
     assert!(has_k8s_deps, "Should have dependencies on K8s types");
+    Ok(())
 }
 
 #[test]
-fn test_complex_ref_patterns() {
+fn test_complex_ref_patterns() -> Result<(), Box<dyn std::error::Error>> {
     let crd = create_complex_ref_crd();
     let walker = CRDWalker::new("complex.example.io");
 
-    let ir = walker.walk(crd).expect("Should process complex CRD refs");
+    let ir = walker.walk(crd)?;
 
     // Should handle chained references (TypeA -> TypeB)
     // But they might be embedded in the main type instead of separate modules
@@ -248,7 +250,7 @@ fn test_complex_ref_patterns() {
         .modules
         .iter()
         .find(|m| m.name.contains("complex.example.io.v1beta1"))
-        .expect("Should have main module");
+        .ok_or("Module not found")?;
 
     // Should have both local references and external K8s references
     let import_paths: Vec<&str> = main_module
@@ -286,14 +288,15 @@ fn test_complex_ref_patterns() {
             "Should have at least the main module with embedded local types"
         );
     }
+    Ok(())
 }
 
 #[test]
-fn test_ref_in_array_items() {
+fn test_ref_in_array_items() -> Result<(), Box<dyn std::error::Error>> {
     let crd = create_crd_with_refs();
     let walker = CRDWalker::new("test.example.io");
 
-    let registry = walker.extract_types(&crd).expect("Should extract types");
+    let registry = walker.extract_types(&crd)?;
 
     // Find a type that has an array with references (containers field)
     let array_with_refs = registry.types.values().any(|type_def| {
@@ -308,18 +311,17 @@ fn test_ref_in_array_items() {
     });
 
     assert!(array_with_refs, "Should handle $ref in array items");
+    Ok(())
 }
 
 #[test]
-fn test_ref_path_parsing() {
+fn test_ref_path_parsing() -> Result<(), Box<dyn std::error::Error>> {
     let crd = create_crd_with_refs();
     let walker = CRDWalker::new("test.example.io");
 
-    let registry = walker.extract_types(&crd).expect("Should extract types");
+    let registry = walker.extract_types(&crd)?;
     let deps = walker.build_dependencies(&registry);
-    let ir = walker
-        .generate_ir(registry, deps)
-        .expect("Should generate IR");
+    let ir = walker.generate_ir(registry, deps)?;
 
     // Verify correct import path calculation for different ref types
     for module in &ir.modules {
@@ -350,10 +352,11 @@ fn test_ref_path_parsing() {
             }
         }
     }
+    Ok(())
 }
 
 #[test]
-fn test_missing_ref_handling() {
+fn test_missing_ref_handling() -> Result<(), Box<dyn std::error::Error>> {
     // Test CRD with reference to undefined type
     let crd_with_missing_ref = CRDInput {
         group: "test.example.io".to_string(),
@@ -406,4 +409,5 @@ fn test_missing_ref_handling() {
             );
         }
     }
+    Ok(())
 }

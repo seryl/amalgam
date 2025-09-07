@@ -18,13 +18,13 @@ use fixtures::Fixtures;
 use std::collections::BTreeMap;
 
 #[test]
-fn test_k8s_type_reference_detection() {
+fn test_k8s_type_reference_detection() -> Result<(), Box<dyn std::error::Error>> {
     // Load fixture CRD that should have ObjectMeta reference
     let crd = Fixtures::simple_with_metadata();
 
     // Parse the CRD
     let parser = CRDParser::new();
-    let ir = parser.parse(crd).expect("Failed to parse CRD");
+    let ir = parser.parse(crd)?;
 
     // The type should contain a reference to ObjectMeta
     assert_eq!(ir.modules.len(), 1);
@@ -70,15 +70,16 @@ fn test_k8s_type_reference_detection() {
             Type::Any => {
                 // Metadata might be parsed as Any if no schema is provided
             }
-            _ => panic!("Unexpected type for metadata: {:?}", metadata_field.ty),
+            _ => return Err(format!("Unexpected type for metadata: {:?}", metadata_field.ty).into()),
         }
     } else {
-        panic!("Expected Record type, got {:?}", type_def.ty);
+        return Err(format!("Expected Record type, got {:?}", type_def.ty).into());
     }
+    Ok(())
 }
 
 #[test]
-fn test_import_generation_for_k8s_types() {
+fn test_import_generation_for_k8s_types() -> Result<(), Box<dyn std::error::Error>> {
     // Use unified pipeline with NamespacedPackage
     let mut package = NamespacedPackage::new("test-package".to_string());
 
@@ -89,7 +90,7 @@ fn test_import_generation_for_k8s_types() {
     let parser = CRDParser::new();
 
     for crd in [crd1, crd2] {
-        let ir = parser.parse(crd.clone()).expect("Failed to parse CRD");
+        let ir = parser.parse(crd.clone())?;
         for module in &ir.modules {
             for type_def in &module.types {
                 // Module name format is {Kind}.{version}.{group}, so get the version part
@@ -127,9 +128,9 @@ fn test_import_generation_for_k8s_types() {
         // Generate from IR directly as fallback
         let crd = Fixtures::multiple_k8s_refs(); // Use the fixture with k8s refs
         let parser = CRDParser::new();
-        let ir = parser.parse(crd).expect("Failed to parse CRD");
+        let ir = parser.parse(crd)?;
         let mut codegen = amalgam_codegen::nickel::NickelCodegen::from_ir(&ir);
-        let content = codegen.generate(&ir).expect("Failed to generate");
+        let content = codegen.generate(&ir)?;
 
         // The k8s imports should still be resolved
         assert!(
@@ -138,10 +139,11 @@ fn test_import_generation_for_k8s_types() {
             content
         );
     }
+    Ok(())
 }
 
 #[test]
-fn test_reference_resolution_to_alias() {
+fn test_reference_resolution_to_alias() -> Result<(), Box<dyn std::error::Error>> {
     // Create a module with k8s type reference and import
     let mut ir = IR::new();
 
@@ -185,7 +187,7 @@ fn test_reference_resolution_to_alias() {
     let mut codegen = NickelCodegen::from_ir(&ir);
     let generated = codegen
         .generate(&ir)
-        .expect("Failed to generate Nickel code");
+        ?;
 
     // Verify the import is in the output
     assert!(
@@ -206,17 +208,18 @@ fn test_reference_resolution_to_alias() {
         "Original reference still present. Generated:\n{}",
         generated
     );
+    Ok(())
 }
 
 #[test]
-fn test_multiple_k8s_type_references() {
+fn test_multiple_k8s_type_references() -> Result<(), Box<dyn std::error::Error>> {
     // Use fixture with multiple k8s refs
     let crd = Fixtures::multiple_k8s_refs();
     let parser = CRDParser::new();
-    let ir = parser.parse(crd).expect("Failed to parse CRD");
+    let ir = parser.parse(crd)?;
 
     let mut codegen = amalgam_codegen::nickel::NickelCodegen::from_ir(&ir);
-    let content = codegen.generate(&ir).expect("Failed to generate");
+    let content = codegen.generate(&ir)?;
 
     // With single-type module optimization, the type is exported directly
     // The type definition itself is just the record structure, not wrapped in MultiRef = {...}
@@ -228,14 +231,15 @@ fn test_multiple_k8s_type_references() {
         "Missing expected fields in generated content:\n{}",
         content
     );
+    Ok(())
 }
 
 #[test]
-fn test_no_import_for_local_types() {
+fn test_no_import_for_local_types() -> Result<(), Box<dyn std::error::Error>> {
     // Use fixture without k8s types
     let crd = Fixtures::nested_objects();
     let parser = CRDParser::new();
-    let ir = parser.parse(crd).expect("Failed to parse CRD");
+    let ir = parser.parse(crd)?;
 
     // No imports should be generated for local types
     assert_eq!(
@@ -243,26 +247,28 @@ fn test_no_import_for_local_types() {
         0,
         "Unexpected imports for CRD without k8s types"
     );
+    Ok(())
 }
 
 #[test]
-fn test_import_path_calculation() {
+fn test_import_path_calculation() -> Result<(), Box<dyn std::error::Error>> {
     use amalgam_parser::imports::TypeReference;
 
     // Test that import paths are calculated correctly
     let type_ref =
         TypeReference::from_qualified_name("io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta")
-            .expect("Failed to parse type reference");
+            .ok_or("Failed to get parent directory")?;
 
     let import_path = type_ref.import_path("example.io", "v1");
     assert_eq!(import_path, "../../k8s_io/v1/objectmeta.ncl");
 
     let alias = type_ref.module_alias();
     assert_eq!(alias, "k8s_io_v1");
+    Ok(())
 }
 
 #[test]
-fn test_case_insensitive_type_matching() {
+fn test_case_insensitive_type_matching() -> Result<(), Box<dyn std::error::Error>> {
     // The resolver should handle case differences between reference and file names
     let mut ir = IR::new();
 
@@ -304,7 +310,7 @@ fn test_case_insensitive_type_matching() {
     ir.add_module(module);
 
     let mut codegen = NickelCodegen::from_ir(&ir);
-    let generated = codegen.generate(&ir).expect("Failed to generate");
+    let generated = codegen.generate(&ir)?;
 
     // Should resolve despite case difference
     assert!(
@@ -312,11 +318,12 @@ fn test_case_insensitive_type_matching() {
         "Failed to resolve with case difference. Generated:\n{}",
         generated
     );
+    Ok(())
 }
 
 /// Test that package generation creates proper structure
 #[test]
-fn test_package_structure_generation() {
+fn test_package_structure_generation() -> Result<(), Box<dyn std::error::Error>> {
     // Use unified pipeline with NamespacedPackage
     let mut package = NamespacedPackage::new("test-package".to_string());
 
@@ -329,7 +336,7 @@ fn test_package_structure_generation() {
     let parser = CRDParser::new();
 
     for crd in [crd1, crd2, crd3] {
-        let ir = parser.parse(crd.clone()).expect("Failed to parse CRD");
+        let ir = parser.parse(crd.clone())?;
         for module in &ir.modules {
             for type_def in &module.types {
                 let version = module.name.rsplit('.').next().unwrap_or("v1");
@@ -352,4 +359,5 @@ fn test_package_structure_generation() {
         main_module.contains("test_io"),
         "Missing test.io group in main module"
     );
+    Ok(())
 }

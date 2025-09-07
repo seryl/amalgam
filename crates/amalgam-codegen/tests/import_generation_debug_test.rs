@@ -9,7 +9,7 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 #[test]
-fn test_debug_import_generation() {
+fn test_debug_import_generation() -> Result<(), Box<dyn std::error::Error>> {
     // Create a minimal IR that reproduces the issue:
     // CSIPersistentVolumeSource references SecretReference
     let ir = IR {
@@ -65,7 +65,7 @@ fn test_debug_import_generation() {
     };
 
     let mut codegen = NickelCodegen::new(Arc::new(ModuleRegistry::new()));
-    let result = codegen.generate(&ir).expect("Should generate code");
+    let result = codegen.generate(&ir)?;
 
     // Print debug information
     println!("\n=== Import Generation Debug Info ===\n");
@@ -140,4 +140,5 @@ fn test_debug_import_generation() {
             || codegen.debug_info.dependencies_identified.is_empty(),
         "If dependencies were identified, imports should be generated (or no deps needed)"
     );
+    Ok(())
 }

@@ -15,7 +15,7 @@ use walkdir::WalkDir;
 /// with an import for "../../apiextensions.crossplane.io/v1/composition.ncl",
 /// the resolver was not matching because the type extraction logic was broken.
 #[test]
-fn test_crossplane_composition_resolution() {
+fn test_crossplane_composition_resolution() -> Result<(), Box<dyn std::error::Error>> {
     let mut resolver = TypeResolver::new();
     let module = Module {
         name: "test".to_string(),
@@ -48,6 +48,7 @@ fn test_crossplane_composition_resolution() {
         resolved, "composition.Composition",
         "Crossplane Composition type should be resolved with the import alias"
     );
+    Ok(())
 }
 
 /// Regression test for k8s apimachinery type resolution with module imports
@@ -55,7 +56,7 @@ fn test_crossplane_composition_resolution() {
 /// Original issue: Module imports (mod.ncl) were not matching correctly
 /// for k8s types when using short names like "ObjectMeta"
 #[test]
-fn test_k8s_module_import_resolution() {
+fn test_k8s_module_import_resolution() -> Result<(), Box<dyn std::error::Error>> {
     let mut resolver = TypeResolver::new();
     let module = Module {
         name: "test".to_string(),
@@ -94,6 +95,7 @@ fn test_k8s_module_import_resolution() {
         resolved, "k8s_v1.ObjectMeta",
         "Full k8s path should resolve to k8s_v1.ObjectMeta"
     );
+    Ok(())
 }
 
 /// Regression test for multiple k8s imports with correct alias matching
@@ -102,7 +104,7 @@ fn test_k8s_module_import_resolution() {
 /// volume.ncl, resourcerequirements.ncl), all references were incorrectly using
 /// the first import's alias instead of their specific aliases.
 #[test]
-fn test_multiple_k8s_type_file_imports() {
+fn test_multiple_k8s_type_file_imports() -> Result<(), Box<dyn std::error::Error>> {
     let mut resolver = TypeResolver::new();
     let module = Module {
         name: "test.io.v1.multiref".to_string(),
@@ -158,6 +160,7 @@ fn test_multiple_k8s_type_file_imports() {
         resolved, "resourcerequirements.ResourceRequirements",
         "ResourceRequirements should use the resourcerequirements import alias"
     );
+    Ok(())
 }
 
 /// Regression test for package directory structure and import paths
@@ -167,7 +170,7 @@ fn test_multiple_k8s_type_file_imports() {
 /// package structure, and import paths used ../../../k8s_io/v1/... instead
 /// of ../v1/... within the same package.
 #[test]
-fn test_package_structure_and_import_paths() {
+fn test_package_structure_and_import_paths() -> Result<(), Box<dyn std::error::Error>> {
     let examples_dir = Path::new("../../../examples/pkgs");
 
     // Skip test if examples directory doesn't exist (CI environments)
@@ -188,12 +191,13 @@ fn test_package_structure_and_import_paths() {
     validate_general_import_patterns(examples_dir, &mut validation_errors);
 
     if !validation_errors.is_empty() {
-        panic!(
+        return Err(
             "Package structure regression test failed with {} errors:\n{}",
-            validation_errors.len(),
+            validation_errors.len(.into()),
             validation_errors.join("\n")
         );
     }
+    Ok(())
 }
 
 fn validate_k8s_io_package(k8s_io_dir: &Path, errors: &mut Vec<String>) {
@@ -441,7 +445,11 @@ fn validate_general_import_patterns(examples_dir: &Path, errors: &mut Vec<String
     for (importer, imported) in &import_relationships {
         if imported.starts_with("../") || !imported.contains("/") {
             // This is a local import, check if the file exists
-            let import_path = importer.parent().unwrap().join(imported);
+            let parent = match importer.parent() {
+                Some(p) => p,
+                None => continue,
+            };
+            let import_path = parent.join(imported);
             if !import_path.exists() {
                 errors.push(format!(
                     "{}: imports '{}' but file does not exist at {}",
@@ -479,7 +487,10 @@ fn check_circular_imports(
 ) {
     let current_file_buf = current_file.to_path_buf();
     if stack.contains(&current_file_buf) {
-        let cycle_start = stack.iter().position(|f| f == &current_file_buf).unwrap();
+        let cycle_start = match stack.iter().position(|f| f == &current_file_buf) {
+            Some(pos) => pos,
+            None => return,
+        };
         let cycle: Vec<String> = stack[cycle_start..]
             .iter()
             .chain(std::iter::once(&current_file_buf))
@@ -498,7 +509,7 @@ fn check_circular_imports(
     // Find imports from current file
     for (importer, imported) in relationships {
         if importer == &current_file_buf && imported.starts_with("../") {
-            let import_path = current_file.parent().unwrap().join(imported);
+            let import_path = current_file.parent()?.join(imported);
             if let Ok(canonical_import) = import_path.canonicalize() {
                 check_circular_imports(&canonical_import, relationships, checked, stack, errors);
             }
@@ -514,7 +525,7 @@ fn check_circular_imports(
 /// Original issue: Generated packages were missing proper manifest structure
 /// and didn't mention they were generated by Amalgam.
 #[test]
-fn test_package_manifest_structure() {
+fn test_package_manifest_structure() -> Result<(), Box<dyn std::error::Error>> {
     let examples_dir = Path::new("../../../examples/pkgs");
 
     if !examples_dir.exists() {
@@ -525,9 +536,9 @@ fn test_package_manifest_structure() {
     let mut validation_errors = Vec::new();
 
     // Check that all package directories have required structure
-    for entry in std::fs::read_dir(examples_dir).unwrap() {
-        let entry = entry.unwrap();
-        if !entry.file_type().unwrap().is_dir() {
+    for entry in std::fs::read_dir(examples_dir)? {
+        let entry = entry?;
+        if !entry.file_type()?.is_dir() {
             continue;
         }
 
@@ -568,10 +579,11 @@ fn test_package_manifest_structure() {
     }
 
     if !validation_errors.is_empty() {
-        panic!(
+        return Err(
             "Package manifest validation failed with {} errors:\n{}",
-            validation_errors.len(),
+            validation_errors.len(.into()),
             validation_errors.join("\n")
         );
     }
+    Ok(())
 }

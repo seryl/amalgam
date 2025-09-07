@@ -6,7 +6,7 @@ use openapiv3::OpenAPI;
 use serde_json::json;
 
 /// Create a test OpenAPI spec with allOf example
-fn create_allof_spec() -> OpenAPI {
+fn create_allof_spec() -> Result<OpenAPI, Box<dyn std::error::Error>> {
     let spec_json = json!({
         "openapi": "3.0.0",
         "info": {
@@ -69,11 +69,11 @@ fn create_allof_spec() -> OpenAPI {
         }
     });
 
-    serde_json::from_value(spec_json).expect("Failed to parse OpenAPI spec")
+    Ok(serde_json::from_value(spec_json)?)
 }
 
 /// Create a test OpenAPI spec with anyOf example
-fn create_anyof_spec() -> OpenAPI {
+fn create_anyof_spec() -> Result<OpenAPI, Box<dyn std::error::Error>> {
     let spec_json = json!({
         "openapi": "3.0.0",
         "info": {
@@ -144,11 +144,11 @@ fn create_anyof_spec() -> OpenAPI {
         }
     });
 
-    serde_json::from_value(spec_json).expect("Failed to parse OpenAPI spec")
+    Ok(serde_json::from_value(spec_json)?)
 }
 
 /// Create a test with nested allOf/anyOf
-fn create_complex_spec() -> OpenAPI {
+fn create_complex_spec() -> Result<OpenAPI, Box<dyn std::error::Error>> {
     let spec_json = json!({
         "openapi": "3.0.0",
         "info": {
@@ -225,14 +225,14 @@ fn create_complex_spec() -> OpenAPI {
         }
     });
 
-    serde_json::from_value(spec_json).expect("Failed to parse OpenAPI spec")
+    Ok(serde_json::from_value(spec_json)?)
 }
 
 #[test]
-fn test_allof_basic_composition() {
-    let spec = create_allof_spec();
+fn test_allof_basic_composition() -> Result<(), Box<dyn std::error::Error>> {
+    let spec = create_allof_spec()?;
     let walker = OpenAPIWalker::new("test.api");
-    let ir = walker.walk(spec).expect("Failed to walk OpenAPI spec");
+    let ir = walker.walk(spec)?;
 
     // Check that modules were created
     assert!(!ir.modules.is_empty(), "IR should contain modules");
@@ -259,16 +259,17 @@ fn test_allof_basic_composition() {
             amalgam_core::types::Type::Union { .. } => {
                 // Also acceptable if it creates a union when merging is complex
             }
-            _ => panic!("Dog should be a Record or Union type"),
+            _ => return Err("Dog should be a Record or Union type".into()),
         }
     }
+    Ok(())
 }
 
 #[test]
-fn test_anyof_creates_union() {
-    let spec = create_anyof_spec();
+fn test_anyof_creates_union() -> Result<(), Box<dyn std::error::Error>> {
+    let spec = create_anyof_spec()?;
     let walker = OpenAPIWalker::new("test.api");
-    let ir = walker.walk(spec).expect("Failed to walk OpenAPI spec");
+    let ir = walker.walk(spec)?;
 
     // Find the StringOrNumber type
     let string_or_number = ir
@@ -302,16 +303,17 @@ fn test_anyof_creates_union() {
                 assert!(has_string, "Union should contain String type");
                 assert!(has_number, "Union should contain Number type");
             }
-            _ => panic!("StringOrNumber should be a Union type"),
+            _ => return Err("StringOrNumber should be a Union type".into()),
         }
     }
+    Ok(())
 }
 
 #[test]
-fn test_anyof_with_objects() {
-    let spec = create_anyof_spec();
+fn test_anyof_with_objects() -> Result<(), Box<dyn std::error::Error>> {
+    let spec = create_anyof_spec()?;
     let walker = OpenAPIWalker::new("test.api");
-    let ir = walker.walk(spec).expect("Failed to walk OpenAPI spec");
+    let ir = walker.walk(spec)?;
 
     // Find the PetOrError type
     let pet_or_error = ir
@@ -339,16 +341,17 @@ fn test_anyof_with_objects() {
                     );
                 }
             }
-            _ => panic!("PetOrError should be a Union type"),
+            _ => return Err("PetOrError should be a Union type".into()),
         }
     }
+    Ok(())
 }
 
 #[test]
-fn test_complex_nested_allof_anyof() {
-    let spec = create_complex_spec();
+fn test_complex_nested_allof_anyof() -> Result<(), Box<dyn std::error::Error>> {
+    let spec = create_complex_spec()?;
     let walker = OpenAPIWalker::new("test.api");
-    let ir = walker.walk(spec).expect("Failed to walk OpenAPI spec");
+    let ir = walker.walk(spec)?;
 
     // Find the ComplexEntity type
     let complex_entity = ir
@@ -379,13 +382,14 @@ fn test_complex_nested_allof_anyof() {
             }
         }
     }
+    Ok(())
 }
 
 #[test]
-fn test_mixed_response_anyof() {
-    let spec = create_anyof_spec();
+fn test_mixed_response_anyof() -> Result<(), Box<dyn std::error::Error>> {
+    let spec = create_anyof_spec()?;
     let walker = OpenAPIWalker::new("test.api");
-    let ir = walker.walk(spec).expect("Failed to walk OpenAPI spec");
+    let ir = walker.walk(spec)?;
 
     // Find the MixedResponse type
     let mixed_response = ir
@@ -419,13 +423,14 @@ fn test_mixed_response_anyof() {
                 assert!(has_array, "Union should contain Array type");
                 assert!(has_record, "Union should contain Record type");
             }
-            _ => panic!("MixedResponse should be a Union type"),
+            _ => return Err("MixedResponse should be a Union type".into()),
         }
     }
+    Ok(())
 }
 
 #[test]
-fn test_allof_field_conflict_resolution() {
+fn test_allof_field_conflict_resolution() -> Result<(), Box<dyn std::error::Error>> {
     let spec_json = json!({
         "openapi": "3.0.0",
         "info": {
@@ -465,9 +470,9 @@ fn test_allof_field_conflict_resolution() {
         }
     });
 
-    let spec: OpenAPI = serde_json::from_value(spec_json).expect("Failed to parse OpenAPI spec");
+    let spec: OpenAPI = serde_json::from_value(spec_json)?;
     let walker = OpenAPIWalker::new("test.api");
-    let ir = walker.walk(spec).expect("Failed to walk OpenAPI spec");
+    let ir = walker.walk(spec)?;
 
     // Find the ConflictTest type
     let conflict_test = ir
@@ -498,4 +503,5 @@ fn test_allof_field_conflict_resolution() {
             }
         }
     }
+    Ok(())
 }

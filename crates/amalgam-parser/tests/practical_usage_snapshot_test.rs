@@ -14,12 +14,12 @@ use tracing::{debug, info, instrument, warn};
 
 /// Test helper to evaluate Nickel code and capture both success/failure and output
 #[instrument(skip(code), fields(code_len = code.len()))]
-fn evaluate_nickel_code(code: &str, _package_path: Option<&str>) -> (bool, String) {
+fn evaluate_nickel_code(code: &str, _package_path: Option<&str>) -> Result<(bool, String), Box<dyn std::error::Error>> {
     // Find project root by going up from the test directory
     let project_root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .and_then(|p| p.parent()) // Go up from crates/amalgam-parser to project root
-        .expect("Failed to find project root")
+        .ok_or("Failed to find project root")?
         .to_path_buf();
 
     debug!(project_root = ?project_root, "Determined project root");
@@ -37,7 +37,7 @@ fn evaluate_nickel_code(code: &str, _package_path: Option<&str>) -> (bool, Strin
     debug!(temp_file = ?temp_file, unique_id = unique_id, "Creating temp file");
 
     // Write the test code to a file
-    std::fs::write(&temp_file, code).expect("Failed to write test file");
+    std::fs::write(&temp_file, code)?;
 
     // Build nickel command
     let mut cmd = Command::new("nickel");
@@ -47,7 +47,7 @@ fn evaluate_nickel_code(code: &str, _package_path: Option<&str>) -> (bool, Strin
     debug!("Executing nickel eval");
 
     // Execute and capture output
-    let output = cmd.output().expect("Failed to execute nickel");
+    let output = cmd.output()?;
     let success = output.status.success();
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
@@ -72,12 +72,12 @@ fn evaluate_nickel_code(code: &str, _package_path: Option<&str>) -> (bool, Strin
         format!("STDERR:\n{}\nSTDOUT:\n{}", stderr, stdout)
     };
 
-    (success, combined_output)
+    Ok((success, combined_output))
 }
 
 /// Test that basic k8s types can be instantiated with empty records
 #[test]
-fn test_k8s_empty_objects_snapshot() {
+fn test_k8s_empty_objects_snapshot() -> Result<(), Box<dyn std::error::Error>> {
     let test_code = r#"
 # Test that all k8s types can be created with empty records (optional fields)
 let k8s = import "examples/pkgs/k8s_io/mod.ncl" in
@@ -101,7 +101,7 @@ let k8s = import "examples/pkgs/k8s_io/mod.ncl" in
 }
 "#;
 
-    let (success, output) = evaluate_nickel_code(test_code, None);
+    let (success, output) = evaluate_nickel_code(test_code, None).unwrap_or_else(|_| (false, "Failed to evaluate".to_string()));
 
     // Create a comprehensive snapshot that shows both success status and structure
     let snapshot_content = format!("SUCCESS: {}\n\nOUTPUT:\n{}", success, output);
@@ -113,11 +113,12 @@ let k8s = import "examples/pkgs/k8s_io/mod.ncl" in
         success,
         "Empty k8s objects should be creatable without required field errors"
     );
+    Ok(())
 }
 
 /// Test practical usage patterns that users would actually write
 #[test]
-fn test_practical_k8s_usage_patterns() {
+fn test_practical_k8s_usage_patterns() -> Result<(), Box<dyn std::error::Error>> {
     let test_code = r#"
 # Practical Kubernetes configurations users would write
 let k8s = import "examples/pkgs/k8s_io/mod.ncl" in
@@ -188,7 +189,7 @@ let k8s = import "examples/pkgs/k8s_io/mod.ncl" in
 }
 "#;
 
-    let (success, output) = evaluate_nickel_code(test_code, None);
+    let (success, output) = evaluate_nickel_code(test_code, None).unwrap_or_else(|_| (false, "Failed to evaluate".to_string()));
 
     let snapshot_content = format!("SUCCESS: {}\n\nOUTPUT:\n{}", success, output);
 
@@ -197,11 +198,12 @@ let k8s = import "examples/pkgs/k8s_io/mod.ncl" in
         success,
         "Practical k8s configurations should evaluate successfully"
     );
+    Ok(())
 }
 
 /// Test cross-package imports between k8s and crossplane
 #[test]
-fn test_cross_package_imports_snapshot() {
+fn test_cross_package_imports_snapshot() -> Result<(), Box<dyn std::error::Error>> {
     let test_code = r#"
 # Test that crossplane can import and use k8s types
 let k8s = import "examples/pkgs/k8s_io/mod.ncl" in
@@ -243,17 +245,18 @@ let crossplane = import "examples/pkgs/crossplane/mod.ncl" in
 }
 "#;
 
-    let (success, output) = evaluate_nickel_code(test_code, None);
+    let (success, output) = evaluate_nickel_code(test_code, None).unwrap_or_else(|_| (false, "Failed to evaluate".to_string()));
 
     let snapshot_content = format!("SUCCESS: {}\n\nOUTPUT:\n{}", success, output);
 
     assert_snapshot!("cross_package_imports", snapshot_content);
     assert!(success, "Cross-package imports should work correctly");
+    Ok(())
 }
 
 /// Test package structure and type availability
 #[test]
-fn test_package_structure_snapshot() {
+fn test_package_structure_snapshot() -> Result<(), Box<dyn std::error::Error>> {
     let test_code = r#"
 # Comprehensive test of package structure and type availability
 let k8s = import "examples/pkgs/k8s_io/mod.ncl" in
@@ -302,7 +305,7 @@ let crossplane = import "examples/pkgs/crossplane/mod.ncl" in
 }
 "#;
 
-    let (success, output) = evaluate_nickel_code(test_code, None);
+    let (success, output) = evaluate_nickel_code(test_code, None).unwrap_or_else(|_| (false, "Failed to evaluate".to_string()));
 
     let snapshot_content = format!("SUCCESS: {}\n\nOUTPUT:\n{}", success, output);
 
@@ -311,11 +314,12 @@ let crossplane = import "examples/pkgs/crossplane/mod.ncl" in
         success,
         "Package structure should be correct and accessible"
     );
+    Ok(())
 }
 
 /// Test edge cases and error scenarios
 #[test]
-fn test_edge_cases_snapshot() {
+fn test_edge_cases_snapshot() -> Result<(), Box<dyn std::error::Error>> {
     let test_code = r#"
 # Test edge cases that might reveal issues
 let k8s = import "examples/pkgs/k8s_io/mod.ncl" in
@@ -378,17 +382,18 @@ let k8s = import "examples/pkgs/k8s_io/mod.ncl" in
 }
 "#;
 
-    let (success, output) = evaluate_nickel_code(test_code, None);
+    let (success, output) = evaluate_nickel_code(test_code, None).unwrap_or_else(|_| (false, "Failed to evaluate".to_string()));
 
     let snapshot_content = format!("SUCCESS: {}\n\nOUTPUT:\n{}", success, output);
 
     assert_snapshot!("edge_cases", snapshot_content);
     // Edge cases might not all succeed, but we want to snapshot the behavior
+    Ok(())
 }
 
 /// Test integration with real package generation
 #[test]
-fn test_generated_package_integration() {
+fn test_generated_package_integration() -> Result<(), Box<dyn std::error::Error>> {
     // Use a simple CRD for testing
     let test_crd = r#"
 apiVersion: apiextensions.k8s.io/v1
@@ -426,14 +431,14 @@ spec:
     kind: TestResource
 "#;
 
-    let crd: CRD = serde_yaml::from_str(test_crd).expect("Failed to parse test CRD");
+    let crd: CRD = serde_yaml::from_str(test_crd)?;
 
     // Use unified pipeline with NamespacedPackage
     let mut package = NamespacedPackage::new("test-snapshot-package".to_string());
 
     // Parse CRD and add types to package
     let parser = CRDParser::new();
-    let ir = parser.parse(crd.clone()).expect("Failed to parse CRD");
+    let ir = parser.parse(crd.clone())?;
 
     for module in &ir.modules {
         for type_def in &module.types {
@@ -459,6 +464,7 @@ spec:
     let version_files = package.generate_version_files("example.com", "v1");
     let type_content = version_files
         .get("testresource.ncl")
-        .expect("testresource.ncl should be generated");
+        .ok_or("Module not found")?;
     assert_snapshot!("generated_test_type", type_content);
+    Ok(())
 }

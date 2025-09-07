@@ -33,7 +33,7 @@ fn create_test_module_with_k8s_imports() -> Module {
 }
 
 #[test]
-fn test_k8s_type_resolution() {
+fn test_k8s_type_resolution() -> Result<(), Box<dyn std::error::Error>> {
     let mut resolver = TypeResolver::new();
     let module = create_test_module_with_k8s_imports();
     let context = ResolutionContext::default();
@@ -49,10 +49,11 @@ fn test_k8s_type_resolution() {
         &context,
     );
     assert_eq!(resolved, "k8s_v1.ObjectMeta");
+    Ok(())
 }
 
 #[test]
-fn test_crossplane_type_resolution() {
+fn test_crossplane_type_resolution() -> Result<(), Box<dyn std::error::Error>> {
     let mut resolver = TypeResolver::new();
     let module = Module {
         name: "test".to_string(),
@@ -80,10 +81,11 @@ fn test_crossplane_type_resolution() {
         &context,
     );
     assert_eq!(resolved, "crossplane.Composition");
+    Ok(())
 }
 
 #[test]
-fn test_unknown_type_resolution() {
+fn test_unknown_type_resolution() -> Result<(), Box<dyn std::error::Error>> {
     let mut resolver = TypeResolver::new();
     let module = Module {
         name: "test".to_string(),
@@ -103,10 +105,11 @@ fn test_unknown_type_resolution() {
     // Unknown type should be returned as-is
     let resolved = resolver.resolve("SomeUnknownType", &module, &context);
     assert_eq!(resolved, "SomeUnknownType");
+    Ok(())
 }
 
 #[test]
-fn test_cache_behavior() {
+fn test_cache_behavior() -> Result<(), Box<dyn std::error::Error>> {
     let mut resolver = TypeResolver::new();
     let module = create_test_module_with_k8s_imports();
     let context = ResolutionContext::default();
@@ -119,4 +122,5 @@ fn test_cache_behavior() {
 
     assert_eq!(resolved1, resolved2);
     assert_eq!(resolved1, "k8s_v1.ObjectMeta");
+    Ok(())
 }

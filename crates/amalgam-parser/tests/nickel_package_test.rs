@@ -54,7 +54,7 @@ fn sample_crd() -> CRD {
 }
 
 #[test]
-fn test_generate_basic_nickel_manifest() {
+fn test_generate_basic_nickel_manifest() -> Result<(), Box<dyn std::error::Error>> {
     let config = NickelPackageConfig {
         name: "test-package".to_string(),
         version: "1.0.0".to_string(),
@@ -68,7 +68,7 @@ fn test_generate_basic_nickel_manifest() {
     let generator = NickelPackageGenerator::new(config);
     let manifest = generator
         .generate_manifest(&[], std::collections::HashMap::new())
-        .unwrap();
+        ?;
 
     // Check that the manifest contains expected content
     assert!(manifest.contains("name = \"test-package\""));
@@ -82,10 +82,11 @@ fn test_generate_basic_nickel_manifest() {
     assert!(manifest.contains("\"example\""));
     assert!(manifest.contains("minimal_nickel_version = \"1.9.0\""));
     assert!(manifest.contains("| std.package.Manifest"));
+    Ok(())
 }
 
 #[test]
-fn test_nickel_manifest_with_dependencies() {
+fn test_nickel_manifest_with_dependencies() -> Result<(), Box<dyn std::error::Error>> {
     let config = NickelPackageConfig::default();
     let generator = NickelPackageGenerator::new(config);
 
@@ -102,23 +103,24 @@ fn test_nickel_manifest_with_dependencies() {
         },
     );
 
-    let manifest = generator.generate_manifest(&[], dependencies).unwrap();
+    let manifest = generator.generate_manifest(&[], dependencies)?;
 
     assert!(manifest.contains("dependencies = {"));
     assert!(manifest.contains("k8s_io = 'Path \"../k8s_io\""));
     assert!(manifest.contains(
         "stdlib = 'Index { package = \"github:nickel-lang/stdlib\", version = \">=1.0.0\" }"
     ));
+    Ok(())
 }
 
 #[test]
-fn test_package_generates_nickel_manifest() {
+fn test_package_generates_nickel_manifest() -> Result<(), Box<dyn std::error::Error>> {
     // Use unified pipeline with NamespacedPackage
     let mut package = NamespacedPackage::new("test-crossplane".to_string());
     let parser = CRDParser::new();
 
     let crd = sample_crd();
-    let ir = parser.parse(crd.clone()).expect("Failed to parse CRD");
+    let ir = parser.parse(crd.clone())?;
 
     for module in &ir.modules {
         for type_def in &module.types {
@@ -150,10 +152,11 @@ fn test_package_generates_nickel_manifest() {
     }
 
     assert!(manifest.contains("| std.package.Manifest"));
+    Ok(())
 }
 
 #[test]
-fn test_dependency_formatting() {
+fn test_dependency_formatting() -> Result<(), Box<dyn std::error::Error>> {
     // Test Path dependency
     let path_dep = PackageDependency::Path(PathBuf::from("/some/path"));
     assert_eq!(path_dep.to_nickel_string(), "'Path \"/some/path\"");
@@ -191,4 +194,5 @@ fn test_dependency_formatting() {
         git_tag_dep.to_nickel_string(),
         "'Git { url = \"https://github.com/org/repo.git\", tag = \"v1.0.0\" }"
     );
+    Ok(())
 }

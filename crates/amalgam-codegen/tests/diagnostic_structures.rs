@@ -367,7 +367,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_diagnostic_structure_generation() {
+    fn test_diagnostic_structure_generation() -> Result<(), Box<dyn std::error::Error>> {
         // Create a simple IR for testing
         let mut ir = IR::new();
 
@@ -436,7 +436,7 @@ mod tests {
         let diagnostics = create_diagnostics(&ir);
 
         // Export as JSON for analysis
-        let json = serde_json::to_string_pretty(&diagnostics).unwrap();
+        let json = serde_json::to_string_pretty(&diagnostics)?;
         println!("==== Diagnostic Output ====");
         println!("{}", json);
         println!("==== End Diagnostic Output ====");
@@ -481,5 +481,6 @@ mod tests {
                 println!("    Extracted {} files", attempt.extracted_files.len());
             }
         }
+    Ok(())
     }
 }

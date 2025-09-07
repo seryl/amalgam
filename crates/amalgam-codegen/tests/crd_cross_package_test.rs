@@ -10,7 +10,7 @@ use std::collections::BTreeMap;
 
 /// Test that a CRD referencing k8s types generates correct imports
 #[test]
-fn test_crd_with_k8s_type_references() {
+fn test_crd_with_k8s_type_references() -> Result<(), Box<dyn std::error::Error>> {
     let mut resolver = TypeResolver::new();
 
     // Simulate a CRD that references k8s types
@@ -130,11 +130,12 @@ fn test_crd_with_k8s_type_references() {
         resolved, "resourcerequirements.ResourceRequirements",
         "ResourceRequirements should resolve to the imported alias"
     );
+    Ok(())
 }
 
 /// Test CRD with mixed local and external type references
 #[test]
-fn test_crd_with_mixed_type_references() {
+fn test_crd_with_mixed_type_references() -> Result<(), Box<dyn std::error::Error>> {
     let mut resolver = TypeResolver::new();
 
     let module = Module {
@@ -271,11 +272,12 @@ fn test_crd_with_mixed_type_references() {
         resolved, "k8s_selector.LabelSelector",
         "LabelSelector should resolve to its import alias"
     );
+    Ok(())
 }
 
 /// Test that unresolvable CRD references are returned as-is
 #[test]
-fn test_crd_with_unresolvable_references() {
+fn test_crd_with_unresolvable_references() -> Result<(), Box<dyn std::error::Error>> {
     let mut resolver = TypeResolver::new();
 
     let module = Module {
@@ -349,11 +351,12 @@ fn test_crd_with_unresolvable_references() {
         resolved, "io.k8s.api.core.v1.PodSpec",
         "Non-imported type should be returned unchanged"
     );
+    Ok(())
 }
 
 /// Test CRD with versioned imports (v1, v1beta1, etc.)
 #[test]
-fn test_crd_with_versioned_imports() {
+fn test_crd_with_versioned_imports() -> Result<(), Box<dyn std::error::Error>> {
     let mut resolver = TypeResolver::new();
 
     let module = Module {
@@ -441,4 +444,5 @@ fn test_crd_with_versioned_imports() {
         resolved, "backend.IngressBackend",
         "v1beta1 IngressBackend should use backend alias"
     );
+    Ok(())
 }

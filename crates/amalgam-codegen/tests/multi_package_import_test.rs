@@ -9,7 +9,7 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 #[test]
-fn test_multi_package_alias_generation() {
+fn test_multi_package_alias_generation() -> Result<(), Box<dyn std::error::Error>> {
     // Create types with references to multiple packages
     let mut types = BTreeMap::new();
 
@@ -74,10 +74,11 @@ fn test_multi_package_alias_generation() {
     // TODO: This test needs to be updated to work without PackageWalkerAdapter
     // which is not available in the amalgam-codegen crate
     println!("Test skipped - needs restructuring");
+    Ok(())
 }
 
 #[test]
-fn test_deep_package_hierarchy() {
+fn test_deep_package_hierarchy() -> Result<(), Box<dyn std::error::Error>> {
     // Test deep package hierarchies
     use amalgam_core::ImportPathCalculator;
 
@@ -126,10 +127,11 @@ fn test_deep_package_hierarchy() {
             path
         );
     }
+    Ok(())
 }
 
 #[test]
-fn test_version_mismatch_imports() {
+fn test_version_mismatch_imports() -> Result<(), Box<dyn std::error::Error>> {
     // Test imports with version mismatches between packages
     use amalgam_core::ImportPathCalculator;
 
@@ -164,4 +166,5 @@ fn test_version_mismatch_imports() {
         "composition",
     );
     assert_eq!(path, "../../apiextensions_crossplane_io/v2/composition.ncl");
+    Ok(())
 }

@@ -176,12 +176,11 @@ fn create_test_type_definitions() -> HashMap<String, TypeDefinition> {
 }
 
 #[test]
-fn test_package_walker_build_registry() {
+fn test_package_walker_build_registry() -> Result<(), Box<dyn std::error::Error>> {
     let types = create_test_type_definitions();
 
     // Test registry building
-    let registry = PackageWalkerAdapter::build_registry(&types, "k8s.io", "v1")
-        .expect("Should build registry successfully");
+    let registry = PackageWalkerAdapter::build_registry(&types, "k8s.io", "v1")?;
 
     // Verify all types were added to registry
     assert_eq!(registry.types.len(), types.len());
@@ -196,16 +195,16 @@ fn test_package_walker_build_registry() {
     let pod = registry
         .types
         .get("k8s.io.v1.pod")
-        .expect("Pod should exist");
+        .ok_or("Type not found")?;
     assert_eq!(pod.name, "Pod");
     assert!(pod.documentation.is_some());
+    Ok(())
 }
 
 #[test]
-fn test_package_walker_build_dependencies() {
+fn test_package_walker_build_dependencies() -> Result<(), Box<dyn std::error::Error>> {
     let types = create_test_type_definitions();
-    let registry = PackageWalkerAdapter::build_registry(&types, "k8s.io", "v1")
-        .expect("Should build registry");
+    let registry = PackageWalkerAdapter::build_registry(&types, "k8s.io", "v1")?;
 
     // Test dependency extraction
     let deps = PackageWalkerAdapter::build_dependencies(&registry);
@@ -227,18 +226,18 @@ fn test_package_walker_build_dependencies() {
     // ObjectMeta should have no dependencies (only primitive types)
     let meta_deps = deps.get_dependencies("k8s.io.v1.objectmeta");
     assert!(meta_deps.is_empty());
+    Ok(())
 }
 
 #[test]
-fn test_package_walker_generate_ir() {
+fn test_package_walker_generate_ir() -> Result<(), Box<dyn std::error::Error>> {
     let types = create_test_type_definitions();
-    let registry = PackageWalkerAdapter::build_registry(&types, "k8s.io", "v1")
-        .expect("Should build registry");
+    let registry = PackageWalkerAdapter::build_registry(&types, "k8s.io", "v1")?;
     let deps = PackageWalkerAdapter::build_dependencies(&registry);
 
     // Test IR generation
     let ir = PackageWalkerAdapter::generate_ir(registry, deps, "k8s.io", "v1")
-        .expect("Should generate IR");
+?;
 
     // Should have modules for each type
     assert_eq!(ir.modules.len(), types.len());
@@ -260,10 +259,11 @@ fn test_package_walker_generate_ir() {
             );
         }
     }
+    Ok(())
 }
 
 #[test]
-fn test_cross_module_dependencies() {
+fn test_cross_module_dependencies() -> Result<(), Box<dyn std::error::Error>> {
     let mut types = HashMap::new();
 
     // Type in v1 that references v1beta1
@@ -295,18 +295,17 @@ fn test_cross_module_dependencies() {
         },
     );
 
-    let registry = PackageWalkerAdapter::build_registry(&types, "k8s.io", "v1")
-        .expect("Should build registry");
+    let registry = PackageWalkerAdapter::build_registry(&types, "k8s.io", "v1")?;
     let deps = PackageWalkerAdapter::build_dependencies(&registry);
     let ir = PackageWalkerAdapter::generate_ir(registry, deps, "k8s.io", "v1")
-        .expect("Should generate IR");
+?;
 
     // Find the deployment module
     let deployment_module = ir
         .modules
         .iter()
         .find(|m| m.name.contains("deployment"))
-        .expect("Should have deployment module");
+        .ok_or("Module not found")?;
 
     // Should have cross-version import
     assert!(!deployment_module.imports.is_empty());
@@ -320,26 +319,27 @@ fn test_cross_module_dependencies() {
             assert!(import.path.ends_with(".ncl"));
         }
     }
+    Ok(())
 }
 
 #[test]
-fn test_empty_types() {
+fn test_empty_types() -> Result<(), Box<dyn std::error::Error>> {
     let types = HashMap::new();
 
-    let registry = PackageWalkerAdapter::build_registry(&types, "test.io", "v1")
-        .expect("Should handle empty types");
+    let registry = PackageWalkerAdapter::build_registry(&types, "test.io", "v1")?;
     assert!(registry.types.is_empty());
 
     let deps = PackageWalkerAdapter::build_dependencies(&registry);
     assert!(deps.get_all_dependencies().is_empty());
 
     let ir = PackageWalkerAdapter::generate_ir(registry, deps, "test.io", "v1")
-        .expect("Should generate empty IR");
+?;
     assert!(ir.modules.is_empty());
+    Ok(())
 }
 
 #[test]
-fn test_complex_type_references() {
+fn test_complex_type_references() -> Result<(), Box<dyn std::error::Error>> {
     let mut types = HashMap::new();
 
     // Type with various reference types
@@ -419,8 +419,7 @@ fn test_complex_type_references() {
         },
     );
 
-    let registry = PackageWalkerAdapter::build_registry(&types, "test.io", "v1")
-        .expect("Should build registry");
+    let registry = PackageWalkerAdapter::build_registry(&types, "test.io", "v1")?;
     let deps = PackageWalkerAdapter::build_dependencies(&registry);
 
     // Should extract all reference types
@@ -430,4 +429,5 @@ fn test_complex_type_references() {
     assert!(complex_deps.contains(&"test.io.v1.another".to_string()));
     assert!(complex_deps.contains(&"test.io.v1.item".to_string()));
     assert!(complex_deps.contains(&"test.io.v1.value".to_string()));
+    Ok(())
 }

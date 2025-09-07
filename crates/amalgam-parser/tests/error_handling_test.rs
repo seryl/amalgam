@@ -8,7 +8,7 @@ use serde_json::json;
 
 /// Test handling of malformed CRD input
 #[test]
-fn test_malformed_crd_handling() {
+fn test_malformed_crd_handling() -> Result<(), Box<dyn std::error::Error>> {
     let malformed_crd = CRDInput {
         group: "test.example.io".to_string(),
         versions: vec![CRDVersion {
@@ -44,11 +44,12 @@ fn test_malformed_crd_handling() {
             );
         }
     }
+    Ok(())
 }
 
 /// Test handling of CRD with missing $ref targets
 #[test]
-fn test_missing_ref_target() {
+fn test_missing_ref_target() -> Result<(), Box<dyn std::error::Error>> {
     let crd_with_missing_ref = CRDInput {
         group: "test.example.io".to_string(),
         versions: vec![CRDVersion {
@@ -107,11 +108,12 @@ fn test_missing_ref_target() {
             );
         }
     }
+    Ok(())
 }
 
 /// Test handling of circular dependencies
 #[test]
-fn test_circular_dependency_detection() {
+fn test_circular_dependency_detection() -> Result<(), Box<dyn std::error::Error>> {
     // Create a CRD with circular references: A -> B -> A
     let circular_crd = CRDInput {
         group: "test.example.io".to_string(),
@@ -169,11 +171,12 @@ fn test_circular_dependency_detection() {
             );
         }
     }
+    Ok(())
 }
 
 /// Test handling of empty CRD input
 #[test]
-fn test_empty_crd_input() {
+fn test_empty_crd_input() -> Result<(), Box<dyn std::error::Error>> {
     let empty_crd = CRDInput {
         group: "empty.example.io".to_string(),
         versions: vec![],
@@ -199,11 +202,12 @@ fn test_empty_crd_input() {
             );
         }
     }
+    Ok(())
 }
 
 /// Test handling of CRD with no schema
 #[test]
-fn test_version_without_schema() {
+fn test_version_without_schema() -> Result<(), Box<dyn std::error::Error>> {
     let crd_no_schema = CRDInput {
         group: "test.example.io".to_string(),
         versions: vec![CRDVersion {
@@ -231,11 +235,12 @@ fn test_version_without_schema() {
             );
         }
     }
+    Ok(())
 }
 
 /// Test handling of invalid JSON Schema constructs
 #[test]
-fn test_invalid_json_schema_constructs() {
+fn test_invalid_json_schema_constructs() -> Result<(), Box<dyn std::error::Error>> {
     let invalid_schema_crd = CRDInput {
         group: "test.example.io".to_string(),
         versions: vec![CRDVersion {
@@ -282,11 +287,12 @@ fn test_invalid_json_schema_constructs() {
             );
         }
     }
+    Ok(())
 }
 
 /// Test handling of deeply nested schemas
 #[test]
-fn test_deeply_nested_schema() {
+fn test_deeply_nested_schema() -> Result<(), Box<dyn std::error::Error>> {
     // Create a schema with very deep nesting to test stack overflow protection
     let mut deep_schema = json!({
         "type": "object",
@@ -342,11 +348,12 @@ fn test_deeply_nested_schema() {
             );
         }
     }
+    Ok(())
 }
 
 /// Test recovery from import path calculation errors
 #[test]
-fn test_import_path_calculation_error_recovery() {
+fn test_import_path_calculation_error_recovery() -> Result<(), Box<dyn std::error::Error>> {
     // Create scenario that might cause import path issues
     let problematic_crd = CRDInput {
         group: "".to_string(), // Empty group name
@@ -384,11 +391,12 @@ fn test_import_path_calculation_error_recovery() {
             );
         }
     }
+    Ok(())
 }
 
 /// Integration test: Error recovery doesn't break the pipeline
 #[test]
-fn test_error_recovery_pipeline_resilience() {
+fn test_error_recovery_pipeline_resilience() -> Result<(), Box<dyn std::error::Error>> {
     // Create a mix of valid and invalid CRDs to test that errors in one
     // don't break processing of others
     let mixed_crds = vec![
@@ -456,4 +464,5 @@ fn test_error_recovery_pipeline_resilience() {
         successes > 0 || meaningful_errors > 0,
         "Should either process successfully or provide meaningful errors"
     );
+    Ok(())
 }

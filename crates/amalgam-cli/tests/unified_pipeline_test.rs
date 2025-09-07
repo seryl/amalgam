@@ -121,7 +121,7 @@ fn test_openapi_walker_produces_ir() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
-fn test_namespaced_package_uses_walker_pipeline() {
+fn test_namespaced_package_uses_walker_pipeline() -> Result<(), Box<dyn std::error::Error>> {
     // Test that NamespacedPackage integrates with walker pipeline
     let mut package = NamespacedPackage::new("test.package".to_string());
 
@@ -152,6 +152,7 @@ fn test_namespaced_package_uses_walker_pipeline() {
     // Check for mod.ncl
     let has_mod = files.contains_key("mod.ncl");
     assert!(has_mod, "Should generate mod.ncl file");
+    Ok(())
 }
 
 #[tokio::test]
@@ -201,13 +202,14 @@ async fn test_k8s_core_import_uses_unified_pipeline() -> Result<(), Box<dyn std:
 }
 
 #[test]
-fn test_all_walkers_implement_trait() {
+fn test_all_walkers_implement_trait() -> Result<(), Box<dyn std::error::Error>> {
     // Compile-time test to ensure all walkers implement SchemaWalker trait
     fn assert_walker<T: SchemaWalker>() {}
 
     // This will fail to compile if walkers don't implement the trait
     assert_walker::<CRDWalker>();
     assert_walker::<OpenAPIWalker>();
+    Ok(())
 }
 
 #[test]

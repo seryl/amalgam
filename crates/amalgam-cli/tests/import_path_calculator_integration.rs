@@ -60,13 +60,13 @@ fn create_test_crd_with_imports() -> CRDInput {
 }
 
 #[test]
-fn test_import_path_calculator_walker_integration() {
+fn test_import_path_calculator_walker_integration() -> Result<(), Box<dyn std::error::Error>> {
     // Create a CRD with cross-version imports
     let crd = create_test_crd_with_imports();
 
     // Process through CRD walker pipeline
     let walker = CRDWalker::new("example.io");
-    let ir = walker.walk(crd).expect("Walker should process CRD");
+    let ir = walker.walk(crd)?;
 
     // Track that we found the expected imports
     let mut found_ncl_extension = false;
@@ -127,10 +127,11 @@ fn test_import_path_calculator_walker_integration() {
         "Should have found imports with .ncl extension"
     );
     assert!(found_proper_depth, "All imports should have proper depth");
+    Ok(())
 }
 
 #[test]
-fn test_import_calculator_direct_usage() {
+fn test_import_calculator_direct_usage() -> Result<(), Box<dyn std::error::Error>> {
     let calc = ImportPathCalculator::new(Arc::new(ModuleRegistry::new()));
 
     // Test same package, same version
@@ -154,10 +155,11 @@ fn test_import_calculator_direct_usage() {
         "objectmeta",
     );
     assert_eq!(path, "../../k8s_io/v1/objectmeta.ncl");
+    Ok(())
 }
 
 #[test]
-fn test_walker_import_generation_consistency() {
+fn test_walker_import_generation_consistency() -> Result<(), Box<dyn std::error::Error>> {
     // This test verifies that different walkers generate consistent import paths
     // when using the ImportPathCalculator
 
@@ -208,4 +210,5 @@ fn test_walker_import_generation_consistency() {
             from_pkg, from_ver, to_pkg, to_ver, type_name
         );
     }
+    Ok(())
 }

@@ -8,8 +8,8 @@ use std::process::Command;
 use tempfile::tempdir;
 
 #[test]
-fn test_url_import_uses_unified_pipeline() {
-    let temp_dir = tempdir().expect("Failed to create temp dir");
+fn test_url_import_uses_unified_pipeline() -> Result<(), Box<dyn std::error::Error>> {
+    let temp_dir = tempdir()?;
     let output_dir = temp_dir.path();
 
     // Run amalgam import url command
@@ -24,12 +24,12 @@ fn test_url_import_uses_unified_pipeline() {
             "--url",
             "https://raw.githubusercontent.com/crossplane/crossplane/master/cluster/crds/apiextensions.crossplane.io_compositions.yaml",
             "--output",
-            output_dir.to_str().unwrap(),
+            output_dir.to_str().ok_or("Failed to convert path to string")?,
             "--package",
             "test-crossplane"
         ])
         .output()
-        .expect("Failed to execute amalgam");
+        ?;
 
     if !output.status.success() {
         eprintln!("STDERR: {}", String::from_utf8_lossy(&output.stderr));
@@ -47,7 +47,7 @@ fn test_url_import_uses_unified_pipeline() {
 
     // Check that we have the expected package structure
     let mod_content =
-        fs::read_to_string(output_dir.join("mod.ncl")).expect("Failed to read main module");
+        fs::read_to_string(output_dir.join("mod.ncl"))?;
 
     // Should have generated the expected structure
     assert!(
@@ -57,18 +57,19 @@ fn test_url_import_uses_unified_pipeline() {
 
     // Check for proper structure
     let entries = fs::read_dir(output_dir)
-        .expect("Failed to read output directory")
+        ?
         .count();
 
     assert!(
         entries > 1,
         "Should have generated multiple files/directories"
     );
+    Ok(())
 }
 
 #[test]
-fn test_manifest_generation_uses_unified_pipeline() {
-    let temp_dir = tempdir().expect("Failed to create temp dir");
+fn test_manifest_generation_uses_unified_pipeline() -> Result<(), Box<dyn std::error::Error>> {
+    let temp_dir = tempdir()?;
     let manifest_path = temp_dir.path().join(".amalgam-manifest.toml");
 
     // Create a test manifest
@@ -111,9 +112,9 @@ spec:
                 type: string
 "#;
 
-    fs::write(&manifest_path, manifest_content).expect("Failed to write manifest");
+    fs::write(&manifest_path, manifest_content)?;
 
-    fs::write(temp_dir.path().join("test.yaml"), test_crd).expect("Failed to write test CRD");
+    fs::write(temp_dir.path().join("test.yaml"), test_crd)?;
 
     // Run manifest generation
     let output = Command::new("cargo")
@@ -124,11 +125,11 @@ spec:
             "--",
             "generate-from-manifest",
             "--manifest",
-            manifest_path.to_str().unwrap(),
+            manifest_path.to_str().ok_or("Failed to convert path to string")?,
         ])
         .current_dir(temp_dir.path())
         .output()
-        .expect("Failed to execute amalgam");
+        ?;
 
     // For CRD file sources, the command might not be fully implemented yet
     // Just check it doesn't crash with PackageGenerator errors
@@ -137,14 +138,15 @@ spec:
         !stderr.contains("PackageGenerator"),
         "Should not reference old PackageGenerator"
     );
+    Ok(())
 }
 
 #[test]
-fn test_url_import_generates_cross_module_imports() {
+fn test_url_import_generates_cross_module_imports() -> Result<(), Box<dyn std::error::Error>> {
     // This test verifies that URL imports properly generate cross-module imports
     // when CRDs have dependencies between versions
 
-    let temp_dir = tempdir().expect("Failed to create temp dir");
+    let temp_dir = tempdir()?;
     let output_dir = temp_dir.path();
 
     // Test with a real CrossPlane CRD that has cross-version references
@@ -160,12 +162,12 @@ fn test_url_import_generates_cross_module_imports() {
             "--url",
             "https://raw.githubusercontent.com/crossplane/crossplane/master/cluster/crds/apiextensions.crossplane.io_compositeresourcedefinitions.yaml",
             "--output",
-            output_dir.to_str().unwrap(),
+            output_dir.to_str().ok_or("Failed to convert path to string")?,
             "--package",
             "test-crossplane-xrd",
         ])
         .output()
-        .expect("Failed to execute amalgam");
+        ?;
 
     // Check the command output
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -177,10 +179,11 @@ fn test_url_import_generates_cross_module_imports() {
 
     // Check that command succeeded
     assert!(output.status.success(), "URL import should succeed");
+    Ok(())
 }
 
 #[test]
-fn test_project_compiles_with_unified_pipeline() {
+fn test_project_compiles_with_unified_pipeline() -> Result<(), Box<dyn std::error::Error>> {
     // This test verifies that the entire project compiles with unified pipeline
     // The fact that vendor.rs compiles proves it was migrated from PackageGenerator
     // to NamespacedPackage, since using PackageGenerator would cause compilation errors
@@ -189,7 +192,7 @@ fn test_project_compiles_with_unified_pipeline() {
     let output = Command::new("cargo")
         .args(["run", "--bin", "amalgam", "--", "--version"])
         .output()
-        .expect("Failed to execute amalgam");
+        ?;
 
     // If compilation succeeded, the vendor system is using unified pipeline
     assert!(
@@ -202,4 +205,5 @@ fn test_project_compiles_with_unified_pipeline() {
         stdout.contains("amalgam"),
         "Version output should contain 'amalgam'"
     );
+    Ok(())
 }

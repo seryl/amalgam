@@ -6,12 +6,12 @@ use std::fs;
 use tempfile::TempDir;
 
 #[test]
-fn test_dependency_spec_types() {
+fn test_dependency_spec_types() -> Result<(), Box<dyn std::error::Error>> {
     // Test simple version
     let simple = DependencySpec::Simple("1.2.3".to_string());
     match simple {
         DependencySpec::Simple(v) => assert_eq!(v, "1.2.3"),
-        _ => panic!("Expected Simple dependency spec"),
+        _ => return Err("Expected Simple dependency spec".into()),
     }
 
     // Test full dependency spec
@@ -23,12 +23,13 @@ fn test_dependency_spec_types() {
         DependencySpec::Full { version, .. } => {
             assert_eq!(version, "2.0.0");
         }
-        _ => panic!("Expected Full dependency spec"),
+        _ => return Err("Expected Full dependency spec".into()),
     }
+    Ok(())
 }
 
 #[test]
-fn test_package_definition_creation() {
+fn test_package_definition_creation() -> Result<(), Box<dyn std::error::Error>> {
     let package = PackageDefinition {
         name: "test-package".to_string(),
         output: "test_package".to_string(),
@@ -54,11 +55,12 @@ fn test_package_definition_creation() {
     assert_eq!(package.version, Some("1.0.0".to_string()));
     assert!(package.dependencies.contains_key("base"));
     assert!(package.enabled);
+    Ok(())
 }
 
 #[test]
-fn test_manifest_config_creation() {
-    let temp_dir = TempDir::new().unwrap();
+fn test_manifest_config_creation() -> Result<(), Box<dyn std::error::Error>> {
+    let temp_dir = TempDir::new()?;
     let config = ManifestConfig {
         output_base: temp_dir.path().to_path_buf(),
         base_package_id: "github:test/packages".to_string(),
@@ -69,6 +71,7 @@ fn test_manifest_config_creation() {
     assert_eq!(config.base_package_id, "github:test/packages");
     assert!(config.package_mode);
     assert!(config.local_package_prefix.is_none());
+    Ok(())
 }
 
 #[cfg(test)]
@@ -76,8 +79,8 @@ mod end_to_end_tests {
     use super::*;
 
     #[test]
-    fn test_package_generates_index_dependencies() {
-        let temp_dir = TempDir::new().unwrap();
+    fn test_package_generates_index_dependencies() -> Result<(), Box<dyn std::error::Error>> {
+        let temp_dir = TempDir::new()?;
         let output_base = temp_dir.path().to_path_buf();
 
         // Create a simple test case that should work
@@ -108,11 +111,12 @@ mod end_to_end_tests {
 
         // Verify package directory can be created
         let pkg_dir = output_base.join(&pkg.output);
-        fs::create_dir_all(&pkg_dir).expect("Should be able to create package directory");
+        fs::create_dir_all(&pkg_dir)?;
         assert!(pkg_dir.exists());
 
         // Create a basic mod.ncl file
-        fs::write(pkg_dir.join("mod.ncl"), "{ test = \"value\" }").expect("Should write mod.ncl");
+        fs::write(pkg_dir.join("mod.ncl"), "{ test = \"value\" }")?;
         assert!(pkg_dir.join("mod.ncl").exists());
+    Ok(())
     }
 }

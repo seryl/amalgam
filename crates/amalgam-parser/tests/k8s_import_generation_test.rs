@@ -6,7 +6,7 @@ use amalgam_parser::package_walker::PackageWalkerAdapter;
 use std::collections::{BTreeMap, HashMap};
 
 #[test]
-fn test_k8s_lifecycle_imports() {
+fn test_k8s_lifecycle_imports() -> Result<(), Box<dyn std::error::Error>> {
     // Create types for k8s v1 version
 
     // Create LifecycleHandler type
@@ -156,13 +156,13 @@ fn test_k8s_lifecycle_imports() {
 
     // Build registry and dependencies using PackageWalkerAdapter
     let registry = PackageWalkerAdapter::build_registry(&v1_types, "k8s.io", "v1")
-        .expect("Failed to build registry");
+        ?;
 
     let deps = PackageWalkerAdapter::build_dependencies(&registry);
 
     // Generate IR
     let ir = PackageWalkerAdapter::generate_ir(registry, deps, "k8s.io", "v1")
-        .expect("Failed to generate IR");
+        ?;
 
     // Verify we have a single module
     assert_eq!(ir.modules.len(), 1, "Should have exactly one module");
@@ -176,7 +176,7 @@ fn test_k8s_lifecycle_imports() {
     let mut codegen = amalgam_codegen::nickel::NickelCodegen::from_ir(&ir);
     let (output, import_map) = codegen
         .generate_with_import_tracking(&ir)
-        .expect("Failed to generate Nickel code");
+        ?;
 
     // Check that import map has entries
     let lifecycle_imports = import_map.get_imports_for("Lifecycle");
@@ -217,10 +217,11 @@ fn test_k8s_lifecycle_imports() {
             .any(|i| i.contains("../v0/intorstring.ncl")),
         "HTTPGetAction should import IntOrString from v0"
     );
+    Ok(())
 }
 
 #[test]
-fn test_single_module_generation() {
+fn test_single_module_generation() -> Result<(), Box<dyn std::error::Error>> {
     // Test that PackageWalkerAdapter creates a single module for all types
     let mut types = HashMap::new();
 
@@ -235,10 +236,10 @@ fn test_single_module_generation() {
     }
 
     let registry = PackageWalkerAdapter::build_registry(&types, "test.io", "v1")
-        .expect("Failed to build registry");
+        ?;
     let deps = PackageWalkerAdapter::build_dependencies(&registry);
     let ir = PackageWalkerAdapter::generate_ir(registry, deps, "test.io", "v1")
-        .expect("Failed to generate IR");
+        ?;
 
     // Should have exactly one module
     assert_eq!(ir.modules.len(), 1, "Should generate exactly one module");
@@ -251,10 +252,11 @@ fn test_single_module_generation() {
         5,
         "Module should contain all 5 types"
     );
+    Ok(())
 }
 
 #[test]
-fn test_cross_module_import_generation() {
+fn test_cross_module_import_generation() -> Result<(), Box<dyn std::error::Error>> {
     // Test imports between different versions
 
     // v1 type that references v0 type
@@ -288,16 +290,16 @@ fn test_cross_module_import_generation() {
 
     // Build and generate
     let registry = PackageWalkerAdapter::build_registry(&v1_types, "k8s.io", "v1")
-        .expect("Failed to build registry");
+        ?;
     let deps = PackageWalkerAdapter::build_dependencies(&registry);
     let ir = PackageWalkerAdapter::generate_ir(registry, deps, "k8s.io", "v1")
-        .expect("Failed to generate IR");
+        ?;
 
     // Generate Nickel code
     let mut codegen = amalgam_codegen::nickel::NickelCodegen::from_ir(&ir);
     let (_output, import_map) = codegen
         .generate_with_import_tracking(&ir)
-        .expect("Failed to generate Nickel code");
+        ?;
 
     // Check imports
     let container_imports = import_map.get_imports_for("Container");
@@ -307,4 +309,5 @@ fn test_cross_module_import_generation() {
             .any(|i| i.contains("../v0/intorstring.ncl")),
         "Container should import IntOrString from v0"
     );
+    Ok(())
 }

@@ -62,15 +62,15 @@ fn create_type_with_raw_extension() -> HashMap<String, TypeDefinition> {
 }
 
 #[test]
-fn test_rawextension_v0_import() {
+fn test_rawextension_v0_import() -> Result<(), Box<dyn std::error::Error>> {
     let types = create_type_with_raw_extension();
 
     // Process through package walker
     let registry = PackageWalkerAdapter::build_registry(&types, "example.io", "v1")
-        .expect("Should build registry");
+        ?;
     let deps = PackageWalkerAdapter::build_dependencies(&registry);
     let ir = PackageWalkerAdapter::generate_ir(registry, deps, "example.io", "v1")
-        .expect("Should generate IR");
+        ?;
 
     // Find imports in the generated IR
     let mut found_raw_extension = false;
@@ -114,10 +114,11 @@ fn test_rawextension_v0_import() {
         found_object_meta,
         "Should have found ObjectMeta import from v1"
     );
+    Ok(())
 }
 
 #[test]
-fn test_runtime_types_version_detection() {
+fn test_runtime_types_version_detection() -> Result<(), Box<dyn std::error::Error>> {
     // Test that runtime and pkg types are correctly identified as v0
     let test_cases = vec![
         ("io.k8s.apimachinery.pkg.runtime.RawExtension", "v0"),
@@ -135,6 +136,7 @@ fn test_runtime_types_version_detection() {
             fqn
         );
     }
+    Ok(())
 }
 
 /// Helper to extract version from FQN (mimics logic in package_walker.rs)
@@ -158,7 +160,7 @@ fn extract_version_from_fqn(fqn: &str) -> &str {
 }
 
 #[test]
-fn test_import_path_calculator_v0_imports() {
+fn test_import_path_calculator_v0_imports() -> Result<(), Box<dyn std::error::Error>> {
     let calc = ImportPathCalculator::new_standalone();
 
     // Test v1 -> v0 import for RawExtension
@@ -172,10 +174,11 @@ fn test_import_path_calculator_v0_imports() {
     // Test v1beta1 -> v0
     let path = calc.calculate("k8s.io", "v1beta1", "k8s.io", "v0", "unknown");
     assert_eq!(path, "../v0/unknown.ncl");
+    Ok(())
 }
 
 #[test]
-fn test_multiple_runtime_type_references() {
+fn test_multiple_runtime_type_references() -> Result<(), Box<dyn std::error::Error>> {
     let mut types = HashMap::new();
 
     // Create a type with multiple runtime references
@@ -225,10 +228,10 @@ fn test_multiple_runtime_type_references() {
 
     // Generate IR
     let registry = PackageWalkerAdapter::build_registry(&types, "webhooks.io", "v1")
-        .expect("Should build registry");
+        ?;
     let deps = PackageWalkerAdapter::build_dependencies(&registry);
     let ir = PackageWalkerAdapter::generate_ir(registry, deps, "webhooks.io", "v1")
-        .expect("Should generate IR");
+        ?;
 
     // All runtime imports should go to v0
     for module in &ir.modules {
@@ -242,4 +245,5 @@ fn test_multiple_runtime_type_references() {
             }
         }
     }
+    Ok(())
 }
