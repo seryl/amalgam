@@ -1094,4 +1094,3 @@ The maximum number of SharedCounters is 32.
        | optional
   }
 }
-String

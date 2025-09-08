@@ -948,4 +948,3 @@ Attempting to use a user or basic auth e.g. "user:password@" is not allowed. Fra
        | optional
   }
 }
-String

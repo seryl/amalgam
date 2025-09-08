@@ -56,10 +56,11 @@ impl PackageWalkerAdapter {
                     format!("{}.{}", self_module, ref_info.name.to_lowercase())
                 };
 
-                // Convert legacy io.k8s.* format to unified k8s.io.* format
-                if dep_fqn.starts_with("io.k8s.") {
-                    dep_fqn = Self::convert_legacy_k8s_fqn(&dep_fqn);
-                }
+                // NOTE: Legacy io.k8s.* format conversion is now handled by SpecialCasePipeline
+                // The conversion happens during IR processing, not during dependency walking
+                // if dep_fqn.starts_with("io.k8s.") {
+                //     dep_fqn = Self::convert_legacy_k8s_fqn(&dep_fqn);
+                // }
 
                 // Add dependency if it exists in registry, is a k8s type, or is in the same module
                 let self_module = fqn.rsplit_once('.').map(|(m, _)| m).unwrap_or("");
@@ -78,28 +79,12 @@ impl PackageWalkerAdapter {
     }
 
     /// Convert legacy io.k8s.* FQN to unified k8s.io.* format
+    /// NOTE: This method is deprecated - conversion is now handled by SpecialCasePipeline
+    #[allow(dead_code)]
     fn convert_legacy_k8s_fqn(fqn: &str) -> String {
-        // Convert io.k8s.api.core.v1.resourcerequirements -> k8s.io.v1.resourcerequirements
-        // Convert io.k8s.apimachinery.pkg.apis.meta.v1.objectmeta -> k8s.io.v1.objectmeta
-        if fqn.starts_with("io.k8s.apimachinery.pkg.apis.meta.") {
-            // io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta -> k8s.io.v1.objectmeta
-            let parts: Vec<&str> = fqn.split('.').collect();
-            if parts.len() >= 8 {
-                let version = parts[6]; // v1
-                let type_name = parts[7].to_lowercase(); // objectmeta (just the last part)
-                return format!("k8s.io.{}.{}", version, type_name);
-            }
-        } else if fqn.starts_with("io.k8s.api.") {
-            // io.k8s.api.core.v1.ResourceRequirements -> k8s.io.v1.resourcerequirements
-            let parts: Vec<&str> = fqn.split('.').collect();
-            if parts.len() >= 6 {
-                let version = parts[4]; // v1
-                let type_name = parts[5].to_lowercase(); // resourcerequirements (just the last part)
-                return format!("k8s.io.{}.{}", version, type_name);
-            }
-        }
-
-        // Fallback: return original if conversion fails
+        // This functionality has been migrated to SpecialCasePipeline
+        // which handles module remapping through declarative TOML rules
+        // See: crates/amalgam-core/src/special_cases/rules/k8s.toml
         fqn.to_string()
     }
 

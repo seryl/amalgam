@@ -1,5 +1,8 @@
 //! Manifest-based package generation for CI/CD workflows
 
+use amalgam_core::compilation_unit::CompilationUnit;
+use amalgam_core::special_cases::{SpecialCasePipeline, WithSpecialCases};
+
 // Define DetectedSource locally to avoid import issues
 #[derive(Debug, Clone)]
 pub enum DetectedSource {
@@ -897,10 +900,27 @@ impl Manifest {
                 .with_context(|| format!("Failed to parse OpenAPI to IR from {}", url))?
         };
         
-        // Generate Nickel code
+        // Apply special cases to the IR modules
+        let special_cases = SpecialCasePipeline::new();
+        let mut processed_modules = ir.modules.clone();
+        for module in &mut processed_modules {
+            module.apply_special_cases(&special_cases);
+        }
+        
+        // Phase 1: Complete analysis using CompilationUnit
         let registry = Arc::new(ModuleRegistry::new());
+        let mut compilation_unit = CompilationUnit::new(registry.clone());
+        compilation_unit.analyze_modules(processed_modules)?;
+        
+        // Check for circular dependencies
+        if compilation_unit.has_circular_dependencies() {
+            warn!("Circular dependencies detected in module graph");
+        }
+        
+        // Phase 2: Generate with full knowledge of dependencies
         let mut codegen = NickelCodegen::new(registry);
-        let generated = codegen.generate(&ir)?;
+        codegen.set_special_cases(special_cases.clone());
+        let generated = codegen.generate_with_compilation_unit(&compilation_unit)?;
         
         // Create output directory
         fs::create_dir_all(output)?;
@@ -1026,10 +1046,27 @@ impl Manifest {
         let parser = CRDParser::new();
         let ir = parser.parse(crd)?;
         
-        // Generate Nickel code
+        // Apply special cases to the IR modules
+        let special_cases = SpecialCasePipeline::new();
+        let mut processed_modules = ir.modules.clone();
+        for module in &mut processed_modules {
+            module.apply_special_cases(&special_cases);
+        }
+        
+        // Phase 1: Complete analysis using CompilationUnit
         let registry = Arc::new(ModuleRegistry::new());
+        let mut compilation_unit = CompilationUnit::new(registry.clone());
+        compilation_unit.analyze_modules(processed_modules)?;
+        
+        // Check for circular dependencies
+        if compilation_unit.has_circular_dependencies() {
+            warn!("Circular dependencies detected in module graph");
+        }
+        
+        // Phase 2: Generate with full knowledge of dependencies
         let mut codegen = NickelCodegen::new(registry);
-        let generated = codegen.generate(&ir)?;
+        codegen.set_special_cases(special_cases.clone());
+        let generated = codegen.generate_with_compilation_unit(&compilation_unit)?;
         
         // Create output directory
         fs::create_dir_all(output)?;

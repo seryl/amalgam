@@ -86,5 +86,3 @@ Strategy is the strategy that coordinated leader election will use for picking t
 "%
   }
 }
-{
-}

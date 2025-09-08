@@ -7,9 +7,11 @@ use crate::package_mode::PackageMode;
 use crate::resolver::{ResolutionContext, TypeResolver};
 use crate::{Codegen, CodegenError};
 use amalgam_core::{
+    compilation_unit::CompilationUnit,
     debug::{CompilationDebugInfo, DebugConfig, ImportDebugEntry, ImportDebugInfo},
     module_registry::ModuleRegistry,
     naming::to_camel_case,
+    special_cases::SpecialCasePipeline,
     types::{Field, Type},
     ImportPathCalculator, IR,
 };
@@ -85,6 +87,8 @@ pub struct NickelCodegen {
     registry: Arc<ModuleRegistry>,
     /// Import path calculator using the registry
     import_calculator: ImportPathCalculator,
+    /// Special case handler pipeline
+    special_cases: Option<SpecialCasePipeline>,
     /// Track cross-module imports needed for the current module
     current_imports: HashSet<(String, String)>, // (version, type_name)
     /// Same-package dependencies for current module (Phase 2)
@@ -101,6 +105,8 @@ pub struct NickelCodegen {
     debug_config: DebugConfig,
     /// Compilation debug info (collected when debug_config is enabled)
     compilation_debug: CompilationDebugInfo,
+    /// Track imported types for the current module being generated (Phase 2)
+    current_module_imports: HashSet<String>,
 }
 
 impl NickelCodegen {
@@ -112,6 +118,7 @@ impl NickelCodegen {
             package_mode: PackageMode::default(),
             registry,
             import_calculator,
+            special_cases: None,
             current_imports: HashSet::new(),
             same_package_deps: HashSet::new(),
             debug_info: ImportGenerationDebug::default(),
@@ -120,7 +127,13 @@ impl NickelCodegen {
             pipeline_debug: ImportPipelineDebug::new(),
             debug_config: DebugConfig::default(),
             compilation_debug: CompilationDebugInfo::new(),
+            current_module_imports: HashSet::new(),
         }
+    }
+    
+    /// Set the special case pipeline
+    pub fn set_special_cases(&mut self, pipeline: SpecialCasePipeline) {
+        self.special_cases = Some(pipeline);
     }
     
     /// Create with a new registry built from IR
@@ -198,6 +211,124 @@ impl NickelCodegen {
                 }
             }
         }
+    }
+
+    /// Generate code with two-phase compilation using CompilationUnit
+    /// This ensures all cross-module dependencies are resolved before generation
+    pub fn generate_with_compilation_unit(
+        &mut self,
+        compilation_unit: &CompilationUnit,
+    ) -> Result<String, CodegenError> {
+        let mut output = String::new();
+        
+        // Process modules in topological order to ensure dependencies are available
+        let module_order = compilation_unit.get_modules_in_order()
+            .map_err(|e| CodegenError::Generation(format!("Failed to get module order: {}", e)))?;
+        
+        for module_id in module_order {
+            let analysis = compilation_unit.modules.get(&module_id)
+                .ok_or_else(|| CodegenError::Generation(format!("Module {} not found in compilation unit", module_id)))?;
+            
+            let module = &analysis.module;
+            
+            // Generate module-level imports based on analysis
+            let mut module_imports = Vec::new();
+            self.current_module_imports.clear(); // Reset for this module
+            
+            if let Some(required_imports) = compilation_unit.get_module_imports(&module_id) {
+                for (imported_module_id, imported_types) in required_imports {
+                    // Calculate the import path from current module to imported module
+                    let (current_group, current_version) = Self::parse_module_name(&module_id);
+                    let (import_group, import_version) = Self::parse_module_name(imported_module_id);
+                    
+                    // Import each type individually
+                    for type_name in imported_types {
+                        // Check for special case import override
+                        let import_path = if let Some(ref special_cases) = self.special_cases {
+                            if let Some(override_path) = special_cases.get_import_override(&module_id, type_name) {
+                                override_path
+                            } else {
+                                self.import_calculator.calculate(
+                                    &current_group,
+                                    &current_version,
+                                    &import_group,
+                                    &import_version,
+                                    type_name, // Import the specific type file
+                                )
+                            }
+                        } else {
+                            self.import_calculator.calculate(
+                                &current_group,
+                                &current_version,
+                                &import_group,
+                                &import_version,
+                                type_name, // Import the specific type file
+                            )
+                        };
+                        
+                        // Use the type name directly as the import alias
+                        let import_alias = to_camel_case(type_name);
+                        module_imports.push(format!("let {} = import \"{}\" in", import_alias, import_path));
+                        
+                        // Track that this type is imported for reference generation
+                        self.current_module_imports.insert(type_name.clone());
+                    }
+                }
+            }
+            
+            // Generate the module with hoisted imports
+            writeln!(output, "# Module: {}", module_id)
+                .map_err(|e| CodegenError::Generation(e.to_string()))?;
+            writeln!(output).map_err(|e| CodegenError::Generation(e.to_string()))?;
+            
+            // Write module-level imports at the top
+            for import in &module_imports {
+                writeln!(output, "{}", import)
+                    .map_err(|e| CodegenError::Generation(e.to_string()))?;
+            }
+            if !module_imports.is_empty() {
+                writeln!(output)
+                    .map_err(|e| CodegenError::Generation(e.to_string()))?;
+            }
+            
+            // Generate the module content
+            let is_single_type = module.types.len() == 1 && module.constants.is_empty();
+            
+            if is_single_type {
+                let type_def = &module.types[0];
+                if let Some(doc) = &type_def.documentation {
+                    for line in doc.lines() {
+                        writeln!(output, "# {}", line)
+                            .map_err(|e| CodegenError::Generation(e.to_string()))?;
+                    }
+                }
+                let type_str = self.type_to_nickel(&type_def.ty, module, 0)?;
+                writeln!(output, "{}", type_str)?;
+            } else {
+                writeln!(output, "{{")?;
+                for (idx, type_def) in module.types.iter().enumerate() {
+                    let type_str = self.type_to_nickel(&type_def.ty, module, 1)?;
+                    if let Some(doc) = &type_def.documentation {
+                        for line in doc.lines() {
+                            writeln!(output, "{}# {}", self.indent(1), line)
+                                .map_err(|e| CodegenError::Generation(e.to_string()))?;
+                        }
+                    }
+                    let is_last_item = idx == module.types.len() - 1 && module.constants.is_empty();
+                    if !is_last_item {
+                        writeln!(output, "  {} = {},", type_def.name, type_str)?;
+                        writeln!(output)?;
+                    } else {
+                        writeln!(output, "  {} = {}", type_def.name, type_str)?;
+                    }
+                }
+                writeln!(output, "}}")?;
+            }
+            
+            writeln!(output)?; // Add spacing between modules
+        }
+        
+        Ok(output)
     }
 
     fn indent(&self, level: usize) -> String {
@@ -608,6 +739,13 @@ impl NickelCodegen {
                     module.name,
                     self.current_type_name
                 );
+                
+                // Check if this type was imported at the module level (Phase 2)
+                if self.current_module_imports.contains(name) {
+                    // Type is already imported, just use its camelCase name
+                    return Ok(to_camel_case(name));
+                }
+                
                 // If we have module information, this is a cross-module reference
                 if let Some(ref_module) = ref_module {
                     // Parse both module names to extract group and version
