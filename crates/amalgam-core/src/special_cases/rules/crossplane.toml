@@ -1,0 +1,29 @@
+# CrossPlane-specific special case rules
+
+[[type_transforms]]
+pattern = "apiextensions.crossplane.io.*"
+context = "crd"
+transform = { RemovePrefix = "apiextensions.crossplane.io." }
+
+[[module_remappings]]
+from_pattern = "crossplane.io/(.*)"
+to_pattern = "$1.crossplane.io"
+priority = 10
+
+# Handle CrossPlane's resource references
+[[import_overrides]]
+from_module = "apiextensions.crossplane.io.v1"
+target_type = "TypedReference"
+import_path = "../common/v1.ncl"
+reason = "TypedReference is in common module"
+
+# Field renames for CrossPlane conventions
+[[field_renames]]
+type_pattern = "*Spec"
+from_field = "writeConnectionSecretToRef"
+to_field = "write_connection_secret_to_ref"
+
+[[field_renames]]
+type_pattern = "*Spec"
+from_field = "publishConnectionDetailsTo"
+to_field = "publish_connection_details_to"

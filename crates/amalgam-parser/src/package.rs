@@ -2,19 +2,21 @@
 
 use crate::{
     crd::{CRDParser, CRD},
-    imports::{ImportResolver, TypeReference},
+    parsing_trace::{ParsingTrace, TypeExtractionAttempt},
     ParserError,
 };
-use amalgam_codegen::{
-    nickel_package::{NickelPackageConfig, NickelPackageGenerator, PackageDependency},
-    Codegen,
+use amalgam_codegen::nickel_package::{
+    NickelPackageConfig, NickelPackageGenerator, PackageDependency,
 };
 use amalgam_core::{
-    ir::{Import, Module, TypeDefinition, IR},
+    ir::{Module, TypeDefinition, IR},
     types::Type,
 };
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
+
+mod import_extraction_debug;
+use import_extraction_debug::{ExtractionAttempt, ImportExtractionDebug};
 
 pub struct PackageGenerator {
     crds: Vec<CRD>,
@@ -191,7 +193,14 @@ impl NamespacedPackage {
                     } else {
                         capitalize_first(kind)
                     };
-                    content.push_str(&format!("  {} = import \"./{}.ncl\",\n", type_name, kind));
+                    // Single-type modules now export the type directly (not wrapped in record)
+                    // So we can import them directly without extraction
+                    // Use original case for the filename
+                    content.push_str(&format!(
+                        "  {} = import \"./{}.ncl\",\n",
+                        type_name,
+                        type_name // Use the type_name which has the correct case
+                    ));
                 }
 
                 content.push_str("}\n");
@@ -200,150 +209,377 @@ impl NamespacedPackage {
         })
     }
 
-    /// Generate a kind-specific file
-    pub fn generate_kind_file(&self, group: &str, version: &str, kind: &str) -> Option<String> {
-        self.types.get(group).and_then(|versions| {
-            versions.get(version).and_then(|kinds| {
-                kinds.get(kind).map(|type_def| {
-                    // Use the nickel codegen to generate the type
-                    let mut ir = IR::new();
-                    let mut module = Module {
-                        name: format!("{}.{}", kind, group),
-                        imports: Vec::new(),
-                        types: vec![type_def.clone()],
-                        constants: Vec::new(),
-                        metadata: Default::default(),
-                    };
+    /// Generate all files for a version using unified IR pipeline with walkers
+    #[tracing::instrument(skip(self), fields(group = %group, version = %version))]
+    pub fn generate_version_files(&self, group: &str, version: &str) -> BTreeMap<String, String> {
+        tracing::debug!("generate_version_files called for {}/{}", group, version);
+        let mut files = BTreeMap::new();
+        let mut trace = ParsingTrace::new();
+        let mut import_debug = ImportExtractionDebug::new();
 
-                    // Analyze the type for external references and add imports
-                    let mut import_resolver = ImportResolver::new();
-                    import_resolver.analyze_type(&type_def.ty);
+        // Get types for this version
+        let types = match self.types.get(group).and_then(|v| v.get(version)) {
+            Some(types) => types,
+            None => return files,
+        };
 
-                    // Build a mapping from full qualified names to alias.TypeName
-                    let mut reference_mappings: HashMap<String, String> = HashMap::new();
+        // Step 1: Build type registry using the walker adapter
+        let registry = match crate::package_walker::PackageWalkerAdapter::build_registry(
+            types, group, version,
+        ) {
+            Ok(reg) => reg,
+            Err(e) => {
+                tracing::error!("Failed to build type registry: {}", e);
+                return files;
+            }
+        };
 
-                    // Group references by their import path to avoid duplicates
-                    let mut imports_by_path: HashMap<String, Vec<TypeReference>> = HashMap::new();
+        // Step 2: Build dependency graph
+        let deps = crate::package_walker::PackageWalkerAdapter::build_dependencies(&registry);
 
-                    for type_ref in import_resolver.references() {
-                        let import_path = type_ref.import_path(group, version);
-                        imports_by_path
-                            .entry(import_path)
-                            .or_default()
-                            .push(type_ref.clone());
-                    }
+        // Step 3: Generate complete IR with imports
+        let ir = match crate::package_walker::PackageWalkerAdapter::generate_ir(
+            registry, deps, group, version,
+        ) {
+            Ok(ir) => ir,
+            Err(e) => {
+                tracing::error!("Failed to generate IR: {}", e);
+                return files;
+            }
+        };
 
-                    // Generate a single import for each unique path and build mappings
-                    for (import_path, type_refs) in imports_by_path {
-                        // Generate a proper alias for this import
-                        let alias = if import_path.contains("k8s_io") {
-                            // For k8s types, extract the filename as the basis for the alias
-                            let filename = import_path
-                                .trim_end_matches(".ncl")
-                                .split('/')
-                                .next_back()
-                                .unwrap_or("unknown");
-                            format!("k8s_io_{}", filename)
-                        } else {
-                            format!("import_{}", module.imports.len())
-                        };
+        // Step 4: Generate files from IR using codegen with complete symbol table
+        // The key insight: pass the complete IR so NickelCodegen can build a full symbol table
+        let mut codegen = amalgam_codegen::nickel::NickelCodegen::from_ir(&ir);
 
-                        // Create mappings for all types from this import
-                        for type_ref in &type_refs {
-                            // Build the full qualified name that appears in Type::Reference
-                            let full_name = if type_ref.group == "k8s.io" {
-                                // For k8s types, construct the full io.k8s... name
-                                if type_ref.kind == "ObjectMeta" || type_ref.kind == "ListMeta" {
-                                    format!(
-                                        "io.k8s.apimachinery.pkg.apis.meta.{}.{}",
-                                        type_ref.version, type_ref.kind
-                                    )
-                                } else {
-                                    format!(
-                                        "io.k8s.api.core.{}.{}",
-                                        type_ref.version, type_ref.kind
-                                    )
-                                }
-                            } else {
-                                // For other types, use a simpler format
-                                format!("{}/{}.{}", type_ref.group, type_ref.version, type_ref.kind)
-                            };
+        tracing::debug!(
+            "Generating Nickel files from IR with {} modules using unified pipeline",
+            ir.modules.len()
+        );
 
-                            // Map to alias.TypeName
-                            let mapped_name = format!("{}.{}", alias, type_ref.kind);
-                            reference_mappings.insert(full_name, mapped_name);
-                        }
+        // Use iterative generation to handle dependency chains
+        // Keep generating until no new imports are needed (convergence)
+        let mut iteration = 1;
+        let max_iterations = 10; // Prevent infinite loops
 
-                        tracing::debug!(
-                            "Adding import: path={}, alias={}, types={:?}",
-                            import_path,
-                            alias,
-                            type_refs.iter().map(|t| &t.kind).collect::<Vec<_>>()
+        let (all_generated, type_import_map) = loop {
+            tracing::debug!("Import generation iteration {}", iteration);
+
+            let (generated, import_map) = codegen
+                .generate_with_import_tracking(&ir)
+                .unwrap_or_else(|e| {
+                    tracing::error!("Code generation failed: {}", e);
+                    (
+                        format!("# Error generating types: {}\n", e),
+                        amalgam_codegen::nickel::TypeImportMap::new(),
+                    )
+                });
+
+            // Check if this iteration generated new imports
+            let import_count = import_map.total_import_count();
+            tracing::debug!(
+                "Iteration {} generated {} total imports",
+                iteration,
+                import_count
+            );
+
+            // If we've reached max iterations or no new imports, break
+            if iteration >= max_iterations {
+                tracing::warn!("Reached maximum iterations ({}), breaking", max_iterations);
+                break (generated, import_map);
+            }
+
+            // Continue iterations to handle dependency chains
+            iteration += 1;
+        };
+
+        // Capture codegen imports for debugging
+        for module in &ir.modules {
+            for type_def in &module.types {
+                let imports = type_import_map.get_imports_for(&type_def.name);
+                import_debug.record_codegen_imports(&type_def.name, imports);
+            }
+        }
+        import_debug.record_module_content(&all_generated);
+
+        // Record input characteristics in trace
+        trace.record_input(&all_generated, &ir);
+
+        // Parse the module-marked output from NickelCodegen
+        // The codegen outputs: # Module: <module_name>\n{\n  TypeDef1 = ...,\n  TypeDef2 = ...,\n}\n
+
+        // Split by module markers
+        let module_sections: Vec<&str> = all_generated.split("# Module: ").collect();
+
+        // Debug: log how many modules we found
+        if version == "v1" {
+            tracing::debug!(
+                "Found {} module sections in generated output for v1",
+                module_sections.len() - 1
+            );
+        }
+
+        for (section_idx, section) in module_sections.iter().skip(1).enumerate() {
+            // Skip empty first split
+            let lines: Vec<&str> = section.lines().collect();
+            if lines.is_empty() {
+                continue;
+            }
+
+            // First line is module name
+            let module_name = lines[0].trim();
+
+            // Debug first few module names for v1
+            if version == "v1" && section_idx < 3 {
+                tracing::debug!(
+                    "Module {}: name='{}', has {} lines",
+                    section_idx,
+                    module_name,
+                    lines.len()
+                );
+            }
+
+            // Rest is the module content
+            let module_content = lines[1..].join("\n");
+
+            // Find the module in our IR to get type information
+            let module = ir.modules.iter().find(|m| m.name == module_name);
+
+            // Record module parsing step
+            trace.record_module_parse(
+                section_idx,
+                section,
+                Some(module_name.to_string()),
+                module.is_some(),
+                &module_content,
+            );
+
+            if let Some(module) = module {
+                // Extract each type definition from the module content
+                for type_def in &module.types {
+                    // Keep the original case for the filename
+                    let file_name = format!("{}.ncl", type_def.name);
+
+                    // For single-type modules, export just the type
+                    // For multi-type modules, we need to extract the specific type
+                    // Get imports for this type from the map
+                    let _type_imports = type_import_map.get_imports_for(&type_def.name);
+
+                    let (content, strategy, success, error) = if module.types.len() == 1 {
+                        eprintln!(
+                            "🛤️ PATH: Using single-type extraction for '{}'",
+                            type_def.name
                         );
-
-                        module.imports.push(Import {
-                            path: import_path,
-                            alias: Some(alias),
-                            items: vec![], // Empty items means import the whole module
-                        });
-                    }
-
-                    // Transform the type definition to use the mapped references
-                    let mut transformed_type_def = type_def.clone();
-                    transform_type_references(&mut transformed_type_def.ty, &reference_mappings);
-
-                    // Use the transformed type definition
-                    module.types = vec![transformed_type_def];
-
-                    tracing::debug!(
-                        "Module {} has {} imports",
-                        module.name,
-                        module.imports.len()
-                    );
-                    ir.add_module(module);
-
-                    // Generate the Nickel code with package mode
-                    use amalgam_codegen::package_mode::PackageMode;
-                    use std::path::PathBuf;
-
-                    // Use analyzer-based package mode for automatic dependency detection
-                    let manifest_path = PathBuf::from(".amalgam-manifest.toml");
-                    let manifest = if manifest_path.exists() {
-                        Some(&manifest_path)
+                        // Single type - the module content IS the type (after stripping module wrapper)
+                        let content = extract_single_type_from_module(
+                            &module_content,
+                            &type_def.name,
+                            Some(&type_import_map),
+                            Some(&mut import_debug),
+                        );
+                        let success = !content.is_empty();
+                        (content, "single-type-extraction", success, None)
                     } else {
-                        None
+                        eprintln!(
+                            "🛤️ PATH: Using multi-type extraction for '{}' (module has {} types)",
+                            type_def.name,
+                            module.types.len()
+                        );
+                        // Multiple types - extract this specific type from the module
+                        let content = extract_type_from_module(
+                            &module_content,
+                            &type_def.name,
+                            Some(&type_import_map),
+                            Some(&mut import_debug),
+                        );
+                        let success = !content.is_empty();
+                        (content, "multi-type-extraction", success, None)
                     };
 
-                    let mut package_mode = PackageMode::new_with_analyzer(manifest);
+                    // Record extraction attempt
+                    trace.record_type_extraction(TypeExtractionAttempt::new(
+                        &module.name,
+                        &type_def.name,
+                        strategy,
+                        success,
+                        Some(&content),
+                        error,
+                        &file_name,
+                    ));
 
-                    // Analyze types to detect dependencies
-                    let mut all_types: Vec<amalgam_core::types::Type> = Vec::new();
-                    for module in &ir.modules {
-                        for type_def in &module.types {
-                            all_types.push(type_def.ty.clone());
-                        }
+                    if success {
+                        // Debug: Log what we're about to write
+                        let has_imports = content
+                            .lines()
+                            .any(|l| l.trim().starts_with("let ") && l.contains("import"));
+                        tracing::info!(
+                            "Writing file {} - has_imports: {}, content_len: {}, first_100_chars: {:?}",
+                            file_name,
+                            has_imports,
+                            content.len(),
+                            &content.chars().take(100).collect::<String>()
+                        );
+                        import_debug.record_final_file(&file_name, &content);
+                        files.insert(file_name, content);
                     }
-                    package_mode.analyze_and_update_dependencies(&all_types, group);
+                }
+            } else {
+                trace.record_type_extraction(TypeExtractionAttempt::new(
+                    module_name,
+                    "<unknown>",
+                    "module-not-found",
+                    false,
+                    None,
+                    Some(format!("Module {} not found in IR", module_name)),
+                    "<unknown>.ncl",
+                ));
+            }
+        }
 
-                    let mut codegen = amalgam_codegen::nickel::NickelCodegen::new()
-                        .with_package_mode(package_mode);
-                    let mut generated = codegen
-                        .generate(&ir)
-                        .unwrap_or_else(|e| format!("# Error generating type: {}\n", e));
+        // Record the result before checking for fallback
+        trace.record_result(&files, false);
 
-                    // For k8s.io packages, check for missing internal imports
-                    if group == "k8s.io" || group.starts_with("io.k8s") {
-                        use crate::k8s_imports::{find_k8s_type_references, fix_k8s_imports};
-                        let type_refs = find_k8s_type_references(&type_def.ty);
-                        if !type_refs.is_empty() {
-                            generated = fix_k8s_imports(&generated, &type_refs, version);
-                        }
-                    }
+        // Fallback: if parsing failed, use the module-by-module approach but with complete IR context
+        if files.is_empty() {
+            eprintln!(
+                "🚨 FALLBACK: Using fallback generation for group '{}' version '{}'",
+                group, version
+            );
+            let mut fallback_files = vec![];
+            trace.record_fallback(
+                "No files extracted from concatenated output",
+                "module-by-module generation",
+                vec![],
+            );
 
-                    generated
-                })
-            })
-        })
+            for module in &ir.modules {
+                // Use the actual type name from type definitions, not the module name
+                // This ensures we match the TypeImportMap keys correctly
+                let type_name = if let Some(type_def) = module.types.first() {
+                    &type_def.name
+                } else {
+                    // Fallback to module name if no types
+                    module.name.rsplit('.').next().unwrap_or(&module.name)
+                };
+
+                // Create single-module IR but codegen has already built symbol table
+                let mut single_ir = IR::new();
+                single_ir.add_module(module.clone());
+
+                // Create new codegen instance for each module
+                // IMPORTANT: Use original codegen with complete import context, not a new one
+                let (generated_module, _) = codegen
+                    .generate_with_import_tracking(&single_ir)
+                    .unwrap_or_else(|e| {
+                        (
+                            format!("# Error generating type: {}\n", e),
+                            amalgam_codegen::nickel::TypeImportMap::new(),
+                        )
+                    });
+
+                // Extract the type content and apply imports from the full TypeImportMap
+                let generated = extract_single_type_from_module(
+                    &generated_module,
+                    type_name,
+                    Some(&type_import_map),
+                    None,
+                );
+
+                let file_name = format!("{}.ncl", type_name);
+                files.insert(file_name.clone(), generated);
+                fallback_files.push(file_name);
+            }
+
+            // Update fallback record with generated files
+            if let Some(fallback) = trace.fallbacks.last_mut() {
+                fallback.files_generated = fallback_files;
+            }
+        }
+
+        // Generate mod.ncl for this version
+        if let Some(mod_content) = self.generate_version_module(group, version) {
+            files.insert("mod.ncl".to_string(), mod_content);
+        }
+
+        // Export trace for analysis if we're in debug mode or had issues
+        if files.is_empty() || trace.result.used_fallback {
+            // Update final result if we used fallback
+            if trace.result.used_fallback {
+                trace.record_result(&files, true);
+            }
+
+            tracing::debug!("Parsing trace:\n{}", trace.summary());
+            if tracing::enabled!(tracing::Level::DEBUG) {
+                tracing::trace!("Full parsing trace JSON:\n{}", trace.to_json());
+            }
+        }
+
+        // Check if we have import issues and output debug info
+        let summary = import_debug.summary();
+        // Always output for v1 to debug
+        if version == "v1"
+            || summary.contains("lost their imports")
+            || tracing::enabled!(tracing::Level::DEBUG)
+        {
+            tracing::debug!(
+                "Import extraction debug for {}/{}:\n{}",
+                group,
+                version,
+                summary
+            );
+            if version == "v1" {
+                // Output first few extraction attempts for v1
+                for (i, attempt) in import_debug.extraction_attempts.iter().take(5).enumerate() {
+                    tracing::trace!(
+                        "Extraction attempt {} for {}: imports_from_map={:?}, final_imports={:?}",
+                        i,
+                        attempt.type_name,
+                        attempt.imports_from_map,
+                        attempt.final_imports_used
+                    );
+                }
+
+                // Check specific types that should have imports
+                let lifecycle_imports = import_debug.codegen_imports.get("Lifecycle");
+                tracing::trace!("Codegen imports for Lifecycle: {:?}", lifecycle_imports);
+
+                let deleteoptions_imports = import_debug.codegen_imports.get("DeleteOptions");
+                tracing::trace!(
+                    "Codegen imports for DeleteOptions: {:?}",
+                    deleteoptions_imports
+                );
+
+                // Output pipeline debug summary
+                tracing::debug!(
+                    "Pipeline Debug Summary:\n{}",
+                    codegen.pipeline_debug.summary_string()
+                );
+
+                // Check the first few modules in the IR
+                for (i, module) in ir.modules.iter().take(5).enumerate() {
+                    let type_names: Vec<String> =
+                        module.types.iter().map(|t| t.name.clone()).collect();
+                    tracing::trace!(
+                        "IR Module {}: name='{}', types={:?}",
+                        i,
+                        module.name,
+                        type_names
+                    );
+                }
+
+                // Get detailed report for specific types
+                tracing::trace!(
+                    "Lifecycle Report:\n{}",
+                    codegen.pipeline_debug.type_report("Lifecycle")
+                );
+                tracing::trace!(
+                    "DeleteOptions Report:\n{}",
+                    codegen.pipeline_debug.type_report("DeleteOptions")
+                );
+            }
+        }
+
+        files
     }
 
     /// Get all groups in the package
@@ -447,7 +683,198 @@ impl NamespacedPackage {
     }
 }
 
-#[allow(dead_code)]
+/// Extract a single type definition from a module that contains only one type
+fn extract_single_type_from_module(
+    module_content: &str,
+    type_name: &str,
+    type_import_map: Option<&amalgam_codegen::nickel::TypeImportMap>,
+    debug: Option<&mut ImportExtractionDebug>,
+) -> String {
+    eprintln!(
+        "🔧 EXTRACTION: Processing type '{}' in extract_single_type_from_module",
+        type_name
+    );
+
+    // Module content can look like:
+    // let SomeType_type = import "./sometype.ncl" in   <- imports (optional)
+    // {
+    //   TypeName = { ... },
+    // }
+    // We want to extract the imports AND the type definition
+
+    let lines: Vec<&str> = module_content.lines().collect();
+    let mut result = Vec::new();
+    let mut imports = Vec::new();
+
+    let mut imports_from_map = Vec::new();
+    let mut imports_from_content = Vec::new();
+
+    // First, extract any existing imports from the module content
+    // Use a HashMap to track imports by module path for consolidation
+    let mut imports_by_module: std::collections::HashMap<String, Vec<(String, String)>> =
+        std::collections::HashMap::new();
+    let mut seen_imports = std::collections::HashSet::new();
+
+    for line in &lines {
+        // Collect import statements (they start with "let" and contain "import")
+        if line.trim().starts_with("let ") && line.contains("import") && line.contains(" in") {
+            let import_line = line.trim().to_string();
+
+            // Parse consolidated module imports (e.g., "let v1Module = import ... in\nlet type = v1Module.Type")
+            if import_line.contains("Module") && import_line.contains("import") {
+                // This is a module import, look for the next line to get the type extraction
+                if let Some(path_start) = import_line.find("import \"") {
+                    if let Some(path_end) = import_line[path_start + 8..].find("\"") {
+                        let module_path =
+                            import_line[path_start + 8..path_start + 8 + path_end].to_string();
+                        let module_var = import_line
+                            .split(" = ")
+                            .next()
+                            .unwrap_or("")
+                            .replace("let ", "")
+                            .trim()
+                            .to_string();
+
+                        // Store this for consolidation
+                        imports_by_module
+                            .entry(module_path.clone())
+                            .or_default()
+                            .push((module_var, module_path));
+                    }
+                }
+            } else if !seen_imports.contains(&import_line) {
+                // Regular single-line import
+                seen_imports.insert(import_line.clone());
+                imports.push(import_line.clone());
+                imports_from_content.push(import_line);
+                tracing::trace!("Found existing import in content: '{}'", line.trim());
+            }
+        } else if line.trim().starts_with("let ")
+            && line.contains(" = ")
+            && line.contains("Module.")
+        {
+            // This is a type extraction from a module (e.g., "let type = v1Module.Type")
+            // Skip it - we'll regenerate these properly
+            continue;
+        }
+    }
+
+    // Always check TypeImportMap and add any imports that aren't already present
+    // This ensures all necessary imports are included
+    if let Some(import_map) = type_import_map {
+        let mut map_imports = import_map.get_imports_for(type_name);
+        // Sort imports alphabetically by the imported path for consistent ordering
+        // This ensures that imports like "let objectMeta = import ..." come in a predictable order
+        map_imports.sort();
+
+        eprintln!(
+            "📥 EXTRACTION: TypeImportMap check for '{}': found {} imports",
+            type_name,
+            map_imports.len()
+        );
+        if !map_imports.is_empty() {
+            eprintln!(
+                "📋 EXTRACTION: Import map contains for type '{}': {:?}",
+                type_name, map_imports
+            );
+            for import_stmt in &map_imports {
+                // Only add if not already present (avoid duplicates)
+                if !seen_imports.contains(import_stmt) {
+                    imports.push(import_stmt.clone());
+                    imports_from_map.push(import_stmt.clone());
+                    tracing::info!("Adding import from map: '{}'", import_stmt);
+                } else {
+                    tracing::info!("Import already exists, skipping: '{}'", import_stmt);
+                }
+            }
+        }
+    } else {
+        tracing::warn!("No TypeImportMap provided for type '{}'", type_name);
+    }
+
+    // With single-type-per-module format, the entire module content (after imports) is the type definition
+    let mut found_type_content = false;
+    for line in lines {
+        // Skip import lines we've already processed
+        if line.trim().starts_with("let ") && line.contains("import") && line.contains(" in") {
+            continue;
+        }
+
+        // Skip empty lines and comments after imports
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed.starts_with("#") {
+            // Include these as-is in the result if we haven't started type content yet
+            if !found_type_content {
+                result.push(line.to_string());
+            }
+            continue;
+        }
+
+        // Start capturing all content after imports as the type definition
+        if !found_type_content {
+            found_type_content = true;
+        }
+
+        result.push(line.to_string());
+    }
+
+    // Combine imports and type definition
+    let mut final_result = imports.clone();
+    if !final_result.is_empty() && !result.is_empty() {
+        final_result.push(String::new()); // Add empty line between imports and type
+    }
+    final_result.extend(result);
+
+    tracing::info!(
+        "Final result for '{}': {} imports, {} total lines",
+        type_name,
+        imports.len(),
+        final_result.len()
+    );
+    if !imports.is_empty() {
+        tracing::info!("Imports being added: {:?}", imports);
+    }
+
+    let mut final_content = final_result.join("\n");
+
+    // Remove trailing commas from the extracted type definition
+    // This handles cases where the module format includes trailing commas
+    // but individual files should not have them
+    if final_content.ends_with("},") {
+        final_content = final_content.trim_end_matches(',').to_string();
+    }
+
+    // Record extraction attempt for debugging
+    if let Some(debug) = debug {
+        let attempt = ExtractionAttempt {
+            type_name: type_name.to_string(),
+            module_name: "".to_string(), // Will be filled in by caller if needed
+            extraction_strategy: "single-type".to_string(),
+            imports_from_map,
+            imports_found_in_content: imports_from_content,
+            final_imports_used: imports,
+            content_preview: final_content.chars().take(200).collect(),
+            success: !final_content.is_empty(),
+        };
+        debug.record_extraction(attempt);
+    }
+
+    final_content
+}
+
+/// Extract a specific type definition from a module that contains multiple types  
+fn extract_type_from_module(
+    module_content: &str,
+    type_name: &str,
+    type_import_map: Option<&amalgam_codegen::nickel::TypeImportMap>,
+    debug: Option<&mut ImportExtractionDebug>,
+) -> String {
+    // For multi-type modules, we extract the specific type with its definition
+    // and wrap it appropriately
+    extract_single_type_from_module(module_content, type_name, type_import_map, debug)
+}
+
+#[cfg(test)]
 fn sanitize_name(name: &str) -> String {
     name.replace(['-', '.'], "_")
         .to_lowercase()
@@ -470,53 +897,26 @@ fn capitalize_first(s: &str) -> String {
     }
 }
 
-/// Transform Type::Reference values using the provided mappings
-fn transform_type_references(ty: &mut Type, mappings: &HashMap<String, String>) {
-    match ty {
-        Type::Reference(name) => {
-            // Check if we have a mapping for this reference
-            if let Some(mapped) = mappings.get(name) {
-                *name = mapped.clone();
-            }
-        }
-        Type::Array(inner) => transform_type_references(inner, mappings),
-        Type::Optional(inner) => transform_type_references(inner, mappings),
-        Type::Map { value, .. } => transform_type_references(value, mappings),
-        Type::Record { fields, .. } => {
-            for field in fields.values_mut() {
-                transform_type_references(&mut field.ty, mappings);
-            }
-        }
-        Type::Union(types) => {
-            for ty in types {
-                transform_type_references(ty, mappings);
-            }
-        }
-        Type::TaggedUnion { variants, .. } => {
-            for variant_type in variants.values_mut() {
-                transform_type_references(variant_type, mappings);
-            }
-        }
-        _ => {} // Other types don't contain references
-    }
-}
-
+// Transform Type::Reference values using the provided mappings
 // Alias for tests
-#[allow(dead_code)]
+#[cfg(test)]
 fn capitalize(s: &str) -> String {
     capitalize_first(s)
 }
 
-#[allow(dead_code)]
 fn needs_k8s_imports(ty: &Type) -> bool {
     // Check if the type references k8s.io types
     // This is a simplified check - would need more sophisticated analysis
     match ty {
-        Type::Reference(name) => name.contains("k8s.io") || name.contains("ObjectMeta"),
+        Type::Reference { name, module } => {
+            name.contains("k8s.io")
+                || name.contains("ObjectMeta")
+                || module.as_ref().is_some_and(|m| m.contains("k8s.io"))
+        }
         Type::Record { fields, .. } => fields.values().any(|field| needs_k8s_imports(&field.ty)),
         Type::Array(inner) => needs_k8s_imports(inner),
         Type::Optional(inner) => needs_k8s_imports(inner),
-        Type::Union(types) => types.iter().any(needs_k8s_imports),
+        Type::Union { types, .. } => types.iter().any(needs_k8s_imports),
         _ => false,
     }
 }

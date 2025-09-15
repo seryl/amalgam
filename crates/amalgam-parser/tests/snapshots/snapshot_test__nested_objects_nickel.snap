@@ -1,22 +1,31 @@
 ---
 source: crates/amalgam-parser/tests/snapshot_test.rs
-assertion_line: 80
 expression: generated
 ---
-# Module: Nested.v1.test.io
-
 {
-  Nested = {
-    spec | optional | {
-      config | optional | {
-        cache | optional | {
-          ttl | optional | Number,
-        },
-        database | optional | {
-          host | optional | String,
-          port | optional | Number,
-        },
-      },
-    },
-  },
+  spec
+     | {
+    config
+       | {
+      cache
+         | {
+        ttl
+           | Number
+           | optional
+      }
+         | optional,
+      database
+         | {
+        host
+           | String
+           | optional,
+        port
+           | Number
+           | optional
+      }
+         | optional
+    }
+       | optional
+  }
+     | optional
 }

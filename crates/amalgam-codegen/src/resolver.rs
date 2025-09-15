@@ -130,7 +130,27 @@ impl TypeResolver {
             // Use the import alias if provided, otherwise use a derived name
             let prefix = import.alias.as_ref().unwrap_or(&import_info.module_name);
 
-            return Some(format!("{}.{}", prefix, type_name));
+            // Check if this is a specific type file import with explicit items list
+            // In this case, the imported alias IS the type, not a module containing types
+            let ref_type_name = reference
+                .split('/')
+                .next_back()
+                .unwrap_or(reference)
+                .split('.')
+                .next_back()
+                .unwrap_or(reference);
+            let import_type_name = import_info.module_name.to_lowercase();
+
+            if ref_type_name.to_lowercase() == import_type_name
+                && import_info.module_name != "mod"
+                && !import.items.is_empty()
+            {
+                // This is a specific type file with explicit items - the alias IS the type
+                return Some(prefix.to_string());
+            } else {
+                // This is a module import or pattern-matched import - use alias.TypeName format
+                return Some(format!("{}.{}", prefix, type_name));
+            }
         }
 
         None
@@ -159,12 +179,7 @@ impl TypeResolver {
         }
 
         // Get the last component as the module name
-        let module_name = if clean_parts.last() == Some(&"mod") && clean_parts.len() > 1 {
-            // If it's "mod", use the parent directory name
-            clean_parts[clean_parts.len() - 2]
-        } else {
-            clean_parts.last()?
-        };
+        let module_name = clean_parts.last()?.to_string();
 
         // Extract namespace from the clean path (everything except filename)
         let namespace = if clean_parts.len() > 1 {
@@ -182,26 +197,74 @@ impl TypeResolver {
 
     /// Check if an import can provide a specific type reference
     fn import_matches_reference(&self, import_info: &ImportInfo, reference: &str) -> bool {
-        // Simple matching: check if the reference contains components from the import
-        // This handles cases like:
-        // - io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta matches import with v1 in path
-        // - crossplane.io/v1/Composition matches import with crossplane and v1
+        // More precise matching: check if this import provides the specific type we need
+        // Extract the type name from the reference
+        // For "io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta", we want "ObjectMeta"
+        // For "apiextensions.crossplane.io/v1/Composition", we want "Composition"
+        let ref_type_name = reference
+            .split('/')
+            .next_back()
+            .unwrap_or(reference)
+            .split('.')
+            .next_back()
+            .unwrap_or(reference);
 
-        // For now, use a simple heuristic: check if key parts of the import path
-        // appear in the reference
-        if import_info.namespace.is_empty() {
-            return false;
+        // Extract the type name from the import module name (e.g., "objectmeta" from module_name)
+        // The module_name is typically the filename without extension (e.g., "objectmeta", "volume")
+        let import_type_name = import_info.module_name.to_lowercase();
+
+        // Check if this is a specific type file import (e.g., "objectmeta.ncl")
+        // This handles the case where import path is like "../../../k8s_io/v1/objectmeta.ncl"
+        // and we're looking for "ObjectMeta"
+        if ref_type_name.to_lowercase() == import_type_name {
+            return true;
         }
 
-        // Check if the namespace components appear in the reference
-        let namespace_parts: Vec<&str> = import_info.namespace.split('.').collect();
-        namespace_parts.iter().any(|&part| reference.contains(part))
+        // Check if this is a module import (e.g., "mod.ncl") that could provide many types
+        // In this case, check if the namespace/version matches
+        if import_info.module_name == "mod" && !import_info.namespace.is_empty() {
+            // For module imports, we need to check if this module could provide the requested type
+            // For k8s imports like "k8s.io/apimachinery/v1/mod.ncl", it should match types from
+            // "io.k8s.apimachinery.pkg.apis.meta.v1.*"
+
+            // Check if the reference contains key identifying parts of the namespace
+            // For example, "apimachinery" and "v1" from the import should appear in the reference
+            let namespace_parts: Vec<&str> = import_info.namespace.split('.').collect();
+
+            // For k8s specifically, check for the pattern
+            if namespace_parts.contains(&"k8s") && reference.contains("io.k8s.") {
+                // Check if this is the right k8s module by looking at version and API group
+                if let Some(version_idx) = namespace_parts.iter().position(|&p| p.starts_with('v'))
+                {
+                    let version = namespace_parts[version_idx];
+                    if reference.contains(version) {
+                        // Also check API group if present
+                        if namespace_parts.contains(&"apimachinery") {
+                            return reference.contains("apimachinery");
+                        } else if namespace_parts.contains(&"api") {
+                            return reference.contains("api.core")
+                                || reference.contains("api.apps");
+                        }
+                        return true;
+                    }
+                }
+            }
+
+            // For non-k8s module imports, use simpler matching
+            return namespace_parts
+                .iter()
+                .filter(|&&p| p.len() > 2)
+                .all(|&part| reference.contains(part));
+        }
+
+        false
     }
 }
 
 #[derive(Debug)]
 struct ImportInfo {
     module_name: String,
+    #[allow(dead_code)]
     namespace: String,
     #[allow(dead_code)]
     full_path: String,
@@ -235,9 +298,9 @@ mod tests {
         let module = create_test_module(
             "test",
             vec![Import {
-                path: "../../../k8s.io/apimachinery/v1/mod.ncl".to_string(),
-                alias: Some("k8s_v1".to_string()),
-                items: vec![],
+                path: "../../../k8s_io/v1/objectmeta.ncl".to_string(),
+                alias: Some("objectmeta".to_string()),
+                items: vec!["ObjectMeta".to_string()],
             }],
         );
 
@@ -246,7 +309,7 @@ mod tests {
             &module,
             &ResolutionContext::default(),
         );
-        assert_eq!(resolved, "k8s_v1.ObjectMeta");
+        assert_eq!(resolved, "objectmeta");
     }
 
     #[test]
@@ -255,15 +318,15 @@ mod tests {
         let module = create_test_module(
             "test",
             vec![Import {
-                path: "../../../k8s.io/apimachinery/v1/mod.ncl".to_string(),
-                alias: Some("k8s_v1".to_string()),
-                items: vec![],
+                path: "../../../k8s_io/v1/objectmeta.ncl".to_string(),
+                alias: Some("objectmeta".to_string()),
+                items: vec!["ObjectMeta".to_string()],
             }],
         );
 
         // Should expand ObjectMeta to full name and resolve
         let resolved = resolver.resolve("ObjectMeta", &module, &ResolutionContext::default());
-        assert_eq!(resolved, "k8s_v1.ObjectMeta");
+        assert_eq!(resolved, "objectmeta");
     }
 
     #[test]
@@ -301,10 +364,6 @@ mod tests {
             &ResolutionContext::default(),
         );
 
-        // Debug: print what we got
-        eprintln!("Crossplane resolution result: '{}'", resolved);
-
-        // For now, accept what the resolver produces
         // The resolver sees "v1" in both the import path and reference, so it matches
         assert!(resolved.ends_with("Composition"));
         assert!(resolved.contains("crossplane"));

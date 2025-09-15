@@ -1,6 +1,7 @@
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Clone, Serialize, Deserialize)]
 pub enum CoreError {
     #[error("Type conversion error: {0}")]
     TypeConversion(String),
@@ -10,6 +11,12 @@ pub enum CoreError {
 
     #[error("Unsupported feature: {0}")]
     UnsupportedFeature(String),
+
+    #[error("Circular dependency detected: {0}")]
+    CircularDependency(String),
+
+    #[error("Module not found: {0}")]
+    ModuleNotFound(String),
 
     #[error("Internal error: {0}")]
     Internal(String),

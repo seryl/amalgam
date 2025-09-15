@@ -1,0 +1,54 @@
+# Kubernetes-specific special case rules
+# These handle the various quirks and conventions in K8s APIs
+
+[[type_transforms]]
+pattern = "io.k8s.apimachinery.pkg.apis.meta.v1.*"
+context = "*"
+transform = { RemovePrefix = "io.k8s.apimachinery.pkg.apis.meta.v1." }
+
+[[type_transforms]]
+pattern = "io.k8s.api.core.v1.*"
+context = "*"
+transform = { RemovePrefix = "io.k8s.api.core.v1." }
+
+[[type_transforms]]
+pattern = "io.k8s.api.apps.v1.*"
+context = "*"
+transform = { RemovePrefix = "io.k8s.api.apps.v1." }
+
+[[module_remappings]]
+from_pattern = "io.k8s.api.(.*)"
+to_pattern = "api.$1"
+priority = 10
+
+[[module_remappings]]
+from_pattern = "io.k8s.apimachinery.pkg.apis.(.*)"
+to_pattern = "apimachinery.pkg.apis.$1"
+priority = 10
+
+[[module_remappings]]
+from_pattern = "io.k8s.apimachinery.pkg.(.*)"
+to_pattern = "apimachinery.pkg.$1"
+priority = 5
+
+# Special import paths for commonly used types
+[[import_overrides]]
+from_module = "api.core.v1"
+target_type = "ObjectMeta"
+import_path = "../../apimachinery.pkg.apis/meta/v1.ncl"
+reason = "ObjectMeta is defined in meta/v1, not core/v1"
+
+[[import_overrides]]
+from_module = "api.apps.v1"
+target_type = "LabelSelector"
+import_path = "../../apimachinery.pkg.apis/meta/v1.ncl"
+reason = "LabelSelector is defined in meta/v1"
+
+# Type coercions for K8s union types
+[[type_coercions]]
+type_pattern = "*IntOrString*"
+strategy = "PreferString"
+
+[[type_coercions]]
+type_pattern = "*Quantity*"
+strategy = "PreferString"

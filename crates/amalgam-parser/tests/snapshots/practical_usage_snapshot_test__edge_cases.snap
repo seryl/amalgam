@@ -1,0 +1,16 @@
+---
+source: crates/amalgam-parser/tests/practical_usage_snapshot_test.rs
+expression: snapshot_content
+---
+SUCCESS: false
+
+OUTPUT:
+STDERR:
+error: import of ../core/v1/mod.ncl failed: could not find import (looked in [/Users/jtoft/src/ai/amalgam/examples/pkgs/k8s_io/api/networking])
+  ┌─ /Users/jtoft/src/ai/amalgam/examples/pkgs/k8s_io/api/networking/v1.ncl:8:14
+  │
+8 │ let corev1 = import "../core/v1/mod.ncl" in
+  │              --------------------------- imported here
+
+
+STDOUT:

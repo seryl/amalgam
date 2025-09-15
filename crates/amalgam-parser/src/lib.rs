@@ -9,10 +9,13 @@ pub mod go_ast;
 pub mod imports;
 pub mod incremental;
 pub mod k8s_authoritative;
-pub mod k8s_imports;
 pub mod k8s_types;
 pub mod openapi;
 pub mod package;
+pub mod package_walker;
+pub mod parsing_trace;
+pub mod swagger;
+pub mod walkers;
 
 use amalgam_core::IR;
 

@@ -22,4 +22,7 @@ pub enum ParserError {
 
     #[error("Unsupported feature: {0}")]
     UnsupportedFeature(String),
+
+    #[error("Invalid input: {0}")]
+    InvalidInput(String),
 }

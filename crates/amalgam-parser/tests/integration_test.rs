@@ -3,17 +3,17 @@
 use amalgam_codegen::Codegen;
 use amalgam_parser::{
     crd::{CRDParser, CRD},
-    package::PackageGenerator,
+    package::NamespacedPackage,
     Parser,
 };
 use tempfile::TempDir;
 
-fn load_test_crd(yaml_content: &str) -> CRD {
-    serde_yaml::from_str(yaml_content).expect("Failed to parse test CRD")
+fn load_test_crd(yaml_content: &str) -> Result<CRD, Box<dyn std::error::Error>> {
+    Ok(serde_yaml::from_str(yaml_content)?)
 }
 
 #[test]
-fn test_end_to_end_crd_to_nickel() {
+fn test_end_to_end_crd_to_nickel() -> Result<(), Box<dyn std::error::Error>> {
     let crd_yaml = r#"
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -58,9 +58,9 @@ spec:
                     type: string
 "#;
 
-    let crd = load_test_crd(crd_yaml);
+    let crd = load_test_crd(crd_yaml)?;
     let parser = CRDParser::new();
-    let ir = parser.parse(crd.clone()).expect("Failed to parse CRD");
+    let ir = parser.parse(crd.clone())?;
 
     // Verify IR was generated with one module for the single version
     assert_eq!(
@@ -72,26 +72,37 @@ spec:
     assert!(ir.modules[0].name.contains("v1"));
 
     // Generate Nickel code
-    let mut codegen = amalgam_codegen::nickel::NickelCodegen::new();
-    let nickel_code = codegen
-        .generate(&ir)
-        .expect("Failed to generate Nickel code");
+    let mut codegen = amalgam_codegen::nickel::NickelCodegen::from_ir(&ir);
+    let nickel_code = codegen.generate(&ir)?;
 
     // Verify generated code contains expected elements
-    assert!(nickel_code.contains("Composition"));
-    assert!(nickel_code.contains("spec"));
-    assert!(nickel_code.contains("resources"));
-    assert!(nickel_code.contains("compositeTypeRef"));
+    // With single-type module optimization, the type is exported directly
+    // So we check for the fields rather than the type name wrapper
+    assert!(
+        nickel_code.contains("spec"),
+        "Missing spec in generated code"
+    );
+    assert!(
+        nickel_code.contains("resources"),
+        "Missing resources in generated code"
+    );
+    assert!(
+        nickel_code.contains("compositeTypeRef"),
+        "Missing compositeTypeRef in generated code"
+    );
+    Ok(())
 }
 
 #[test]
-fn test_package_structure_generation() {
-    let temp_dir = TempDir::new().expect("Failed to create temp directory");
-    let output_path = temp_dir.path().to_path_buf();
+fn test_package_structure_generation() -> Result<(), Box<dyn std::error::Error>> {
+    let temp_dir = TempDir::new()?;
+    let _output_path = temp_dir.path().to_path_buf();
 
-    let mut generator = PackageGenerator::new("test-package".to_string(), output_path.clone());
+    // Use unified pipeline with NamespacedPackage
+    let mut package = NamespacedPackage::new("test-package".to_string());
+    let parser = CRDParser::new();
 
-    // Add multiple CRDs
+    // CRD definitions
     let crd1_yaml = r#"
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -138,12 +149,25 @@ spec:
         type: object
 "#;
 
-    generator.add_crd(load_test_crd(crd1_yaml));
-    generator.add_crd(load_test_crd(crd2_yaml));
+    // Parse and add CRDs to package
+    for crd_yaml in [crd1_yaml, crd2_yaml] {
+        let crd = load_test_crd(crd_yaml)?;
+        let ir = parser.parse(crd.clone())?;
 
-    let package = generator
-        .generate_package()
-        .expect("Failed to generate package");
+        for module in &ir.modules {
+            for type_def in &module.types {
+                // Module name format is {Kind}.{version}.{group}, so get the version part
+                let parts: Vec<&str> = module.name.split('.').collect();
+                let version = if parts.len() >= 2 { parts[1] } else { "v1" };
+                package.add_type(
+                    crd.spec.group.clone(),
+                    version.to_string(),
+                    type_def.name.to_lowercase(),
+                    type_def.clone(),
+                );
+            }
+        }
+    }
 
     // Verify package structure
     assert_eq!(package.groups().len(), 1);
@@ -160,10 +184,11 @@ spec:
     let v2_kinds = package.kinds("example.io", "v2");
     assert!(v2_kinds.contains(&"gadget".to_string()));
     assert!(!v2_kinds.contains(&"widget".to_string()));
+    Ok(())
 }
 
 #[test]
-fn test_complex_schema_parsing() {
+fn test_complex_schema_parsing() -> Result<(), Box<dyn std::error::Error>> {
     let crd_yaml = r#"
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -223,22 +248,22 @@ spec:
                 nullable: true
 "#;
 
-    let crd = load_test_crd(crd_yaml);
+    let crd = load_test_crd(crd_yaml)?;
     let parser = CRDParser::new();
-    let ir = parser.parse(crd).expect("Failed to parse complex CRD");
+    let ir = parser.parse(crd)?;
 
     // Find the Complex type in the IR
     let complex_module = ir
         .modules
         .iter()
         .find(|m| m.name.contains("Complex"))
-        .expect("Complex module not found");
+        .ok_or("Module not found")?;
 
     let complex_type = complex_module
         .types
         .iter()
         .find(|t| t.name == "Complex")
-        .expect("Complex type not found");
+        .ok_or("Module not found")?;
 
     // Verify the type structure
     match &complex_type.ty {
@@ -246,12 +271,13 @@ spec:
             assert!(fields.contains_key("spec"));
             // Further nested validation could be done here
         }
-        _ => panic!("Expected Complex to be a Record type"),
+        _ => return Err("Expected Complex to be a Record type".into()),
     }
+    Ok(())
 }
 
 #[test]
-fn test_multi_version_crd() {
+fn test_multi_version_crd() -> Result<(), Box<dyn std::error::Error>> {
     let crd_yaml = r#"
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -308,11 +334,9 @@ spec:
                 type: boolean
 "#;
 
-    let crd = load_test_crd(crd_yaml);
+    let crd = load_test_crd(crd_yaml)?;
     let parser = CRDParser::new();
-    let ir = parser
-        .parse(crd.clone())
-        .expect("Failed to parse multi-version CRD");
+    let ir = parser.parse(crd.clone())?;
 
     // Parser should create separate modules for each version
     assert_eq!(ir.modules.len(), 3, "Should have 3 modules for 3 versions");
@@ -338,10 +362,11 @@ spec:
         assert_eq!(module.types.len(), 1, "Each module should have one type");
         assert_eq!(module.types[0].name, "MultiVersion");
     }
+    Ok(())
 }
 
 #[test]
-fn test_multi_version_package_generation() {
+fn test_multi_version_package_generation() -> Result<(), Box<dyn std::error::Error>> {
     let crd_yaml = r#"
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -398,15 +423,27 @@ spec:
                 type: boolean
 "#;
 
-    let temp_dir = tempfile::TempDir::new().unwrap();
-    let mut generator =
-        PackageGenerator::new("evolution-test".to_string(), temp_dir.path().to_path_buf());
+    let _temp_dir = tempfile::TempDir::new()?;
+    // Use unified pipeline with NamespacedPackage
+    let mut package = NamespacedPackage::new("evolution-test".to_string());
+    let parser = CRDParser::new();
 
-    generator.add_crd(load_test_crd(crd_yaml));
+    let crd = load_test_crd(crd_yaml)?;
+    let ir = parser.parse(crd.clone())?;
 
-    let package = generator
-        .generate_package()
-        .expect("Failed to generate package");
+    for module in &ir.modules {
+        for type_def in &module.types {
+            // Module name format is {Kind}.{version}.{group}, so get the version part
+            let parts: Vec<&str> = module.name.split('.').collect();
+            let version = if parts.len() >= 2 { parts[1] } else { "v1" };
+            package.add_type(
+                crd.spec.group.clone(),
+                version.to_string(),
+                type_def.name.to_lowercase(),
+                type_def.clone(),
+            );
+        }
+    }
 
     // Verify all versions are present
     let versions = package.versions("test.io");
@@ -423,19 +460,29 @@ spec:
     }
 
     // Verify we can generate files for each version
-    assert!(package
-        .generate_kind_file("test.io", "v1alpha1", "evolving")
-        .is_some());
-    assert!(package
-        .generate_kind_file("test.io", "v1beta1", "evolving")
-        .is_some());
-    assert!(package
-        .generate_kind_file("test.io", "v1", "evolving")
-        .is_some());
+    let v1alpha1_files = package.generate_version_files("test.io", "v1alpha1");
+    // Type names are PascalCase, so the file should be "Evolving.ncl"
+    assert!(
+        v1alpha1_files.contains_key("Evolving.ncl"),
+        "Missing Evolving.ncl in v1alpha1 files"
+    );
+
+    let v1beta1_files = package.generate_version_files("test.io", "v1beta1");
+    assert!(
+        v1beta1_files.contains_key("Evolving.ncl"),
+        "Missing Evolving.ncl in v1beta1 files"
+    );
+
+    let v1_files = package.generate_version_files("test.io", "v1");
+    assert!(
+        v1_files.contains_key("Evolving.ncl"),
+        "Missing Evolving.ncl in v1 files"
+    );
+    Ok(())
 }
 
 #[test]
-fn test_crd_with_validation_rules() {
+fn test_crd_with_validation_rules() -> Result<(), Box<dyn std::error::Error>> {
     let crd_yaml = r#"
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -481,18 +528,17 @@ spec:
                   type: string
 "#;
 
-    let crd = load_test_crd(crd_yaml);
+    let crd = load_test_crd(crd_yaml)?;
     let parser = CRDParser::new();
-    let ir = parser.parse(crd).expect("Failed to parse validated CRD");
+    let ir = parser.parse(crd)?;
 
     // Generate code and verify validation constraints are preserved
-    let mut codegen = amalgam_codegen::nickel::NickelCodegen::new();
-    let nickel_code = codegen
-        .generate(&ir)
-        .expect("Failed to generate Nickel code");
+    let mut codegen = amalgam_codegen::nickel::NickelCodegen::from_ir(&ir);
+    let nickel_code = codegen.generate(&ir)?;
 
     // Check that required fields are marked
     assert!(nickel_code.contains("requiredField"));
     // Note: Actual validation constraints would need to be implemented
     // in the code generator to be properly tested here
+    Ok(())
 }

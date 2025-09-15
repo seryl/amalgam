@@ -1,7 +1,6 @@
 //! Import resolution for cross-package type references
 
-use amalgam_core::types::Type;
-use std::collections::{HashMap, HashSet};
+use amalgam_core::ImportPathCalculator;
 
 /// Represents a type reference that needs to be imported
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -53,14 +52,26 @@ impl TypeReference {
                 return Some(Self::new(group, version, kind));
             }
         } else if name.contains('/') {
-            // Format: k8s.io/api/core/v1.ObjectMeta
+            // Format: k8s.io/api/core/v1.ObjectMeta or k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta
             let parts: Vec<&str> = name.split('/').collect();
             if let Some(last) = parts.last() {
                 let type_parts: Vec<&str> = last.split('.').collect();
                 if type_parts.len() == 2 {
                     let version = type_parts[0].to_string();
                     let kind = type_parts[1].to_string();
-                    let group = parts[0].to_string();
+
+                    // Determine the group based on the path structure
+                    let group = if name.starts_with("k8s.io/api/core/") {
+                        // Core API types should use "k8s.io" as the group
+                        "k8s.io".to_string()
+                    } else if name.starts_with("k8s.io/apimachinery/pkg/apis/meta/") {
+                        // Apimachinery types also use "k8s.io" as the group
+                        "k8s.io".to_string()
+                    } else {
+                        // For other APIs, use the first part as the group
+                        parts[0].to_string()
+                    };
+
                     return Some(Self::new(group, version, kind));
                 }
             }
@@ -84,90 +95,14 @@ impl TypeReference {
 
     /// Get the import path for this reference relative to a base path
     pub fn import_path(&self, from_group: &str, from_version: &str) -> String {
-        // Generic approach: Calculate the relative path between any two files
-        // Package layout convention:
-        //   vendor_dir/
-        //     ├── package_dir/        <- derived from group name
-        //     │   └── [group_path]/version/file.ncl
-        //     └── other_package/
-        //         └── [group_path]/version/file.ncl
-
-        // Helper to derive package directory from group name
-        let group_to_package = |group: &str| -> String {
-            // Convention:
-            // - Replace dots with underscores for filesystem compatibility
-            // - If the result would be just an org name (e.g., "crossplane_io"),
-            //   try to extract a more meaningful package name
-            let sanitized = group.replace('.', "_");
-
-            // If it ends with a common TLD pattern, extract the org name
-            if group.contains('.') {
-                // For domains like "apiextensions.crossplane.io", we want "crossplane"
-                // For domains like "k8s.io", we want "k8s_io"
-                let parts: Vec<&str> = group.split('.').collect();
-                if parts.len() >= 2
-                    && (parts.last() == Some(&"io")
-                        || parts.last() == Some(&"com")
-                        || parts.last() == Some(&"org"))
-                {
-                    // If there's a clear org name, use it
-                    if parts.len() == 2 {
-                        // Simple case like "k8s.io" -> "k8s_io"
-                        sanitized
-                    } else if parts.len() >= 3 {
-                        // Complex case like "apiextensions.crossplane.io"
-                        // Take the second-to-last part as the org name
-                        parts[parts.len() - 2].to_string()
-                    } else {
-                        sanitized
-                    }
-                } else {
-                    sanitized
-                }
-            } else {
-                sanitized
-            }
-        };
-
-        // Helper to determine if a group needs its own subdirectory within the package
-        let needs_group_subdir = |group: &str, package: &str| -> bool {
-            // If the package name is derived from only part of the group,
-            // we need a subdirectory for the full group
-            let sanitized = group.replace('.', "_");
-            sanitized != package && group.contains('.')
-        };
-
-        // Build the from path components
-        let from_package = group_to_package(from_group);
-        let mut from_components: Vec<String> = Vec::new();
-        from_components.push(from_package.clone());
-
-        if needs_group_subdir(from_group, &from_package) {
-            from_components.push(from_group.to_string());
-        }
-        from_components.push(from_version.to_string());
-
-        // Build the target path components
-        let target_package = group_to_package(&self.group);
-        let mut to_components: Vec<String> = Vec::new();
-        to_components.push(target_package.clone());
-
-        if needs_group_subdir(&self.group, &target_package) {
-            to_components.push(self.group.clone());
-        }
-        to_components.push(self.version.clone());
-        to_components.push(format!("{}.ncl", self.kind.to_lowercase()));
-
-        // Calculate the relative path
-        // From a file at: vendor/package1/group/version/file.ncl
-        // We need to go up to vendor/ then down to package2/...
-        // The number of ../ equals the depth from the file to the vendor directory
-        // which is the number of path components minus the vendor itself
-        let up_count = from_components.len();
-        let up_dirs = "../".repeat(up_count);
-        let down_path = to_components.join("/");
-
-        format!("{}{}", up_dirs, down_path)
+        let calc = ImportPathCalculator::new_standalone();
+        calc.calculate(
+            from_group,
+            from_version,
+            &self.group,
+            &self.version,
+            &self.kind,
+        )
     }
 
     /// Get the module alias for imports
@@ -177,100 +112,6 @@ impl TypeReference {
             self.group.replace(['.', '-'], "_"),
             self.version.replace('-', "_")
         )
-    }
-}
-
-/// Analyzes types to find external references that need imports
-pub struct ImportResolver {
-    /// Set of all type references found
-    references: HashSet<TypeReference>,
-    /// Known types that are already defined locally
-    local_types: HashSet<String>,
-}
-
-impl Default for ImportResolver {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl ImportResolver {
-    pub fn new() -> Self {
-        Self {
-            references: HashSet::new(),
-            local_types: HashSet::new(),
-        }
-    }
-
-    /// Add a locally defined type
-    pub fn add_local_type(&mut self, name: &str) {
-        self.local_types.insert(name.to_string());
-    }
-
-    /// Analyze a type and collect external references
-    pub fn analyze_type(&mut self, ty: &Type) {
-        match ty {
-            Type::Reference(name) => {
-                // Check if this is an external reference
-                if !self.local_types.contains(name) {
-                    if let Some(type_ref) = TypeReference::from_qualified_name(name) {
-                        tracing::trace!("ImportResolver: found external reference: {:?}", type_ref);
-                        self.references.insert(type_ref);
-                    } else {
-                        tracing::trace!("ImportResolver: could not parse reference: {}", name);
-                    }
-                }
-            }
-            Type::Array(inner) => self.analyze_type(inner),
-            Type::Optional(inner) => self.analyze_type(inner),
-            Type::Map { value, .. } => self.analyze_type(value),
-            Type::Record { fields, .. } => {
-                for field in fields.values() {
-                    self.analyze_type(&field.ty);
-                }
-            }
-            Type::Union(types) => {
-                for ty in types {
-                    self.analyze_type(ty);
-                }
-            }
-            Type::TaggedUnion { variants, .. } => {
-                for ty in variants.values() {
-                    self.analyze_type(ty);
-                }
-            }
-            Type::Contract { base, .. } => self.analyze_type(base),
-            _ => {}
-        }
-    }
-
-    /// Get all collected references
-    pub fn references(&self) -> &HashSet<TypeReference> {
-        &self.references
-    }
-
-    /// Generate import statements for Nickel
-    pub fn generate_imports(&self, from_group: &str, from_version: &str) -> Vec<String> {
-        let mut imports = Vec::new();
-
-        // Group references by their module
-        let mut by_module: HashMap<String, Vec<&TypeReference>> = HashMap::new();
-        for type_ref in &self.references {
-            let module_key = format!("{}/{}", type_ref.group, type_ref.version);
-            by_module.entry(module_key).or_default().push(type_ref);
-        }
-
-        // Generate import statements
-        for (_module, refs) in by_module {
-            let first_ref = refs[0];
-            let import_path = first_ref.import_path(from_group, from_version);
-            let alias = first_ref.module_alias();
-
-            imports.push(format!("let {} = import \"{}\" in", alias, import_path));
-        }
-
-        imports.sort();
-        imports
     }
 }
 
@@ -371,12 +212,20 @@ mod tests {
             "ObjectMeta".to_string(),
         );
 
-        // Test with a Crossplane group (2+ dots)
+        // ObjectMeta is in apimachinery.pkg.apis/meta/v1/mod.ncl consolidated module
         let path = type_ref.import_path("apiextensions.crossplane.io", "v1");
-        assert_eq!(path, "../../../k8s_io/v1/objectmeta.ncl");
+        assert_eq!(path, "../../apimachinery.pkg.apis/meta/v1/mod.ncl");
 
-        // Test with a simple group (1 dot)
+        // Test with a simple group - same result for ObjectMeta
         let path2 = type_ref.import_path("example.io", "v1");
-        assert_eq!(path2, "../../k8s_io/v1/objectmeta.ncl");
+        assert_eq!(path2, "../../apimachinery.pkg.apis/meta/v1/mod.ncl");
+
+        // Test same-package cross-version - ObjectMeta still in apimachinery
+        let path3 = type_ref.import_path("k8s.io", "v1beta1");
+        assert_eq!(path3, "../../apimachinery.pkg.apis/meta/v1/mod.ncl");
+
+        // Test same-package same-version - ObjectMeta still in apimachinery
+        let path4 = type_ref.import_path("k8s.io", "v1");
+        assert_eq!(path4, "../../apimachinery.pkg.apis/meta/v1/mod.ncl");
     }
 }

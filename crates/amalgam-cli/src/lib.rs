@@ -1,128 +1,42 @@
 //! Library interface for amalgam CLI components
 
 pub mod manifest;
+pub mod source_detector;
 pub mod validate;
 mod vendor;
 
-use amalgam_codegen::nickel::NickelCodegen;
-use amalgam_codegen::Codegen;
 use amalgam_parser::k8s_types::K8sTypesFetcher;
 use anyhow::Result;
 use std::fs;
 use std::path::Path;
 use tracing::info;
 
-fn is_core_k8s_type(name: &str) -> bool {
-    matches!(
-        name,
-        "ObjectMeta"
-            | "ListMeta"
-            | "LabelSelector"
-            | "Time"
-            | "MicroTime"
-            | "Status"
-            | "StatusDetails"
-            | "StatusCause"
-            | "FieldsV1"
-            | "ManagedFieldsEntry"
-            | "OwnerReference"
-            | "Preconditions"
-            | "DeleteOptions"
-            | "ListOptions"
-            | "GetOptions"
-            | "WatchEvent"
-            | "Condition"
-            | "TypeMeta"
-            | "APIResource"
-            | "APIResourceList"
-            | "APIGroup"
-            | "APIGroupList"
-            | "APIVersions"
-            | "GroupVersionForDiscovery"
-    )
-}
-
-fn is_unversioned_k8s_type(name: &str) -> bool {
-    matches!(
-        name,
-        "RawExtension" // runtime.RawExtension and similar unversioned types
-    )
-}
-
-fn collect_type_references(
-    ty: &amalgam_core::types::Type,
-    refs: &mut std::collections::HashSet<String>,
-) {
-    use amalgam_core::types::Type;
-
-    match ty {
-        Type::Reference(name) => {
-            refs.insert(name.clone());
-        }
-        Type::Array(inner) => collect_type_references(inner, refs),
-        Type::Optional(inner) => collect_type_references(inner, refs),
-        Type::Map { value, .. } => collect_type_references(value, refs),
-        Type::Record { fields, .. } => {
-            for field in fields.values() {
-                collect_type_references(&field.ty, refs);
-            }
-        }
-        Type::Union(types) => {
-            for t in types {
-                collect_type_references(t, refs);
-            }
-        }
-        Type::TaggedUnion { variants, .. } => {
-            for t in variants.values() {
-                collect_type_references(t, refs);
-            }
-        }
-        Type::Contract { base, .. } => collect_type_references(base, refs),
-        _ => {}
-    }
-}
-
-fn apply_type_replacements(
-    ty: &mut amalgam_core::types::Type,
-    replacements: &std::collections::HashMap<String, String>,
-) {
-    use amalgam_core::types::Type;
-
-    match ty {
-        Type::Reference(name) => {
-            if let Some(replacement) = replacements.get(name) {
-                *name = replacement.clone();
-            }
-        }
-        Type::Array(inner) => apply_type_replacements(inner, replacements),
-        Type::Optional(inner) => apply_type_replacements(inner, replacements),
-        Type::Map { value, .. } => apply_type_replacements(value, replacements),
-        Type::Record { fields, .. } => {
-            for field in fields.values_mut() {
-                apply_type_replacements(&mut field.ty, replacements);
-            }
-        }
-        Type::Union(types) => {
-            for t in types {
-                apply_type_replacements(t, replacements);
-            }
-        }
-        Type::TaggedUnion { variants, .. } => {
-            for t in variants.values_mut() {
-                apply_type_replacements(t, replacements);
-            }
-        }
-        Type::Contract { base, .. } => apply_type_replacements(base, replacements),
-        _ => {}
-    }
-}
-
 pub async fn handle_k8s_core_import(
     version: &str,
-    output_dir: &Path,
-    nickel_package: bool,
+    output_base: &Path,
+    _nickel_package: bool, // Legacy parameter - we now always generate manifests
 ) -> Result<()> {
-    info!("Fetching Kubernetes {} core types...", version);
+    info!(
+        "Fetching Kubernetes {} core types using unified pipeline...",
+        version
+    );
+
+    // Automatically create k8s_io subdirectory if the output path doesn't end with it
+    // This matches the behavior of package managers like npm, cargo, etc.
+    let output_dir = if output_base
+        .file_name()
+        .map(|name| name.to_string_lossy())
+        .map(|name| name == "k8s_io")
+        .unwrap_or(false)
+    {
+        // Output path already ends with k8s_io, use it directly
+        output_base.to_path_buf()
+    } else {
+        // Create k8s_io subdirectory in the specified output directory
+        output_base.join("k8s_io")
+    };
+
+    info!("Generating k8s types in: {:?}", output_dir);
 
     // Create fetcher
     let fetcher = K8sTypesFetcher::new();
@@ -131,173 +45,202 @@ pub async fn handle_k8s_core_import(
     let openapi = fetcher.fetch_k8s_openapi(version).await?;
 
     // Extract core types
-    let types = fetcher.extract_core_types(&openapi)?;
+    let types_map = fetcher.extract_core_types(&openapi)?;
 
-    let total_types = types.len();
+    let total_types = types_map.len();
     info!("Extracted {} core types", total_types);
 
-    // Group types by version
-    let mut types_by_version: std::collections::HashMap<
-        String,
-        Vec<(
-            amalgam_parser::imports::TypeReference,
-            amalgam_core::ir::TypeDefinition,
-        )>,
-    > = std::collections::HashMap::new();
+    // Create a NamespacedPackage to use the unified pipeline
+    let mut package = amalgam_parser::package::NamespacedPackage::new("k8s.io".to_string());
 
-    for (type_ref, type_def) in types {
-        types_by_version
-            .entry(type_ref.version.clone())
-            .or_default()
-            .push((type_ref, type_def));
+    // Add all types to the package, organizing by API group
+    // Type references come in the form io.k8s.api.{group}.{version}.{Type}
+    // We need to extract the API group and organize accordingly
+    for (type_ref, type_def) in types_map {
+        // Extract the API group from the type reference
+        // For example: io.k8s.api.apps.v1 -> apps
+        //             io.k8s.api.core.v1 -> core (which maps to root)
+        //             io.k8s.apimachinery.pkg.api.resource -> apimachinery/pkg/api/resource
+        let api_group = if type_ref.group.starts_with("io.k8s.api.") {
+            // Extract the API group (e.g., "apps", "batch", "core")
+            let group_part = type_ref
+                .group
+                .strip_prefix("io.k8s.api.")
+                .unwrap_or(&type_ref.group);
+
+            // Core API group is special - it goes at the root
+            if group_part == "core" || group_part.is_empty() {
+                "k8s.io".to_string()
+            } else {
+                format!("k8s.io.{}", group_part)
+            }
+        } else if type_ref.group.starts_with("io.k8s.apimachinery.") {
+            // Apimachinery types go in their own namespace
+            format!(
+                "k8s.io.apimachinery.{}",
+                type_ref
+                    .group
+                    .strip_prefix("io.k8s.apimachinery.")
+                    .unwrap_or("")
+            )
+        } else {
+            // Default to using the group as-is
+            type_ref.group.clone()
+        };
+
+        package.add_type(
+            api_group,
+            type_ref.version.clone(),
+            type_ref.kind.clone(),
+            type_def,
+        );
     }
 
-    // Generate files for each version
-    for (version, version_types) in &types_by_version {
-        let version_dir = output_dir.join(version);
-        fs::create_dir_all(&version_dir)?;
+    // Process all API groups (not just k8s.io)
+    let all_groups: Vec<String> = package.types.keys().cloned().collect();
+    info!("Processing {} API groups", all_groups.len());
 
-        let mut mod_imports = Vec::new();
+    // Generate files for each API group and version using the unified pipeline
+    for api_group in &all_groups {
+        let versions = package.versions(api_group);
+        info!(
+            "Processing API group {} with {} versions",
+            api_group,
+            versions.len()
+        );
 
-        // Generate each type in its own file
-        for (type_ref, type_def) in version_types {
-            // Check if this type references other types in the same version
-            let mut imports = Vec::new();
-            let mut type_replacements = std::collections::HashMap::new();
+        for version_name in versions {
+            let files = package.generate_version_files(api_group, &version_name);
 
-            // Collect any references to other types in the same module
-            let mut referenced_types = std::collections::HashSet::new();
-            collect_type_references(&type_def.ty, &mut referenced_types);
-
-            // For each referenced type, check if it exists in the same version
-            for referenced in &referenced_types {
-                // Check if this is a simple type name (not a full path)
-                if !referenced.contains('.') && referenced != &type_ref.kind {
-                    // Check if this type exists in the same version
-                    if version_types.iter().any(|(tr, _)| tr.kind == *referenced) {
-                        // Add import for the type in the same directory
-                        let alias = referenced.to_lowercase();
-                        imports.push(amalgam_core::ir::Import {
-                            path: format!("./{}.ncl", alias),
-                            alias: Some(alias.clone()),
-                            items: vec![referenced.clone()],
-                        });
-
-                        // Store replacement: ManagedFieldsEntry -> managedfieldsentry.ManagedFieldsEntry
-                        type_replacements
-                            .insert(referenced.clone(), format!("{}.{}", alias, referenced));
-                    } else if is_core_k8s_type(referenced) {
-                        // Check if this is a core k8s type that should be imported from v1
-                        // Common core types are usually in v1 even when referenced from other versions
-                        let source_version = "v1";
-                        if version != source_version {
-                            // Import from v1 directory
-                            let alias = referenced; // Use the actual type name as alias
-                            imports.push(amalgam_core::ir::Import {
-                                path: format!(
-                                    "../{}/{}.ncl",
-                                    source_version,
-                                    referenced.to_lowercase()
-                                ),
-                                alias: Some(alias.to_string()),
-                                items: vec![],
-                            });
-
-                            // Store replacement: Type remains as Type (e.g., ObjectMeta remains as ObjectMeta)
-                            // No need to qualify since we're importing with the same name
-                        }
-                    } else if is_unversioned_k8s_type(referenced) {
-                        // Check if this is an unversioned k8s type (like RawExtension)
-                        // These types are placed in v0 directory
-                        let source_version = "v0";
-                        if version != source_version {
-                            // Import from v0 directory
-                            let alias = referenced; // Use the actual type name as alias
-                            imports.push(amalgam_core::ir::Import {
-                                path: format!(
-                                    "../{}/{}.ncl",
-                                    source_version,
-                                    referenced.to_lowercase()
-                                ),
-                                alias: Some(alias.to_string()),
-                                items: vec![],
-                            });
-                        }
-                    }
-                }
-            }
-
-            // Apply type replacements to the type definition
-            let mut updated_type_def = type_def.clone();
-            apply_type_replacements(&mut updated_type_def.ty, &type_replacements);
-
-            // Create a module with the type and its imports
-            let module = amalgam_core::ir::Module {
-                name: format!(
-                    "k8s.io.{}.{}",
-                    type_ref.version,
-                    type_ref.kind.to_lowercase()
-                ),
-                imports,
-                types: vec![updated_type_def],
-                constants: vec![],
-                metadata: Default::default(),
+            // Determine the output directory based on the API group structure
+            // k8s.io -> k8s_io/{version}/
+            // k8s.io.apps -> k8s_io/apps/{version}/
+            // k8s.io.batch -> k8s_io/batch/{version}/
+            let version_dir = if api_group == "k8s.io" {
+                // Core API group goes at the root
+                output_dir.join(&version_name)
+            } else if api_group.starts_with("k8s.io.") {
+                // Other API groups get their own subdirectory
+                let group_part = api_group.strip_prefix("k8s.io.").unwrap_or(api_group);
+                output_dir.join(group_part).join(&version_name)
+            } else {
+                // Fallback for any other pattern
+                output_dir
+                    .join(api_group.replace('.', "/"))
+                    .join(&version_name)
             };
 
-            // Create IR with the module
-            let mut ir = amalgam_core::IR::new();
-            ir.add_module(module);
+            fs::create_dir_all(&version_dir)?;
 
-            // Generate Nickel code
-            let mut codegen = NickelCodegen::new();
-            let code = codegen.generate(&ir)?;
+            for (filename, content) in files {
+                let file_path = version_dir.join(&filename);
+                fs::write(&file_path, content)?;
+                info!("Generated {:?}", file_path);
+            }
+        }
+    }
 
-            // Write to file
-            let filename = format!("{}.ncl", type_ref.kind.to_lowercase());
-            let file_path = version_dir.join(&filename);
-            fs::write(&file_path, code)?;
+    // Generate hierarchical mod.ncl files for the ApiGroupVersioned structure
+    {
+        // Generate root mod.ncl that imports all API groups
+        let mut root_imports = Vec::new();
 
-            info!("Generated {:?}", file_path);
-
-            // Add to module imports
-            mod_imports.push(format!(
-                "  {} = (import \"./{}\").{},",
-                type_ref.kind, filename, type_ref.kind
-            ));
+        // Handle core API versions (at root level)
+        if let Some(versions) = package.types.get("k8s.io") {
+            for version in versions.keys() {
+                root_imports.push(format!("  {} = import \"./{}/mod.ncl\",", version, version));
+            }
         }
 
-        // Generate mod.ncl for this version
-        let mod_content = format!(
-            "# Kubernetes core {} types\n{{\n{}\n}}\n",
-            version,
-            mod_imports.join("\n")
+        // Handle other API groups
+        for api_group in &all_groups {
+            if api_group == "k8s.io" {
+                continue; // Already handled above
+            }
+
+            if api_group.starts_with("k8s.io.") {
+                let group_part = api_group.strip_prefix("k8s.io.").unwrap_or(api_group);
+
+                // Generate mod.ncl for each API group
+                let group_dir = output_dir.join(group_part);
+                fs::create_dir_all(&group_dir)?;
+
+                let mut group_imports = Vec::new();
+                if let Some(versions) = package.types.get(api_group) {
+                    for version in versions.keys() {
+                        group_imports
+                            .push(format!("  {} = import \"./{}/mod.ncl\",", version, version));
+                    }
+                }
+
+                let group_content = format!(
+                    "# Kubernetes {} API Group\n# Generated with ApiGroupVersioned structure\n\n{{\n{}\n}}\n",
+                    group_part, group_imports.join("\n")
+                );
+
+                let group_mod_path = group_dir.join("mod.ncl");
+                fs::write(&group_mod_path, group_content)?;
+                info!("Generated API group module {:?}", group_mod_path);
+
+                // Add to root imports
+                root_imports.push(format!(
+                    "  {} = import \"./{}/mod.ncl\",",
+                    group_part, group_part
+                ));
+            }
+        }
+
+        let root_content = format!(
+            "# Kubernetes Types Package\n# Generated with ApiGroupVersioned structure\n\n{{\n{}\n}}\n",
+            root_imports.join("\n")
         );
-        fs::write(version_dir.join("mod.ncl"), mod_content)?;
-    }
 
-    // Generate top-level mod.ncl with all versions
-    let mut version_imports = Vec::new();
-    for version in types_by_version.keys() {
-        version_imports.push(format!("  {} = import \"./{}/mod.ncl\",", version, version));
-    }
+        let root_path = output_dir.join("mod.ncl");
+        fs::write(&root_path, root_content)?;
+        info!("Generated root package module {:?}", root_path);
 
-    let root_mod_content = format!(
-        "# Kubernetes core types\n{{\n{}\n}}\n",
-        version_imports.join("\n")
-    );
-    fs::write(output_dir.join("mod.ncl"), root_mod_content)?;
+        // Generate Nickel-pkg.ncl manifest using the unified pipeline
+        use amalgam_codegen::nickel_manifest::{NickelManifestConfig, NickelManifestGenerator};
+        use amalgam_core::IR;
 
-    // Generate Nickel package manifest if requested
-    if nickel_package {
-        info!("Generating Nickel package manifest (experimental)");
+        // Build IR from the package - include all API groups
+        let mut ir = IR::new();
+        for (api_group, group_types) in &package.types {
+            for (version_name, version_types) in group_types {
+                for type_def in version_types.values() {
+                    // Create proper module name based on API group
+                    let module_name = if api_group.starts_with("k8s.io.") {
+                        // For sub-groups, use the full path: io.k8s.api.apps.v1
+                        let group_part = api_group.strip_prefix("k8s.io.").unwrap_or(api_group);
+                        format!("io.k8s.api.{}.{}", group_part, version_name)
+                    } else if api_group == "k8s.io" {
+                        // Core API group
+                        format!("io.k8s.api.core.{}", version_name)
+                    } else {
+                        // Fallback
+                        format!("{}.{}", api_group, version_name)
+                    };
 
-        use amalgam_codegen::nickel_package::{NickelPackageConfig, NickelPackageGenerator};
+                    let module = amalgam_core::ir::Module {
+                        name: module_name,
+                        imports: Vec::new(),
+                        types: vec![type_def.clone()],
+                        constants: Vec::new(),
+                        metadata: Default::default(),
+                    };
+                    ir.add_module(module);
+                }
+            }
+        }
 
-        let config = NickelPackageConfig {
+        let manifest_config = NickelManifestConfig {
             name: "k8s-io".to_string(),
             version: "0.1.0".to_string(),
             minimal_nickel_version: "1.9.0".to_string(),
-            description: format!("Kubernetes {} core type definitions for Nickel", version),
+            description: format!(
+                "Kubernetes {} core type definitions generated by Amalgam for Nickel",
+                version
+            ),
             authors: vec!["amalgam".to_string()],
             license: "Apache-2.0".to_string(),
             keywords: vec![
@@ -305,36 +248,25 @@ pub async fn handle_k8s_core_import(
                 "k8s".to_string(),
                 "types".to_string(),
             ],
+            base_package_id: None,
+            local_dev_mode: false,
+            local_package_prefix: None,
         };
 
-        let generator = NickelPackageGenerator::new(config);
+        let generator = NickelManifestGenerator::new(manifest_config);
+        let manifest_content = generator
+            .generate_manifest(&ir, None)
+            .expect("Failed to generate Nickel manifest");
 
-        // Convert types to modules for manifest generation
-        let modules: Vec<amalgam_core::ir::Module> = types_by_version
-            .keys()
-            .map(|ver| amalgam_core::ir::Module {
-                name: ver.clone(),
-                imports: Vec::new(),
-                types: Vec::new(),
-                constants: Vec::new(),
-                metadata: Default::default(),
-            })
-            .collect();
-
-        let manifest = generator
-            .generate_manifest(&modules, std::collections::HashMap::new())
-            .unwrap_or_else(|e| format!("# Error generating manifest: {}\n", e));
-
-        fs::write(output_dir.join("Nickel-pkg.ncl"), manifest)?;
-        info!("✓ Generated Nickel-pkg.ncl");
+        let manifest_path = output_dir.join("Nickel-pkg.ncl");
+        fs::write(&manifest_path, manifest_content)?;
+        info!("Generated Nickel manifest {:?}", manifest_path);
     }
 
     info!(
-        "Successfully generated {} k8s core types in {:?}",
-        total_types, output_dir
+        "✅ Successfully generated {} Kubernetes {} types with proper cross-version imports",
+        total_types, version
     );
-    if nickel_package {
-        info!("  with Nickel package manifest");
-    }
+
     Ok(())
 }

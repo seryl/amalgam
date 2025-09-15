@@ -2,15 +2,18 @@
 source: crates/amalgam-parser/tests/snapshot_test.rs
 expression: generated
 ---
-# Module: Validated.v1.test.io
-
 {
-  Validated = {
-    metadata | optional | io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta,
-    spec | {
-      image | String,
-      port | Number | default = 8080,
-      replicas | Number,
-    },
-  },
+  metadata
+     | v1Module.ObjectMeta
+     | optional,
+  spec
+     | {
+    image
+       | String,
+    port
+       | Number
+       = 8080,
+    replicas
+       | Number
+  }
 }

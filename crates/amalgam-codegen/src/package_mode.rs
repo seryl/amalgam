@@ -108,11 +108,17 @@ impl PackageMode {
                 // Keep as relative import
                 import_path.to_string()
             }
-            PackageMode::Package { .. } => {
+            PackageMode::Package { dependencies, .. } => {
                 // Check if this import references an external package
                 if let Some(package_name) = self.detect_package_from_path(import_path) {
-                    // Convert to package import
-                    format!("\"{}\"", package_name)
+                    // Look up the full package ID from dependencies
+                    if let Some(dep) = dependencies.get(&package_name) {
+                        // Use the full package ID as-is (it should already be properly formatted)
+                        dep.package_id.clone()
+                    } else {
+                        // Fallback to bare package name if not found in dependencies
+                        format!("\"{}\"", package_name)
+                    }
                 } else {
                     // Keep as relative import within same package
                     import_path.to_string()
