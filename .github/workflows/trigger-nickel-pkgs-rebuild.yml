@@ -1,0 +1,72 @@
+name: Trigger Nickel Packages Rebuild
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      # Trigger on changes to code that affects generation
+      - 'crates/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - '.amalgam-manifest.toml'
+      # Don't trigger on doc-only changes
+      - '!**.md'
+      - '!docs/**'
+
+  # Allow manual trigger for testing
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Reason for manual trigger'
+        required: false
+        default: 'Manual rebuild requested'
+
+jobs:
+  trigger-rebuild:
+    name: Trigger nickel-pkgs Repository Rebuild
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout amalgam repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Get commit information
+        id: commit_info
+        run: |
+          echo "sha=${GITHUB_SHA::8}" >> $GITHUB_OUTPUT
+          echo "message=$(git log -1 --pretty=%B | head -1)" >> $GITHUB_OUTPUT
+          echo "author=$(git log -1 --pretty=%an)" >> $GITHUB_OUTPUT
+          echo "date=$(git log -1 --pretty=%cd --date=iso)" >> $GITHUB_OUTPUT
+
+      - name: Trigger nickel-pkgs rebuild
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.NICKEL_PKGS_TRIGGER_TOKEN }}
+          repository: seryl/nickel-pkgs
+          event-type: amalgam-updated
+          client-payload: |
+            {
+              "amalgam_commit": "${{ github.sha }}",
+              "amalgam_commit_short": "${{ steps.commit_info.outputs.sha }}",
+              "commit_message": "${{ steps.commit_info.outputs.message }}",
+              "commit_author": "${{ steps.commit_info.outputs.author }}",
+              "commit_date": "${{ steps.commit_info.outputs.date }}",
+              "trigger_reason": "${{ github.event.inputs.reason || 'Amalgam main branch updated' }}",
+              "workflow_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            }
+
+      - name: Create summary
+        if: always()
+        run: |
+          echo "## 🔄 Nickel Packages Rebuild Triggered" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Repository:** [seryl/nickel-pkgs](https://github.com/seryl/nickel-pkgs)" >> $GITHUB_STEP_SUMMARY
+          echo "**Trigger Reason:** ${{ github.event.inputs.reason || 'Amalgam main branch updated' }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ steps.commit_info.outputs.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Message:** ${{ steps.commit_info.outputs.message }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Author:** ${{ steps.commit_info.outputs.author }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The nickel-pkgs repository will now regenerate all packages using the updated Amalgam tooling." >> $GITHUB_STEP_SUMMARY
