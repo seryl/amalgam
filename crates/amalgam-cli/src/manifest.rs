@@ -1225,7 +1225,7 @@ impl Manifest {
         if !files.is_empty() {
             content.push_str("# Exports:\n");
             for (name, _) in files.iter() {
-                content.push_str(&format!("#   - {}\n", name));
+                content.push_str(&format!("#   {}\n", name));
             }
             content.push_str("#\n");
         }

@@ -213,17 +213,17 @@ impl NamespacedPackage {
                 let mut kind_list: Vec<_> = kinds.keys().collect();
                 kind_list.sort();
 
-                // List available types
-                content.push_str("# Types:\n");
+                // List available types with inline documentation
+                content.push_str("# Available Types:\n");
                 for kind in &kind_list {
                     if let Some(type_def) = kinds.get(*kind) {
-                        content.push_str(&format!("#   {}", type_def.name));
+                        content.push_str(&format!("#   - {}", type_def.name));
                         // Add doc string if available
                         if let Some(doc) = &type_def.doc {
                             let first_line = doc.lines().next().unwrap_or("");
                             if !first_line.is_empty() {
-                                let truncated = if first_line.len() > 60 {
-                                    format!("{}...", &first_line[..60])
+                                let truncated = if first_line.len() > 80 {
+                                    format!("{}...", &first_line[..77])
                                 } else {
                                     first_line.to_string()
                                 };
