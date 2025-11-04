@@ -1193,7 +1193,7 @@ impl Manifest {
     }
 
     /// Generate a rich mod.ncl with documentation and metadata
-    fn generate_rich_mod_ncl(
+    pub fn generate_rich_mod_ncl(
         &self,
         dir: &Path,
         subdirs: &BTreeMap<String, String>,
