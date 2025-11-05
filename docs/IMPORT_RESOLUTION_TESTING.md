@@ -1,8 +1,8 @@
 # Import Resolution & Symbol Lookup Testing
 
-## 🚨 Critical Bug Discovered
+## ✅ Critical Bug Fixed
 
-### The Problem: Binding Case Mismatch
+### The Problem: Binding Case Mismatch (RESOLVED)
 
 **Current Generated Code:**
 ```nickel
@@ -43,6 +43,37 @@ let ObjectMeta = import "../../k8s_io/v1/ObjectMeta.ncl" in
 - `examples/pkgs/apiextensions_crossplane_io/v1/Composition.ncl`
 - `examples/pkgs/pkg_crossplane_io/v1/Provider.ncl`
 - Any file that imports types from other packages
+
+### Fix Applied
+
+**Status:** ✅ **RESOLVED** (Commits: 06bebc0, 475d79e)
+
+**Changes Made:**
+
+All 5 instances of camelCase conversion in import bindings have been fixed in `crates/amalgam-codegen/src/nickel.rs`:
+
+1. **Line 270** - Module-level imports (primary code path)
+2. **Line 759** - Cross-module imports (IMPORT SOURCE 1)
+3. **Line 838** - Same-package imports (IMPORT SOURCE 2)
+4. **Line 963** - External reference imports (IMPORT SOURCE 3a)
+5. **Line 1870** - `sanitize_import_variable_name()` helper function
+
+**Before:**
+```rust
+let import_alias = to_camel_case(type_name);  // ObjectMeta → objectMeta
+```
+
+**After:**
+```rust
+let import_alias = type_name;  // ObjectMeta → ObjectMeta (preserved)
+```
+
+**Result:** All import bindings now preserve PascalCase, matching their usage in type contracts.
+
+**Next Steps:**
+1. Run tests: `cargo test import_symbol_resolution_test`
+2. Regenerate examples: `cargo run -- generate <schema>`
+3. Validate: `cargo test generated_file_validation_test`
 
 ---
 
