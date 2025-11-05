@@ -755,7 +755,8 @@ impl NickelCodegen {
                     // Check if this is a cross-module reference
                     if ref_module != &module.name {
                         // Track this as a cross-module import
-                        let camelcased_name = to_camel_case(name);
+                        // Preserve PascalCase to match usage in type contracts
+                        let import_alias = name;
 
                         // Use the ImportPathCalculator to get the correct path
                         // Pass the original name to preserve case in the filename
@@ -769,7 +770,7 @@ impl NickelCodegen {
 
                         // Track the import for this type - format it as a proper Nickel import statement
                         let import_stmt =
-                            format!("let {} = import \"{}\" in", camelcased_name, import_path);
+                            format!("let {} = import \"{}\" in", import_alias, import_path);
                         eprintln!("🔍 IMPORT SOURCE 1: Generated import: '{}'", import_stmt);
                         tracing::debug!(
                             "Adding cross-module import for type '{}': path='{}', stmt='{}'",
@@ -833,10 +834,10 @@ impl NickelCodegen {
                             && module_info.name != module.name
                         {
                             // Generate import statement for same-package reference
-                            // Use camelCase for the variable name but proper case for the filename
-                            let camelcased_name = to_camel_case(name);
+                            // Preserve PascalCase to match usage in type contracts
+                            let import_alias = name;
                             let import_path = format!("./{}.ncl", name);  // Use original case for filename
-                            let import_stmt = format!("let {} = import \"{}\" in", camelcased_name, import_path);
+                            let import_stmt = format!("let {} = import \"{}\" in", import_alias, import_path);
                             eprintln!("🔍 IMPORT SOURCE 2: Generated import: '{}'", import_stmt);
                             
                             tracing::debug!(
@@ -957,9 +958,10 @@ impl NickelCodegen {
                                 &ext_version,
                                 &ext_kind,
                             );
-                            
-                            let camelcased_name = to_camel_case(&ext_kind);
-                            let import_stmt = format!("let {} = import \"{}\" in", camelcased_name, import_path);
+
+                            // Preserve PascalCase to match usage in type contracts
+                            let import_alias = &ext_kind;
+                            let import_stmt = format!("let {} = import \"{}\" in", import_alias, import_path);
                             eprintln!("🔍 IMPORT SOURCE 3a: Generated cross-package import for external ref: '{}'", import_stmt);
                             
                             tracing::debug!(
@@ -1859,11 +1861,11 @@ mod tests {
 
 
 /// Sanitize a string to be a valid Nickel variable name
-/// Converts special characters to underscores and converts to camelCase
+/// Converts special characters to underscores while preserving PascalCase for type names
 fn sanitize_import_variable_name(name: &str) -> String {
-    // First clean up special characters
+    // Clean up special characters but preserve PascalCase for type names
     let cleaned = name.replace(['-', '.', '/', ':', '\\'], "_");
-    
-    // Then convert to camelCase (lowercase first letter, keep rest as-is)
-    to_camel_case(&cleaned)
+
+    // Return cleaned name without case conversion to preserve PascalCase
+    cleaned
 }
