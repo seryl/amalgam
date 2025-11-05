@@ -265,9 +265,9 @@ impl NickelCodegen {
                                 type_name, // Import the specific type file
                             )
                         };
-                        
-                        // Use the type name directly as the import alias
-                        let import_alias = to_camel_case(type_name);
+
+                        // Use the type name directly as the import alias (preserve PascalCase)
+                        let import_alias = type_name;
                         module_imports.push(format!("let {} = import \"{}\" in", import_alias, import_path));
                         
                         // Track that this type is imported for reference generation
