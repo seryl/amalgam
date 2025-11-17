@@ -6,6 +6,7 @@ members = [
     "crates/amalgam-codegen",
     "crates/amalgam-daemon",
     "crates/amalgam-cli",
+    "crates/amalgam-verification",
 ]
 
 [workspace.metadata.release]

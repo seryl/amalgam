@@ -1,0 +1,49 @@
+[package]
+name = "amalgam-verification"
+version = "0.1.0"
+edition = "2021"
+authors = ["Amalgam Contributors"]
+description = "Comprehensive verification suite for Amalgam-generated Nickel code"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+# Core dependencies
+anyhow = "1.0"
+thiserror = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+
+# CLI and process execution
+clap = { version = "4.4", features = ["derive"] }
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = "0.3"
+
+# File operations
+glob = "0.3"
+walkdir = "2.4"
+
+# Text comparison and diffing
+similar = { version = "2.3", features = ["inline"] }
+
+# Process utilities
+which = "6.0"
+
+# Time/Date
+chrono = { version = "0.4", features = ["serde"] }
+
+[dev-dependencies]
+# Testing utilities
+insta = { version = "1.34", features = ["yaml"] }
+tempfile = "3.8"
+pretty_assertions = "1.4"
+
+[[bin]]
+name = "verification-report"
+path = "src/bin/report.rs"
+
+[lib]
+name = "amalgam_verification"
+path = "src/lib.rs"
