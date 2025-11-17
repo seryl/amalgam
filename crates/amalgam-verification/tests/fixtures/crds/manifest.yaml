@@ -1,0 +1,37 @@
+# CRD Sources for Verification
+downloaded_at: 2025-11-17T05:17:49Z
+
+sources:
+  kubernetes:
+    note: "Core types from k8s-openapi crate"
+    types:
+      - v1/Pod
+      - v1/Service
+      - v1/ConfigMap
+      - v1/Secret
+      - apps/v1/Deployment
+
+  crossplane:
+    version: v1.14.5
+    repository: https://github.com/crossplane/crossplane
+    crds:
+      - apiextensions.crossplane.io/v1/CompositeResourceDefinition
+      - apiextensions.crossplane.io/v1/Composition
+      - pkg.crossplane.io/v1/Provider
+
+  argocd:
+    version: v2.9.5
+    repository: https://github.com/argoproj/argo-cd
+    crds:
+      - argoproj.io/v1alpha1/Application
+      - argoproj.io/v1alpha1/ApplicationSet
+      - argoproj.io/v1alpha1/AppProject
+
+  cert-manager:
+    version: v1.13.3
+    repository: https://github.com/cert-manager/cert-manager
+    crds:
+      - cert-manager.io/v1/Certificate
+      - cert-manager.io/v1/CertificateRequest
+      - cert-manager.io/v1/Issuer
+      - cert-manager.io/v1/ClusterIssuer
