@@ -4,7 +4,11 @@ use amalgam::handle_k8s_core_import;
 use std::fs;
 use tempfile::tempdir;
 
+/// This test requires network access to download the k8s swagger spec.
+/// It's ignored by default because Nix builds are sandboxed without network.
+/// Run with: cargo test --test k8s_cross_version_imports -- --ignored
 #[tokio::test]
+#[ignore = "requires network access to download k8s swagger spec"]
 async fn test_k8s_cross_version_imports() -> Result<(), Box<dyn std::error::Error>> {
     // Create a temporary directory for output
     let temp_dir = tempdir()?;
