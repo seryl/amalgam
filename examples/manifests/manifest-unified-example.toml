@@ -1,0 +1,241 @@
+# Unified Pipeline Configuration Example
+# This demonstrates the new enum-based pipeline architecture
+
+[metadata]
+name = "k8s-unified-example"
+version = "0.1.0"
+description = "Comprehensive example of unified pipeline configuration"
+
+# Global pipeline configuration
+[pipeline]
+# Output directory for all generated artifacts
+output_dir = "examples/pkgs/k8s-unified"
+# Enable structured diagnostic export
+export_diagnostics = true
+# Error recovery mode: "fail-fast" | "continue" | "best-effort"
+error_recovery = "best-effort"
+
+# Define multiple pipeline stages with different configurations
+[[stages]]
+name = "core-types"
+description = "Import core Kubernetes types with custom special cases"
+
+# Input configuration - K8s CRD source
+[stages.input]
+type = "k8s-crd"
+crd_paths = ["k8s.io/api/core/v1"]
+include_patterns = ["Pod", "Service", "ConfigMap", "Secret"]
+
+# Processing configuration
+[stages.processing]
+# Import handling strategy
+import_strategy = "hierarchical"  # "flat" | "hierarchical" | "grouped"
+# Module layout
+layout = "single-file"  # "single-file" | "multi-file" | "directory-tree"
+# Symbol resolution
+symbol_resolution = "eager"  # "lazy" | "eager" | "deferred"
+
+# Special case handling
+[[stages.processing.special_cases]]
+pattern = "ObjectMeta"
+action = "flatten-metadata"
+config = { include_common_fields = true, exclude_managed_fields = true }
+
+[[stages.processing.special_cases]]
+pattern = "PodSpec.containers"
+action = "simplify-containers"
+config = { merge_init_containers = false, default_image_pull = "IfNotPresent" }
+
+# Output configuration
+[stages.output]
+type = "nickel"
+target_path = "core/types.ncl"
+# Include type contracts
+include_contracts = true
+# Export format options
+format = { indent = 2, max_line_length = 100, trailing_commas = true }
+
+# Second stage - API resources with different processing
+[[stages]]
+name = "api-resources"
+description = "Import API resources with validation focus"
+
+[stages.input]
+type = "k8s-crd"
+crd_paths = ["k8s.io/api/apps/v1", "k8s.io/api/networking/v1"]
+include_patterns = ["Deployment", "Service", "Ingress"]
+
+[stages.processing]
+import_strategy = "grouped"
+layout = "multi-file"
+symbol_resolution = "lazy"
+
+# Different special cases for API resources
+[[stages.processing.special_cases]]
+pattern = "DeploymentSpec"
+action = "add-validation"
+config = { 
+  min_replicas = 1, 
+  max_replicas = 100,
+  required_fields = ["selector", "template"]
+}
+
+[stages.output]
+type = "nickel"
+target_path = "api/resources.ncl"
+include_contracts = true
+
+# Third stage - Go types roundtrip example
+[[stages]]
+name = "go-roundtrip"
+description = "Demonstrate Go to Nickel to Go roundtrip conversion"
+
+[stages.input]
+type = "go-types"
+go_module = "github.com/example/k8s-types"
+type_patterns = ["CustomResource*", "Config*"]
+
+[stages.processing]
+import_strategy = "flat"
+layout = "single-file"
+symbol_resolution = "eager"
+
+# Go-specific special cases
+[[stages.processing.special_cases]]
+pattern = "time.Time"
+action = "map-to-string"
+config = { format = "RFC3339", validation = "iso8601" }
+
+[[stages.processing.special_cases]]
+pattern = "json.RawMessage"
+action = "map-to-dynamic"
+config = { preserve_structure = true }
+
+[stages.output]
+type = "go"
+target_path = "generated/types.go"
+package_name = "generated"
+include_json_tags = true
+
+# Fourth stage - OpenAPI schema processing
+[[stages]]
+name = "openapi-schemas"
+description = "Process OpenAPI schemas with contract generation"
+
+[stages.input]
+type = "openapi"
+spec_path = "schemas/k8s-openapi-spec.json"
+include_patterns = ["#/components/schemas/io.k8s.*"]
+
+[stages.processing]
+import_strategy = "hierarchical"
+layout = "directory-tree"
+symbol_resolution = "deferred"
+
+# OpenAPI-specific processing
+[[stages.processing.special_cases]]
+pattern = "allOf"
+action = "merge-schemas"
+config = { strategy = "intersection", handle_conflicts = "error" }
+
+[[stages.processing.special_cases]]
+pattern = "oneOf"
+action = "create-union"
+config = { add_discriminator = true, preserve_order = true }
+
+[stages.output]
+type = "nickel"
+target_path = "schemas/"
+include_contracts = true
+format = { use_inline_contracts = false, separate_contract_files = true }
+
+# Advanced pipeline features
+[pipeline.optimization]
+# Enable cross-stage optimization
+enabled = true
+# Module deduplication across stages
+deduplicate_modules = true
+# Import consolidation
+consolidate_imports = true
+# Unused type elimination
+eliminate_unused = true
+
+[pipeline.validation]
+# Validate generated code
+validate_syntax = true
+validate_types = true
+validate_contracts = true
+# Cross-reference validation
+validate_imports = true
+
+[pipeline.diagnostics]
+# Export detailed pipeline execution data
+export_dag = true
+export_symbol_table = true
+export_timing = true
+export_memory_usage = true
+# Export path
+diagnostics_path = "diagnostics/pipeline-execution.json"
+
+# Dependencies between stages
+[[dependencies]]
+stage = "api-resources"
+depends_on = ["core-types"]
+import_symbols = ["Pod", "Service", "ObjectMeta"]
+
+[[dependencies]]
+stage = "go-roundtrip"
+depends_on = ["core-types", "api-resources"]
+import_symbols = ["all"]  # Import all symbols from dependencies
+
+# Example of conditional processing
+[pipeline.conditions]
+# Only process Go roundtrip if Go toolchain is available
+go_roundtrip = { condition = "has_go_toolchain", fallback = "skip" }
+# Only export diagnostics in debug mode
+export_diagnostics = { condition = "debug_mode", default = false }
+
+# Error handling configuration
+[pipeline.error_handling]
+# What to do when a stage fails
+on_stage_failure = "continue"  # "fail" | "continue" | "skip_dependents"
+# Maximum retries per stage
+max_retries = 2
+# Retry backoff strategy
+retry_strategy = "exponential"  # "linear" | "exponential" | "fixed"
+
+# Recovery suggestions for common errors
+[[pipeline.error_handling.recovery_rules]]
+error_pattern = "ImportNotFound"
+suggestion = "Check if the source module exports the symbol"
+auto_fix = "add_import_fallback"
+
+[[pipeline.error_handling.recovery_rules]]
+error_pattern = "TypeConversionError"
+suggestion = "Review special case configurations for type mappings"
+auto_fix = "use_dynamic_type"
+
+# Performance tuning
+[pipeline.performance]
+# Parallel processing
+parallel_stages = true
+max_parallel_stages = 4
+# Memory management
+use_streaming = true
+chunk_size = 1000
+# Caching
+cache_intermediate_results = true
+cache_ttl = "1h"
+
+# Example of extending the pipeline with custom processors
+[[pipeline.extensions]]
+name = "custom-validator"
+type = "post-processor"
+plugin_path = "plugins/custom_validator.wasm"
+config = { strict_mode = true, custom_rules = ["no-empty-strings", "required-metadata"] }
+
+[[pipeline.extensions]]
+name = "documentation-generator"
+type = "output-processor"
+plugin_path = "plugins/doc_generator.wasm"
+config = { format = "markdown", include_examples = true }

@@ -33,6 +33,8 @@ fn test_multi_package_alias_generation() -> Result<(), Box<dyn std::error::Error
                             required: true,
                             description: None,
                             default: None,
+                            validation: None,
+                            contracts: Vec::new(),
                         },
                     );
 
@@ -46,6 +48,8 @@ fn test_multi_package_alias_generation() -> Result<(), Box<dyn std::error::Error
                             required: false,
                             description: None,
                             default: None,
+                            validation: None,
+                            contracts: Vec::new(),
                         },
                     );
 
@@ -60,6 +64,8 @@ fn test_multi_package_alias_generation() -> Result<(), Box<dyn std::error::Error
                             required: false,
                             description: None,
                             default: None,
+                            validation: None,
+                            contracts: Vec::new(),
                         },
                     );
 

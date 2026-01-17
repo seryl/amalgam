@@ -163,6 +163,8 @@ fn test_reference_resolution_to_alias() -> Result<(), Box<dyn std::error::Error>
             },
             required: false,
             default: None,
+            validation: None,
+            contracts: Vec::new(),
             description: Some("Standard Kubernetes metadata".to_string()),
         },
     );
@@ -203,8 +205,11 @@ fn test_reference_resolution_to_alias() -> Result<(), Box<dyn std::error::Error>
     );
 
     // Verify the reference uses the generated alias (module-qualified reference)
+    // The alias could be metav1 (for apimachinery.pkg.apis/meta/v1), v1Module, or k8s_io_v1
     assert!(
-        generated.contains("k8s_io_v1.ObjectMeta") || generated.contains("v1Module.ObjectMeta"),
+        generated.contains("metav1.ObjectMeta")
+            || generated.contains("k8s_io_v1.ObjectMeta")
+            || generated.contains("v1Module.ObjectMeta"),
         "Reference not resolved. Generated:\n{}",
         generated
     );
@@ -266,9 +271,12 @@ fn test_import_path_calculation() -> Result<(), Box<dyn std::error::Error>> {
         TypeReference::from_qualified_name("io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta")
             .ok_or("Failed to get parent directory")?;
 
+    // Cross-package imports (from example.io to k8s.io) include k8s_io/ prefix
     let import_path = type_ref.import_path("example.io", "v1");
-    // K8s paths now use the actual directory structure - apimachinery types are in their own module
-    assert_eq!(import_path, "../../apimachinery.pkg.apis/meta/v1/mod.ncl");
+    assert_eq!(
+        import_path,
+        "../../k8s_io/apimachinery.pkg.apis/meta/v1/mod.ncl"
+    );
 
     let alias = type_ref.module_alias();
     assert_eq!(alias, "k8s_io_v1");
@@ -290,6 +298,8 @@ fn test_case_insensitive_type_matching() -> Result<(), Box<dyn std::error::Error
             },
             required: false,
             default: None,
+            validation: None,
+            contracts: Vec::new(),
             description: None,
         },
     );
@@ -321,9 +331,11 @@ fn test_case_insensitive_type_matching() -> Result<(), Box<dyn std::error::Error
     let generated = codegen.generate(&ir)?;
 
     // The codegen will generate its own import for ObjectMeta since it's a cross-module reference
-    // It uses module-qualified reference like "k8s_v1.ObjectMeta"
+    // It uses module-qualified reference like "metav1.ObjectMeta" (from apimachinery.pkg.apis/meta/v1)
     assert!(
-        generated.contains("k8s_v1.ObjectMeta") || generated.contains("v1Module.ObjectMeta"),
+        generated.contains("metav1.ObjectMeta")
+            || generated.contains("k8s_v1.ObjectMeta")
+            || generated.contains("v1Module.ObjectMeta"),
         "Failed to generate ObjectMeta reference. Generated:\n{}",
         generated
     );

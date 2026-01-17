@@ -7,6 +7,8 @@ members = [
     "crates/amalgam-daemon",
     "crates/amalgam-cli",
     "crates/amalgam-registry",
+    "crates/amalgam-test-fixtures",
+    "crates/amalgam-wasm",
 ]
 
 [workspace.metadata.release]
@@ -20,7 +22,7 @@ tag-name = "{{prefix}}{{version}}"
 name = "amalgam"
 
 [workspace.package]
-version = "0.7.0"
+version = "0.8.0"
 edition = "2021"
 license = "Apache-2.0"
 repository = "https://github.com/seryl/amalgam"
@@ -82,8 +84,11 @@ futures = "0.3"
 # Terminal detection
 atty = "0.2"
 
+# UUID generation (with js feature for WASM support)
+uuid = { version = "1.0", features = ["v7", "serde"] }
+
 # Internal workspace dependencies
 amalgam-core = { version = "0.7.0", path = "crates/amalgam-core" }
-amalgam-parser = { version = "0.7.0", path = "crates/amalgam-parser" }
+amalgam-parser = { version = "0.7.0", path = "crates/amalgam-parser", default-features = true }
 amalgam-codegen = { version = "0.7.0", path = "crates/amalgam-codegen" }
 amalgam-daemon = { version = "0.7.0", path = "crates/amalgam-daemon" }

@@ -39,3 +39,22 @@ result-*
 # Python
 __pycache__
 *.pyc
+
+# Generated outputs
+examples/pkgs/
+.amalgam-cache/
+k8s_io/
+nickel/
+nickel-pkgs/
+backup-files/
+/generated/
+*.generated.ncl
+# Debug output from manifest generation (only created with debug=true)
+generated.ncl
+
+# Keep the manifest for regeneration
+!examples/.amalgam-manifest.toml
+
+# Temporary test output
+*.snap.new
+test-output/

@@ -61,23 +61,64 @@ pub fn to_pascal_case(name: &str) -> String {
 
 /// Convert PascalCase to camelCase for import variable names
 ///
+/// This function properly handles leading acronyms by lowercasing the entire
+/// acronym prefix when followed by more text.
+///
 /// # Examples
 /// ```
 /// use amalgam_core::naming::to_camel_case;
 /// assert_eq!(to_camel_case("Pod"), "pod");
 /// assert_eq!(to_camel_case("ObjectMeta"), "objectMeta");
-/// assert_eq!(to_camel_case("CELDeviceSelector"), "cELDeviceSelector");
+/// assert_eq!(to_camel_case("CELDeviceSelector"), "celDeviceSelector");
+/// assert_eq!(to_camel_case("APIGroup"), "apiGroup");
+/// assert_eq!(to_camel_case("APIResource"), "apiResource");
+/// assert_eq!(to_camel_case("API"), "api");
+/// assert_eq!(to_camel_case("HTTPProxy"), "httpProxy");
+/// assert_eq!(to_camel_case("CSIDriver"), "csiDriver");
 /// ```
 pub fn to_camel_case(name: &str) -> String {
     if name.is_empty() {
         return String::new();
     }
 
-    let mut chars = name.chars();
-    match chars.next() {
-        None => String::new(),
-        Some(first) => first.to_lowercase().collect::<String>() + chars.as_str(),
+    let chars: Vec<char> = name.chars().collect();
+
+    // Find the length of the leading uppercase sequence (acronym)
+    let mut acronym_len = 0;
+    for (i, &c) in chars.iter().enumerate() {
+        if c.is_uppercase() {
+            acronym_len = i + 1;
+        } else {
+            break;
+        }
     }
+
+    if acronym_len == 0 {
+        // No uppercase letters at start, return as-is
+        return name.to_string();
+    }
+
+    if acronym_len == 1 {
+        // Single uppercase letter at start - just lowercase it
+        let mut result = chars[0].to_lowercase().collect::<String>();
+        result.extend(&chars[1..]);
+        return result;
+    }
+
+    if acronym_len == chars.len() {
+        // Entire string is uppercase - lowercase all
+        return name.to_lowercase();
+    }
+
+    // Leading acronym followed by more text
+    // Lowercase all but the last letter of the acronym (which starts the next word)
+    // e.g., "APIGroup" -> "apiGroup", "HTTPProxy" -> "httpProxy"
+    let mut result = String::new();
+    for c in &chars[..acronym_len - 1] {
+        result.extend(c.to_lowercase());
+    }
+    result.extend(&chars[acronym_len - 1..]);
+    result
 }
 
 /// Convert snake_case to PascalCase
@@ -164,7 +205,16 @@ mod tests {
         assert_eq!(to_camel_case("pod"), "pod");
         assert_eq!(to_camel_case("ObjectMeta"), "objectMeta");
         assert_eq!(to_camel_case("objectMeta"), "objectMeta");
-        assert_eq!(to_camel_case("CELDeviceSelector"), "cELDeviceSelector");
+        // Acronym handling - lowercase the entire acronym prefix
+        assert_eq!(to_camel_case("CELDeviceSelector"), "celDeviceSelector");
+        assert_eq!(to_camel_case("APIGroup"), "apiGroup");
+        assert_eq!(to_camel_case("APIResource"), "apiResource");
+        assert_eq!(to_camel_case("API"), "api");
+        assert_eq!(to_camel_case("HTTPProxy"), "httpProxy");
+        assert_eq!(to_camel_case("CSIDriver"), "csiDriver");
+        assert_eq!(to_camel_case("DNSConfig"), "dnsConfig");
+        assert_eq!(to_camel_case("URL"), "url");
+        assert_eq!(to_camel_case("ID"), "id");
     }
 
     #[test]

@@ -3,19 +3,27 @@
 pub mod crd;
 pub mod dependency_graph;
 pub mod error;
-pub mod fetch;
 pub mod go;
-pub mod go_ast;
 pub mod imports;
-pub mod incremental;
-pub mod k8s_authoritative;
-pub mod k8s_types;
 pub mod openapi;
 pub mod package;
 pub mod package_walker;
 pub mod parsing_trace;
 pub mod swagger;
+pub mod validation_extractor;
 pub mod walkers;
+
+// Native-only modules (require tokio, reqwest, etc.)
+#[cfg(feature = "native")]
+pub mod fetch;
+#[cfg(feature = "native")]
+pub mod go_ast;
+#[cfg(feature = "native")]
+pub mod incremental;
+#[cfg(feature = "native")]
+pub mod k8s_authoritative;
+#[cfg(feature = "native")]
+pub mod k8s_types;
 
 use amalgam_core::IR;
 

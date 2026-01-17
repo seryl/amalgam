@@ -2,30 +2,30 @@
 source: crates/amalgam-parser/tests/snapshot_test.rs
 expression: generated
 ---
-{
+Nested = {
   spec
-     | {
+    | {
     config
-       | {
+      | {
       cache
-         | {
+        | {
         ttl
-           | Number
-           | optional
+          | Number
+          | optional
       }
-         | optional,
+        | optional,
       database
-         | {
+        | {
         host
-           | String
-           | optional,
+          | String
+          | optional,
         port
-           | Number
-           | optional
+          | Number
+          | optional
       }
-         | optional
+        | optional
     }
-       | optional
+      | optional
   }
-     | optional
+    | optional
 }

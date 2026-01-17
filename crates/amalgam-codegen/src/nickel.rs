@@ -13,6 +13,7 @@ use amalgam_core::{
     types::{Field, Type},
     ImportPathCalculator, IR,
 };
+use nickel_lang_parser::lexer::KEYWORDS as NICKEL_KEYWORDS;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
 use std::sync::Arc;
@@ -88,6 +89,8 @@ pub struct NickelCodegen {
     current_imports: HashSet<(String, String)>, // (version, type_name)
     /// Same-package dependencies for current module (Phase 2)
     same_package_deps: HashSet<String>, // type names that need imports
+    /// Cross-package import statements for current module
+    cross_package_imports: Vec<String>, // Full import statements for cross-package refs
     /// Debug information for tracking import generation
     pub debug_info: ImportGenerationDebug,
     /// Track which imports each type needs (for extraction)
@@ -101,8 +104,9 @@ pub struct NickelCodegen {
     /// Compilation debug info (collected when debug_config is enabled)
     compilation_debug: CompilationDebugInfo,
     /// Track imported types for the current module being generated (Phase 2)
-    /// Maps type name to whether it's a same-directory import (true) or cross-module (false)
-    current_module_imports: HashMap<String, bool>,
+    /// Maps type name to the reference string to use (e.g., "APIGroup" for same-module,
+    /// "v1Module.APIGroup" for module imports, "apiGroup" for single-file imports)
+    current_module_imports: HashMap<String, String>,
 }
 
 impl NickelCodegen {
@@ -117,6 +121,7 @@ impl NickelCodegen {
             special_cases: None,
             current_imports: HashSet::new(),
             same_package_deps: HashSet::new(),
+            cross_package_imports: Vec::new(),
             debug_info: ImportGenerationDebug::default(),
             type_import_map: TypeImportMap::new(),
             current_type_name: None,
@@ -210,9 +215,67 @@ impl NickelCodegen {
         }
     }
 
+    /// Calculate the filesystem depth of a module based on how map_module_to_file_path
+    /// would lay out the file. This matches the logic in ModuleRegistry.
+    ///
+    /// The depth is the number of directory levels from the package root to the file.
+    /// For example, api/core/v1.ncl has depth 2 (api, core directories).
+    fn calculate_module_filesystem_depth(module_name: &str) -> usize {
+        match module_name {
+            // Core k8s.io modules: api/core/{version}.ncl = 2 directory levels
+            name if name.starts_with("k8s.io.") => 2,
+
+            // Apimachinery runtime/util/api types
+            "apimachinery.pkg.runtime" => 1, // apimachinery.pkg/runtime.ncl
+            "apimachinery.pkg.util.intstr" => 2, // apimachinery.pkg/util/intstr.ncl
+            "apimachinery.pkg.api.resource" => 2, // apimachinery.pkg/api/resource.ncl
+
+            // APIExtensions server: apiextensions-apiserver.pkg.apis/{group}/{version}.ncl = 2 levels
+            name if name.starts_with("apiextensions-apiserver.pkg.apis.") => 2,
+
+            // Kube aggregator: kube-aggregator.pkg.apis/{group}/{version}.ncl = 2 levels
+            name if name.starts_with("kube-aggregator.pkg.apis.") => 2,
+
+            // Version module: version.ncl = 0 levels (at root)
+            "k8s.io.version" => 0,
+
+            // Apimachinery meta: apimachinery.pkg.apis/meta/{version}/mod.ncl = 3 levels
+            name if name.starts_with("apimachinery.pkg.apis.meta.") => 3,
+
+            // Apimachinery runtime versioned: apimachinery.pkg.apis/runtime/{version}/mod.ncl = 3 levels
+            name if name.starts_with("apimachinery.pkg.apis.runtime.") => 3,
+
+            // io.k8s.* patterns that use dots-to-slashes fallback: count directory levels
+            // The last dot-part is the filename (version), so depth = parts - 1
+            // e.g., io.k8s.kube-aggregator.pkg.apis.apiregistration.v1 has 7 parts = 6 directory levels
+            name if name.starts_with("io.k8s.") => name.split('.').count() - 1,
+
+            // Default CRD/package pattern: domain_name/version = 1 level
+            // e.g., example.io.v1 -> example_io/v1.ncl (1 directory level)
+            _ => 1,
+        }
+    }
+
+    /// Generate the appropriate number of parent directory traversals for a given depth
+    fn generate_parent_path(depth: usize) -> String {
+        if depth == 0 {
+            ".".to_string()
+        } else {
+            vec![".."; depth].join("/")
+        }
+    }
+
     /// Get the correct module path for k8s.io consolidated structure
     /// Maps individual type file paths to their actual consolidated module locations
-    fn get_k8s_module_path(&self, import_path: &str, type_name: &str) -> String {
+    ///
+    /// Note: When importing k8s types from non-k8s packages (like Crossplane CRDs),
+    /// paths need to include the k8s_io/ directory prefix
+    fn get_k8s_module_path(
+        &self,
+        import_path: &str,
+        type_name: &str,
+        from_module: Option<&str>,
+    ) -> String {
         // The import_path will be something like "../../apimachinery_pkg_apis_meta/v1/ObjectMeta.ncl"
         // We need to map this to the actual consolidated module path
 
@@ -222,25 +285,56 @@ impl NickelCodegen {
             .replace("apimachinery_pkg_apis", "apimachinery.pkg.apis")
             .replace("api_", "api/");
 
+        // Check if we're importing from a non-k8s module (like Crossplane CRDs)
+        // In that case, we need to go through the k8s_io package directory
+        let is_cross_package = from_module
+            .map(|m| {
+                !m.starts_with("k8s.io")
+                    && !m.starts_with("io.k8s.")
+                    && !m.starts_with("apimachinery.")
+            })
+            .unwrap_or(false);
+
+        // Calculate the depth of the source module to generate correct parent paths
+        let depth = from_module
+            .map(|m| Self::calculate_module_filesystem_depth(m))
+            .unwrap_or(2); // Default to 2 if unknown
+        let parent_path = Self::generate_parent_path(depth);
+
+        // Generate the cross-package prefix if needed
+        let cross_pkg_prefix = if is_cross_package { "k8s_io/" } else { "" };
+
         // Extract the components from the path
         if normalized_path.contains("apimachinery.pkg.apis") {
-            // This should map to apimachinery.pkg.apis/meta/v1/mod.ncl (consolidated module)
+            // This should map to k8s_io/apimachinery.pkg.apis/meta/v1/mod.ncl (consolidated module)
             if normalized_path.contains("/v1/") || normalized_path.contains("/v1.") {
-                "../../apimachinery.pkg.apis/meta/v1/mod.ncl".to_string()
+                format!(
+                    "{}/{}apimachinery.pkg.apis/meta/v1/mod.ncl",
+                    parent_path, cross_pkg_prefix
+                )
             } else if normalized_path.contains("/v1alpha1/")
                 || normalized_path.contains("/v1alpha1.")
             {
-                "../../apimachinery.pkg.apis/meta/v1alpha1/mod.ncl".to_string()
+                format!(
+                    "{}/{}apimachinery.pkg.apis/meta/v1alpha1/mod.ncl",
+                    parent_path, cross_pkg_prefix
+                )
             } else if normalized_path.contains("/v1beta1/") || normalized_path.contains("/v1beta1.")
             {
-                "../../apimachinery.pkg.apis/meta/v1beta1/mod.ncl".to_string()
+                format!(
+                    "{}/{}apimachinery.pkg.apis/meta/v1beta1/mod.ncl",
+                    parent_path, cross_pkg_prefix
+                )
             } else {
                 // Default to v1 if version not clear
-                "../../apimachinery.pkg.apis/meta/v1/mod.ncl".to_string()
+                format!(
+                    "{}/{}apimachinery.pkg.apis/meta/v1/mod.ncl",
+                    parent_path, cross_pkg_prefix
+                )
             }
         } else if normalized_path.contains("/v0/") || normalized_path.contains("v0.ncl") {
             // v0 types are in the root v0.ncl
-            "../../v0/mod.ncl".to_string()
+            format!("{}/{}v0/mod.ncl", parent_path, cross_pkg_prefix)
         } else if normalized_path.ends_with(&format!("/{}.ncl", type_name)) {
             // Regular API types - convert to consolidated module
             // e.g., "../v1/Pod.ncl" -> "../v1.ncl"
@@ -319,24 +413,33 @@ impl NickelCodegen {
                                 )
                             };
 
-                            let module_path = self.get_k8s_module_path(&import_path, type_name);
+                            let module_path =
+                                self.get_k8s_module_path(&import_path, type_name, Some(&module_id));
                             // Use the same alias generation logic as in generate_with_compilation_unit
                             let module_alias = Self::generate_module_alias(&module_path);
 
-                            // Add to consolidated imports
-                            k8s_module_imports
+                            // Add to consolidated imports (deduplicate type names)
+                            let entry = k8s_module_imports
                                 .entry(module_path.clone())
-                                .or_insert((module_alias, Vec::new()))
-                                .1
-                                .push(type_name.clone());
+                                .or_insert((module_alias.clone(), Vec::new()));
+                            if !entry.1.contains(type_name) {
+                                entry.1.push(type_name.clone());
+                            }
 
                             // Track that this type is imported for reference generation
-                            // K8s imports are always cross-module (false)
-                            self.current_module_imports.insert(type_name.clone(), false);
+                            // K8s imports use camelCase variable names (e.g., `apiGroup` for `APIGroup`)
+                            let reference_name = to_camel_case(type_name);
+                            self.current_module_imports
+                                .insert(type_name.clone(), reference_name);
                         }
                     } else {
                         // Import each type individually for non-k8s modules
                         for type_name in imported_types {
+                            // Skip if we've already imported this type
+                            if self.current_module_imports.contains_key(type_name) {
+                                continue;
+                            }
+
                             let import_path = if let Some(ref special_cases) = self.special_cases {
                                 if let Some(override_path) =
                                     special_cases.get_import_override(&module_id, type_name)
@@ -374,9 +477,9 @@ impl NickelCodegen {
                                 format!("let {} = import \"{}\" in", import_alias, import_path);
                             module_imports.push(stmt);
 
-                            // Track that this type is imported for reference generation
+                            // Track the reference name for this type
                             self.current_module_imports
-                                .insert(type_name.clone(), is_same_directory);
+                                .insert(type_name.clone(), import_alias);
                         }
                     }
                 }
@@ -406,12 +509,28 @@ impl NickelCodegen {
                 .map_err(|e| CodegenError::Generation(e.to_string()))?;
             writeln!(output).map_err(|e| CodegenError::Generation(e.to_string()))?;
 
-            // Write module-level imports at the top
-            for import in &module_imports {
+            // Separate imports into module imports and type extractions
+            // Module imports: `let X = import "..." in`
+            // Type extractions: `let x = X.Type in`
+            let (mut module_import_stmts, mut type_extraction_stmts): (Vec<_>, Vec<_>) =
+                module_imports
+                    .into_iter()
+                    .partition(|s| s.contains("import \""));
+
+            // Sort each category alphabetically for consistent output
+            module_import_stmts.sort();
+            type_extraction_stmts.sort();
+
+            // Write module imports first, then type extractions (dependency order)
+            for import in &module_import_stmts {
                 writeln!(output, "{}", import)
                     .map_err(|e| CodegenError::Generation(e.to_string()))?;
             }
-            if !module_imports.is_empty() {
+            for import in &type_extraction_stmts {
+                writeln!(output, "{}", import)
+                    .map_err(|e| CodegenError::Generation(e.to_string()))?;
+            }
+            if !module_import_stmts.is_empty() || !type_extraction_stmts.is_empty() {
                 writeln!(output).map_err(|e| CodegenError::Generation(e.to_string()))?;
             }
 
@@ -459,44 +578,45 @@ impl NickelCodegen {
         " ".repeat(level * self.indent_size)
     }
 
-    /// Escape field names that are reserved keywords or start with special characters
+    /// Escape field names that are reserved keywords or contain special characters
+    ///
+    /// In Nickel, field names must be quoted if they:
+    /// - Start with a digit
+    /// - Contain hyphens, dots, or other non-identifier characters
+    /// - Start with $ or other special characters
+    /// - Are reserved keywords
     fn escape_field_name(&self, name: &str) -> String {
-        // Fields starting with $ need to be quoted
-        if name.starts_with('$') || self.is_reserved_keyword(name) {
+        // Check if the name needs quoting
+        let needs_quoting = name.starts_with('$')
+            || name.starts_with(|c: char| c.is_ascii_digit())
+            || name.contains('-')
+            || name.contains('.')
+            || name.contains(' ')
+            || name.contains('/')
+            || name.contains('@')
+            || self.is_reserved_keyword(name)
+            || !name.chars().all(|c| c.is_alphanumeric() || c == '_');
+
+        if needs_quoting {
             format!("\"{}\"", name)
         } else {
             name.to_string()
         }
     }
 
-    /// Check if a field name is a Nickel reserved keyword
+    /// Check if a field name is a Nickel reserved keyword or needs quoting
+    ///
+    /// Uses the official KEYWORDS list from nickel-lang-parser plus additional
+    /// field names that need quoting for safety (type, enum, const are common
+    /// in JSON Schema but conflict with Nickel syntax).
     fn is_reserved_keyword(&self, name: &str) -> bool {
-        matches!(
-            name,
-            "and"
-                | "or"
-                | "not"
-                | "if"
-                | "then"
-                | "else"
-                | "let"
-                | "in"
-                | "fun"
-                | "import"
-                | "match"
-                | "rec"
-                | "null"
-                | "true"
-                | "false"
-                | "switch"
-                | "default"
-                | "forall"
-                | "doc"
-                | "optional"
-                | "priority"
-                | "force"
-                | "merge"
-        )
+        // Check against official Nickel keywords from the parser crate
+        if NICKEL_KEYWORDS.contains(&name) {
+            return true;
+        }
+
+        // Additional field names that need quoting (common in JSON Schema)
+        matches!(name, "type" | "enum" | "const")
     }
 
     /// Phase 2: Analyze dependencies for a type and collect required imports
@@ -601,6 +721,16 @@ impl NickelCodegen {
     /// Format a documentation string properly
     /// Uses triple quotes for multiline, regular quotes for single line
     /// Parse group and version from a module name
+    /// Check if a module name has valid format
+    fn is_valid_module_name(module_name: &str) -> bool {
+        // Module names should only contain alphanumeric, dots, hyphens, underscores
+        // and should not be empty
+        !module_name.is_empty()
+            && module_name
+                .chars()
+                .all(|c| c.is_alphanumeric() || c == '.' || c == '-' || c == '_')
+    }
+
     fn parse_module_name(module_name: &str) -> (String, String) {
         // Module names can be:
         // - "group.version" (e.g., "k8s.io.v1")
@@ -770,12 +900,15 @@ impl NickelCodegen {
             }
 
             Type::Optional(inner) => {
-                let inner_type = self.type_to_nickel_impl(inner, module, indent_level)?;
-                Ok(format!("{} | Null", inner_type))
+                // In Nickel, optional fields use the `| optional` annotation
+                // rather than a union with Null. Just emit the inner type.
+                self.type_to_nickel_impl(inner, module, indent_level)
             }
 
             Type::Record { fields, open } => {
-                if fields.is_empty() && *open {
+                // Empty records should be open to allow any fields
+                // A completely closed empty record is almost never useful
+                if fields.is_empty() {
                     return Ok("{ .. }".to_string());
                 }
 
@@ -835,12 +968,10 @@ impl NickelCodegen {
                         Ok(handler.clone())
                     }
                     Some(amalgam_core::types::UnionCoercion::NoPreference) | None => {
-                        // Generate actual union type
-                        let type_strs: Result<Vec<_>, _> = types
-                            .iter()
-                            .map(|t| self.type_to_nickel_impl(t, module, indent_level))
-                            .collect();
-                        Ok(type_strs?.join(" | "))
+                        // Generate union type as a predicate contract
+                        // In Nickel, `A | B` means intersection (both contracts must pass)
+                        // For union (oneOf/anyOf), we need a predicate that accepts any of the types
+                        self.generate_union_contract(types, module, indent_level)
                     }
                 }
             }
@@ -862,6 +993,30 @@ impl NickelCodegen {
                 name,
                 module: ref_module,
             } => {
+                // Handle edge cases first
+                if name.is_empty() {
+                    tracing::warn!(
+                        "Empty type name in reference, using Dyn. Module: {}, Current type: {:?}",
+                        module.name,
+                        self.current_type_name
+                    );
+                    // Use Dyn (any type) instead of invalid identifier
+                    return Ok("Dyn".to_string());
+                }
+
+                // Sanitize module name if present
+                let ref_module = ref_module.as_ref().and_then(|m| {
+                    if m.is_empty() {
+                        tracing::warn!(
+                            "Empty module name in reference to {}, treating as local",
+                            name
+                        );
+                        None
+                    } else {
+                        Some(m.clone())
+                    }
+                });
+
                 tracing::debug!(
                     "Processing Type::Reference - name: {}, ref_module: {:?}, current_module: {}, current_type: {:?}",
                     name,
@@ -870,34 +1025,65 @@ impl NickelCodegen {
                     self.current_type_name
                 );
 
-                // Special debug for problematic cases
-                if name.contains("roupVersionForDiscovery") || name.contains("APIGroup") {
-                    tracing::error!(
-                        "DEBUGGING PROBLEMATIC TYPE: name='{}', ref_module={:?}, current_module='{}'",
-                        name, ref_module, module.name
+                // Extract just the type name from potentially qualified names
+                // e.g., "io.k8s.apimachinery.pkg.apis.meta.v1.APIGroup" -> "APIGroup"
+                let short_type_name = name.rsplit('.').next().unwrap_or(name);
+
+                // CRITICAL: Check for same-module reference FIRST
+                // Types defined in the same module should always use PascalCase
+                let is_same_module = module.types.iter().any(|t| t.name == short_type_name);
+                if is_same_module {
+                    tracing::debug!(
+                        "Same-module reference (early check): name='{}' (short: '{}') in module '{}'",
+                        name,
+                        short_type_name,
+                        module.name
                     );
+                    return Ok(short_type_name.to_string());
+                }
+
+                // Also check if ref_module matches current module
+                if let Some(ref ref_mod) = ref_module {
+                    if ref_mod == &module.name {
+                        tracing::debug!(
+                            "Same-module reference (explicit module): name='{}' (short: '{}') in module '{}'",
+                            name,
+                            short_type_name,
+                            module.name
+                        );
+                        return Ok(short_type_name.to_string());
+                    }
                 }
 
                 // Check if this type was imported at the module level (Phase 2)
-                if let Some(&is_same_directory) = self.current_module_imports.get(name) {
-                    // Type is already imported, use appropriate casing based on import type
-                    if is_same_directory {
-                        // Same-directory imports keep PascalCase
-                        return Ok(name.clone());
-                    } else {
-                        // Cross-module imports use camelCase
-                        return Ok(to_camel_case(name));
-                    }
+                // Try both full name and short name
+                if let Some(reference_name) = self.current_module_imports.get(name)
+                    .or_else(|| self.current_module_imports.get(short_type_name))
+                {
+                    // Type is already imported, use the tracked reference name
+                    return Ok(reference_name.clone());
                 }
 
                 // If we have module information, this is a cross-module reference
                 if let Some(ref_module) = ref_module {
+                    // Validate module name format
+                    if !Self::is_valid_module_name(&ref_module) {
+                        tracing::warn!(
+                            "Invalid module name format '{}' in reference to type '{}', using Dyn. Current module: {}",
+                            ref_module,
+                            name,
+                            module.name
+                        );
+                        // Use Dyn (any type) instead of invalid identifier
+                        return Ok("Dyn".to_string());
+                    }
+
                     // Parse both module names to extract group and version
-                    let (ref_group, ref_version) = Self::parse_module_name(ref_module);
+                    let (ref_group, ref_version) = Self::parse_module_name(&ref_module);
                     let (current_group, current_version) = Self::parse_module_name(&module.name);
 
                     // Check if this is a cross-module reference
-                    if ref_module != &module.name {
+                    if ref_module != module.name {
                         // Track this as a cross-module import
                         // Use camelCase for the variable name
                         let camelcased_name = to_camel_case(name);
@@ -916,7 +1102,8 @@ impl NickelCodegen {
                         // Check if this is importing from a mod.ncl file (module with multiple types)
                         let (import_stmt, reference_name) = if import_path.ends_with("/mod.ncl") {
                             // Import the module and extract the specific type
-                            let module_alias = format!("{}Module", to_camel_case(&ref_version));
+                            // Use generate_module_alias to create a unique, meaningful alias
+                            let module_alias = Self::generate_module_alias(&import_path);
                             let import =
                                 format!("let {} = import \"{}\" in", module_alias, import_path);
                             let reference = format!("{}.{}", module_alias, name); // Use original case for type name
@@ -937,11 +1124,34 @@ impl NickelCodegen {
                         let current_type = self.current_type_name.as_deref().unwrap_or("");
                         self.type_import_map.add_import(current_type, &import_stmt);
 
+                        // Add to cross-package imports if it's a different package
+                        if !self.cross_package_imports.contains(&import_stmt) {
+                            self.cross_package_imports.push(import_stmt.clone());
+                        }
+
                         // Generate the reference
                         // Return the appropriate reference (either module.Type or just the alias)
                         return Ok(reference_name);
                     }
                 } else {
+                    // No module specified and not in same module (already checked above)
+                    // Check if this looks like a type reference (starts with uppercase)
+                    // If it does and it's not found in same module, it's likely a missing type
+                    if !name.is_empty() && name.chars().next().unwrap().is_uppercase() {
+                        // This looks like a type reference that's missing in the same module
+                        // Check if it exists in another module first
+                        if self.registry.find_module_for_type(name).is_none() {
+                            // Type doesn't exist anywhere - use Dyn instead of invalid marker
+                            tracing::warn!(
+                                "Type '{}' not found in module '{}' or registry, using Dyn",
+                                name,
+                                module.name
+                            );
+                            // Use Dyn (any type) instead of invalid identifier
+                            return Ok("Dyn".to_string());
+                        }
+                    }
+
                     // Same-package reference - check if it needs an import
                     tracing::debug!(
                         "Checking same-package reference: name='{}', module='{}', type_exists={}, current_type='{}'",
@@ -965,34 +1175,45 @@ impl NickelCodegen {
                             module_info.name != module.name
                         );
 
-                        // If it's same package, same version, but different module - need import
+                        // Check if this type is in the SAME module (not just same group+version)
+                        // Types in the same module don't need imports
+                        if module_info.name == module.name {
+                            // Same exact module - use PascalCase for direct reference
+                            tracing::debug!(
+                                "Same module reference: name='{}' in module '{}', using PascalCase",
+                                name,
+                                module.name
+                            );
+                            return Ok(name.to_string());
+                        }
+
+                        // If it's same package, same version but DIFFERENT modules
+                        // (this handles the one-type-per-module pattern used in tests)
                         if module_info.group == current_group
                             && module_info.version == current_version
                             && module_info.name != module.name
                         {
-                            // Generate import statement for same-package reference
-                            // Use camelCase for the variable name but proper case for the filename
-                            // Use camelCase for the variable name
+                            // Same group+version but different modules - need a same-directory import
+                            // Generate import like: let lifecycleHandler = import "./LifecycleHandler.ncl" in
                             let camelcased_name = to_camel_case(name);
-                            let import_path = format!("./{}.ncl", name); // Use original case for filename
+                            let import_path = format!("./{}.ncl", name);
                             let import_stmt =
                                 format!("let {} = import \"{}\" in", camelcased_name, import_path);
 
                             tracing::debug!(
-                                "Adding same-package import for type '{}': path='{}', stmt='{}'",
-                                self.current_type_name.as_deref().unwrap_or(""),
-                                import_path,
+                                "Same group+version, different module: name='{}', generating import '{}'",
+                                name,
                                 import_stmt
                             );
 
-                            self.type_import_map.add_import(
-                                self.current_type_name.as_deref().unwrap_or(""),
-                                &import_stmt,
-                            );
+                            let current_type = self.current_type_name.as_deref().unwrap_or("");
+                            self.type_import_map.add_import(current_type, &import_stmt);
 
-                            // Use the camelCase alias that matches the import
-                            let result = camelcased_name.clone();
-                            return Ok(result);
+                            if !self.cross_package_imports.contains(&import_stmt) {
+                                self.cross_package_imports.push(import_stmt.clone());
+                            }
+
+                            return Ok(camelcased_name);
                         }
                         // If it's same package but different version, use imported alias
                         else if module_info.group == current_group
@@ -1012,6 +1233,31 @@ impl NickelCodegen {
 
                         // Check if this is a same-module FQN (e.g., "io.k8s.api.coordination.v1alpha2.LeaseCandidateSpec")
                         // that should be treated as a local type
+                        // Handle special k8s types that should be coerced to basic types
+
+                        // Quantity is a string representation like "1Gi" or "500m"
+                        if clean_name == "io.k8s.apimachinery.pkg.api.resource.Quantity"
+                            || clean_name.ends_with(".Quantity")
+                        {
+                            tracing::debug!(
+                                "Coercing Quantity type '{}' to String",
+                                clean_name
+                            );
+                            return Ok("String".to_string());
+                        }
+
+                        // IntOrString is a union type that accepts either integers or strings
+                        // Used extensively in K8s for ports, percentages, etc.
+                        if clean_name == "io.k8s.apimachinery.pkg.util.intstr.IntOrString"
+                            || clean_name.ends_with(".IntOrString")
+                        {
+                            tracing::debug!(
+                                "Coercing IntOrString type '{}' to union contract",
+                                clean_name
+                            );
+                            return Ok("std.contract.from_predicate (fun value => std.is_number value || std.is_string value)".to_string());
+                        }
+
                         if clean_name.starts_with("io.k8s.") {
                             // Extract the simple type name from the FQN
                             let extracted_type_name =
@@ -1106,12 +1352,12 @@ impl NickelCodegen {
                                 }
                             } else if clean_name.starts_with("io.k8s.apimachinery.pkg.runtime.") {
                                 // Format: io.k8s.apimachinery.pkg.runtime.RawExtension
-                                // Note: runtime types don't have version in their path
+                                // Note: runtime types are in the 'v0' pseudo-version
                                 let parts: Vec<&str> = clean_name.split('.').collect();
                                 if parts.len() >= 6 {
                                     let kind = parts[parts.len() - 1].to_string();
-                                    // Runtime types are typically unversioned or use 'v1'
-                                    ("k8s.io".to_string(), "v1".to_string(), kind)
+                                    // Runtime types use 'v0' for the apimachinery runtime package
+                                    ("io.k8s.apimachinery.pkg.apis.runtime".to_string(), "v0".to_string(), kind)
                                 } else {
                                     return Ok(clean_name.to_string());
                                 }
@@ -1133,11 +1379,19 @@ impl NickelCodegen {
                             // Use camelCase for variable name
                             let camelcased_name = to_camel_case(&ext_kind);
 
-                            // Check if this is importing from a mod.ncl file (module with multiple types)
-                            let (import_stmt, reference_name) = if import_path.ends_with("/mod.ncl")
-                            {
+                            // Check if this is importing from a consolidated module file
+                            // This includes:
+                            // - mod.ncl files (e.g., apimachinery.pkg.apis/meta/v1/mod.ncl)
+                            // - Consolidated version files (e.g., api/core/v1.ncl for k8s.io types)
+                            let is_consolidated_module = import_path.ends_with("/mod.ncl")
+                                || import_path.contains("api/core/")
+                                || import_path.contains("v0/mod.ncl")
+                                || import_path.contains("apimachinery.pkg.apis/");
+
+                            let (import_stmt, reference_name) = if is_consolidated_module {
                                 // Import the module and extract the specific type
-                                let module_alias = format!("{}Module", to_camel_case(&ext_version));
+                                // Use generate_module_alias to create a unique, meaningful alias
+                                let module_alias = Self::generate_module_alias(&import_path);
                                 let import =
                                     format!("let {} = import \"{}\" in", module_alias, import_path);
                                 let reference = format!("{}.{}", module_alias, ext_kind); // Use original case for type name
@@ -1161,6 +1415,11 @@ impl NickelCodegen {
                                 &import_stmt,
                             );
 
+                            // Also add to cross_package_imports for module-level import generation
+                            if !self.cross_package_imports.contains(&import_stmt) {
+                                self.cross_package_imports.push(import_stmt.clone());
+                            }
+
                             // Return the appropriate reference
                             return Ok(reference_name);
                         }
@@ -1168,6 +1427,19 @@ impl NickelCodegen {
                         // Only generate same-package import for simple type names
                         // that don't contain path separators or package prefixes
                         if !name.contains('/') && !name.contains('.') {
+                            // First check if this is a local type in the same module
+                            let is_local_type = module.types.iter().any(|t| t.name == *name);
+
+                            if is_local_type {
+                                // Same module reference - preserve original case, no import needed
+                                tracing::debug!(
+                                    "Found local type '{}' in module '{}', using original case",
+                                    name,
+                                    module.name
+                                );
+                                return Ok(name.to_string());
+                            }
+
                             let (_current_group, _current_version) =
                                 Self::parse_module_name(&module.name);
 
@@ -1186,6 +1458,11 @@ impl NickelCodegen {
 
                             let current_type = self.current_type_name.as_deref().unwrap_or("");
                             self.type_import_map.add_import(current_type, &import_stmt);
+
+                            // Also add to cross_package_imports for module-level import generation
+                            if !self.cross_package_imports.contains(&import_stmt) {
+                                self.cross_package_imports.push(import_stmt.clone());
+                            }
 
                             // For same-package imports, return the camelCase variable name
                             return Ok(camelcased_name);
@@ -1224,9 +1501,420 @@ impl NickelCodegen {
                 Ok(self.resolver.resolve(name, module, &context))
             }
 
-            Type::Contract { base, predicate } => {
+            Type::Contract { base, rules } => {
                 let base_type = self.type_to_nickel_impl(base, module, indent_level)?;
-                Ok(format!("{} | Contract({})", base_type, predicate))
+                if rules.is_empty() {
+                    Ok(base_type)
+                } else {
+                    // Generate contract from rules - must use std.contract.from_predicate
+                    let contract_expr = rules
+                        .iter()
+                        .map(|rule| rule.expression.as_str())
+                        .collect::<Vec<_>>()
+                        .join(" && ");
+                    Ok(format!(
+                        "{} | std.contract.from_predicate (fun value => {})",
+                        base_type, contract_expr
+                    ))
+                }
+            }
+
+            Type::Constrained {
+                base_type,
+                constraints,
+            } => {
+                // Handle K8s special extensions first
+
+                // x-kubernetes-embedded-resource: true means this field contains
+                // a complete K8s object (apiVersion, kind, metadata, etc.)
+                // Generate a contract that validates basic K8s resource structure
+                if constraints.k8s_embedded_resource {
+                    return Ok(
+                        "{ apiVersion | String, kind | String, metadata | { .. } | optional, .. }".to_string()
+                    );
+                }
+
+                // x-kubernetes-preserve-unknown-fields: true means the field
+                // should accept any additional properties beyond the defined schema.
+                // If the base type is a record, make it open instead of bare Dyn
+                if constraints.k8s_preserve_unknown_fields {
+                    // Try to preserve base type structure with open record
+                    if let Type::Record { fields, .. } = base_type.as_ref() {
+                        if fields.is_empty() {
+                            // Empty record with preserve-unknown-fields = open record
+                            return Ok("{ .. }".to_string());
+                        }
+                        // Non-empty record: generate it as open (already handled below)
+                        // Fall through to normal processing but ensure it's open
+                    } else {
+                        // Non-record types with preserve-unknown-fields: use Dyn
+                        return Ok("Dyn".to_string());
+                    }
+                }
+
+                let base_type_str = self.type_to_nickel_impl(base_type, module, indent_level)?;
+                if constraints.is_empty() {
+                    Ok(base_type_str)
+                } else {
+                    // Generate validation contract from constraints
+                    let validations = self.generate_validation_expressions(constraints);
+
+                    if validations.is_empty() {
+                        Ok(base_type_str)
+                    } else {
+                        let validation_expr = validations.join(" && ");
+                        Ok(format!(
+                            "{} | std.contract.from_predicate (fun value => {})",
+                            base_type_str, validation_expr
+                        ))
+                    }
+                }
+            }
+        }
+    }
+
+    /// Generate validation expressions from ValidationRules
+    ///
+    /// Converts all validation rules into Nickel contract expressions that can be
+    /// combined with `&&`. Each expression validates the `value` variable.
+    fn generate_validation_expressions(
+        &self,
+        constraints: &amalgam_core::types::ValidationRules,
+    ) -> Vec<String> {
+        let mut validations = Vec::new();
+
+        // String validations
+        if let Some(min_len) = constraints.min_length {
+            validations.push(format!("std.string.length value >= {}", min_len));
+        }
+        if let Some(max_len) = constraints.max_length {
+            validations.push(format!("std.string.length value <= {}", max_len));
+        }
+        if let Some(pattern) = &constraints.pattern {
+            // Escape backslashes in regex patterns for Nickel string
+            let escaped_pattern = pattern.replace('\\', "\\\\").replace('"', "\\\"");
+            validations.push(format!(
+                "std.string.is_match \"{}\" value",
+                escaped_pattern
+            ));
+        }
+
+        // String format validation
+        if let Some(format) = &constraints.format {
+            if let Some(format_validator) = self.format_to_validator(format) {
+                validations.push(format_validator);
+            }
+        }
+
+        // Number validations (inclusive bounds)
+        if let Some(min) = constraints.minimum {
+            validations.push(format!("value >= {}", min));
+        }
+        if let Some(max) = constraints.maximum {
+            validations.push(format!("value <= {}", max));
+        }
+
+        // Number validations (exclusive bounds)
+        if let Some(min) = constraints.exclusive_minimum {
+            validations.push(format!("value > {}", min));
+        }
+        if let Some(max) = constraints.exclusive_maximum {
+            validations.push(format!("value < {}", max));
+        }
+
+        // Array validations
+        if let Some(min_items) = constraints.min_items {
+            validations.push(format!("std.array.length value >= {}", min_items));
+        }
+        if let Some(max_items) = constraints.max_items {
+            validations.push(format!("std.array.length value <= {}", max_items));
+        }
+        if constraints.unique_items == Some(true) {
+            // Check that all items are unique by building a deduplicated array
+            // and comparing lengths. Uses fold to accumulate only unique items.
+            validations.push(
+                "std.array.length value == std.array.length (std.array.fold_left (fun acc x => if std.array.elem x acc then acc else acc @ [x]) [] value)".to_string()
+            );
+        }
+
+        // Object validations
+        if let Some(min_props) = constraints.min_properties {
+            validations.push(format!(
+                "std.record.length value >= {}",
+                min_props
+            ));
+        }
+        if let Some(max_props) = constraints.max_properties {
+            validations.push(format!(
+                "std.record.length value <= {}",
+                max_props
+            ));
+        }
+
+        // Enum/allowed values validation
+        if let Some(ref allowed) = constraints.allowed_values {
+            let allowed_strs: Vec<String> = allowed
+                .iter()
+                .map(|v| self.json_value_to_nickel(v))
+                .collect();
+            if !allowed_strs.is_empty() {
+                validations.push(format!(
+                    "std.array.elem value [{}]",
+                    allowed_strs.join(", ")
+                ));
+            }
+        }
+
+        // K8s CEL validations - translate common patterns to Nickel
+        for cel_expr in &constraints.k8s_cel_validations {
+            if let Some(nickel_expr) = self.cel_to_nickel(cel_expr) {
+                validations.push(nickel_expr);
+            }
+        }
+
+        validations
+    }
+
+    /// Attempt to translate a K8s CEL expression to Nickel
+    /// Returns Some(expr) if translation is possible, None otherwise
+    fn cel_to_nickel(&self, cel: &str) -> Option<String> {
+        let trimmed = cel.trim();
+
+        // Common patterns in K8s CEL:
+        // - self.size() - length of array/string
+        // - self.startsWith("x") / self.endsWith("x")
+        // - self.matches("regex")
+        // - self.contains("x")
+        // - Comparisons: self.size() > 0, self.x == y, etc.
+
+        // Pattern: self.size() {op} N
+        if let Some(rest) = trimmed.strip_prefix("self.size()") {
+            if let Some((op, num)) = self.parse_comparison_op_and_number(rest) {
+                return Some(format!("std.array.length value {} {}", op, num));
+            }
+        }
+
+        // Pattern: size(self) {op} N (alternative syntax)
+        if let Some(rest) = trimmed.strip_prefix("size(self)") {
+            if let Some((op, num)) = self.parse_comparison_op_and_number(rest) {
+                return Some(format!("std.array.length value {} {}", op, num));
+            }
+        }
+
+        // Pattern: self.startsWith("x")
+        if let Some(rest) = trimmed.strip_prefix("self.startsWith(") {
+            if let Some(arg) = self.extract_string_arg(rest) {
+                let escaped = self.escape_for_nickel_regex(&arg);
+                return Some(format!("std.string.is_match \"^{}\" value", escaped));
+            }
+        }
+
+        // Pattern: self.endsWith("x")
+        if let Some(rest) = trimmed.strip_prefix("self.endsWith(") {
+            if let Some(arg) = self.extract_string_arg(rest) {
+                let escaped = self.escape_for_nickel_regex(&arg);
+                return Some(format!("std.string.is_match \"{}$\" value", escaped));
+            }
+        }
+
+        // Pattern: self.matches("regex")
+        if let Some(rest) = trimmed.strip_prefix("self.matches(") {
+            if let Some(pattern) = self.extract_string_arg(rest) {
+                let escaped = pattern.replace('\\', "\\\\").replace('"', "\\\"");
+                return Some(format!("std.string.is_match \"{}\" value", escaped));
+            }
+        }
+
+        // Pattern: self.contains("x") for strings
+        if let Some(rest) = trimmed.strip_prefix("self.contains(") {
+            if let Some(needle) = self.extract_string_arg(rest) {
+                let escaped = self.escape_for_nickel_regex(&needle);
+                return Some(format!("std.string.is_match \"{}\" value", escaped));
+            }
+        }
+
+        // Pattern: self == "x"
+        if let Some(rest) = trimmed.strip_prefix("self ==") {
+            let rest = rest.trim();
+            if let Some(val) = self.extract_quoted_string(rest) {
+                return Some(format!("value == \"{}\"", val));
+            }
+        }
+
+        // Pattern: self != "x"
+        if let Some(rest) = trimmed.strip_prefix("self !=") {
+            let rest = rest.trim();
+            if let Some(val) = self.extract_quoted_string(rest) {
+                return Some(format!("value != \"{}\"", val));
+            }
+        }
+
+        // Pattern: self.x == y (field comparison - can't translate directly)
+        // Pattern: has(self.x) (field existence check - can't translate directly)
+        // For untranslatable patterns, return None (they'll be skipped)
+        // Use warn level so users are aware that validation is not being enforced
+        tracing::warn!(
+            cel_expression = cel,
+            type_name = ?self.current_type_name,
+            "CEL validation expression could not be translated to Nickel - this validation will NOT be enforced"
+        );
+        None
+    }
+
+    /// Parse a comparison operator and number from a string like " > 10" or " >= 5"
+    fn parse_comparison_op_and_number(&self, s: &str) -> Option<(&'static str, i64)> {
+        let s = s.trim();
+        let (op, rest) = if s.starts_with(">=") {
+            (">=", &s[2..])
+        } else if s.starts_with("<=") {
+            ("<=", &s[2..])
+        } else if s.starts_with("==") {
+            ("==", &s[2..])
+        } else if s.starts_with("!=") {
+            ("!=", &s[2..])
+        } else if s.starts_with('>') {
+            (">", &s[1..])
+        } else if s.starts_with('<') {
+            ("<", &s[1..])
+        } else {
+            return None;
+        };
+        let num: i64 = rest.trim().parse().ok()?;
+        Some((op, num))
+    }
+
+    /// Extract a string argument from a CEL function call like `"value")` -> "value"
+    fn extract_string_arg(&self, s: &str) -> Option<String> {
+        let s = s.trim();
+        if s.starts_with('"') {
+            // Find the closing quote
+            if let Some(end_quote) = s[1..].find('"') {
+                let value = &s[1..=end_quote];
+                // Verify it ends with )
+                if s[end_quote + 2..].trim().starts_with(')') {
+                    return Some(value.to_string());
+                }
+            }
+        }
+        None
+    }
+
+    /// Extract a quoted string from a simple quoted value like `"foo"` -> "foo"
+    fn extract_quoted_string(&self, s: &str) -> Option<String> {
+        let s = s.trim();
+        if s.starts_with('"') && s.len() >= 2 {
+            if let Some(end_quote) = s[1..].find('"') {
+                return Some(s[1..=end_quote].to_string());
+            }
+        }
+        None
+    }
+
+    /// Escape special regex characters for Nickel regex patterns
+    fn escape_for_nickel_regex(&self, s: &str) -> String {
+        let mut result = String::with_capacity(s.len() * 2);
+        for c in s.chars() {
+            match c {
+                '\\' => result.push_str("\\\\\\\\"),
+                '"' => result.push_str("\\\""),
+                '.' | '*' | '+' | '?' | '(' | ')' | '[' | ']' | '{' | '}' | '^' | '$' | '|' => {
+                    result.push_str("\\\\");
+                    result.push(c);
+                }
+                _ => result.push(c),
+            }
+        }
+        result
+    }
+
+    /// Convert a StringFormat to a Nickel validator expression
+    fn format_to_validator(&self, format: &amalgam_core::types::StringFormat) -> Option<String> {
+        use amalgam_core::types::StringFormat;
+
+        match format {
+            StringFormat::DateTime => Some(
+                // ISO 8601 datetime pattern (simplified)
+                "std.string.is_match \"^\\\\d{4}-\\\\d{2}-\\\\d{2}T\\\\d{2}:\\\\d{2}:\\\\d{2}\" value".to_string()
+            ),
+            StringFormat::Date => Some(
+                "std.string.is_match \"^\\\\d{4}-\\\\d{2}-\\\\d{2}$\" value".to_string()
+            ),
+            StringFormat::Time => Some(
+                "std.string.is_match \"^\\\\d{2}:\\\\d{2}:\\\\d{2}\" value".to_string()
+            ),
+            StringFormat::Email => Some(
+                "std.string.is_match \"^[^@\\\\s]+@[^@\\\\s]+\\\\.[^@\\\\s]+$\" value".to_string()
+            ),
+            StringFormat::Hostname => Some(
+                "std.string.is_match \"^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\\\\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*$\" value".to_string()
+            ),
+            StringFormat::Ipv4 => Some(
+                "std.string.is_match \"^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$\" value".to_string()
+            ),
+            StringFormat::Ipv6 => Some(
+                // Simplified IPv6 pattern
+                "std.string.is_match \"^([0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}$\" value".to_string()
+            ),
+            StringFormat::Uri => Some(
+                "std.string.is_match \"^[a-zA-Z][a-zA-Z0-9+.-]*:\" value".to_string()
+            ),
+            StringFormat::UriReference => Some(
+                // URI-reference can be relative or absolute
+                "std.string.length value > 0".to_string()
+            ),
+            StringFormat::Uuid => Some(
+                "std.string.is_match \"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$\" value".to_string()
+            ),
+            // Kubernetes-specific formats
+            StringFormat::Dns1123Subdomain => Some(
+                "std.string.is_match \"^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$\" value && std.string.length value <= 253".to_string()
+            ),
+            StringFormat::Dns1123Label => Some(
+                "std.string.is_match \"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$\" value && std.string.length value <= 63".to_string()
+            ),
+            StringFormat::LabelKey => Some(
+                // Kubernetes label key: optional prefix/name, name is DNS label
+                "std.string.is_match \"^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\\\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*\\\\/)?[a-zA-Z0-9]([-_.a-zA-Z0-9]*[a-zA-Z0-9])?$\" value".to_string()
+            ),
+            StringFormat::LabelValue => Some(
+                // Kubernetes label value: max 63 chars, alphanumeric with -_.
+                "(value == \"\" || (std.string.is_match \"^[a-zA-Z0-9]([-_.a-zA-Z0-9]*[a-zA-Z0-9])?$\" value && std.string.length value <= 63))".to_string()
+            ),
+            StringFormat::Custom(custom) => {
+                // For custom formats, emit a comment but no validator
+                tracing::debug!("Custom string format '{}' - no validator generated", custom);
+                None
+            }
+        }
+    }
+
+    /// Convert a JSON value to a Nickel literal
+    fn json_value_to_nickel(&self, value: &serde_json::Value) -> String {
+        match value {
+            serde_json::Value::Null => "null".to_string(),
+            serde_json::Value::Bool(b) => b.to_string(),
+            serde_json::Value::Number(n) => n.to_string(),
+            serde_json::Value::String(s) => {
+                // Escape backslashes first, then double quotes
+                let escaped = s.replace('\\', "\\\\").replace('"', "\\\"");
+                format!("\"{}\"", escaped)
+            }
+            serde_json::Value::Array(arr) => {
+                let items: Vec<String> = arr.iter().map(|v| self.json_value_to_nickel(v)).collect();
+                format!("[{}]", items.join(", "))
+            }
+            serde_json::Value::Object(obj) => {
+                if obj.is_empty() {
+                    "{}".to_string()
+                } else {
+                    let fields: Vec<String> = obj
+                        .iter()
+                        .map(|(k, v)| {
+                            format!("{} = {}", self.escape_field_name(k), self.json_value_to_nickel(v))
+                        })
+                        .collect();
+                    format!("{{ {} }}", fields.join(", "))
+                }
             }
         }
     }
@@ -1245,31 +1933,63 @@ impl NickelCodegen {
         let field_name = self.escape_field_name(name);
         let mut result = format!("{}{}", indent, field_name);
 
-        // 1. Type annotation
-        result.push_str(&format!("\n{}{} | {}", indent, " ".repeat(2), type_str));
+        // Annotation indent: field indent + one level of indentation
+        let annotation_indent = format!("{}{}", indent, self.indent(1));
 
-        // 2. Documentation (with proper multiline handling)
+        // 1. Type annotation
+        result.push_str(&format!("\n{}| {}", annotation_indent, type_str));
+
+        // 2. Field-level validation rules (from schema)
+        if let Some(ref validation) = field.validation {
+            let validations = self.generate_validation_expressions(validation);
+            if !validations.is_empty() {
+                let validation_expr = validations.join(" && ");
+                result.push_str(&format!(
+                    "\n{}| std.contract.from_predicate (fun value => {})",
+                    annotation_indent, validation_expr
+                ));
+            }
+        }
+
+        // 3. Field-level contracts (explicit contract rules)
+        for contract in &field.contracts {
+            // Generate contract with optional error message
+            if let Some(ref error_msg) = contract.error_message {
+                result.push_str(&format!(
+                    "\n{}| std.contract.from_predicate (fun value => {}) \"{}\"",
+                    annotation_indent,
+                    contract.expression,
+                    error_msg.replace('"', "\\\"")
+                ));
+            } else {
+                result.push_str(&format!(
+                    "\n{}| std.contract.from_predicate (fun value => {})",
+                    annotation_indent, contract.expression
+                ));
+            }
+        }
+
+        // 4. Documentation (with proper multiline handling)
         if let Some(desc) = &field.description {
             result.push_str(&format!(
-                "\n{}{} | doc {}",
-                indent,
-                " ".repeat(2),
+                "\n{}| doc {}",
+                annotation_indent,
                 self.format_doc(desc)
             ));
         }
 
-        // 3. Required/Optional marker
+        // 5. Required/Optional marker
         // In Nickel, a field with a default value is implicitly optional
         // For required fields, don't add 'optional' marker
         // For optional fields without defaults, add 'optional' marker
         if !field.required && field.default.is_none() {
-            result.push_str(&format!("\n{}{} | optional", indent, " ".repeat(2)));
+            result.push_str(&format!("\n{}| optional", annotation_indent));
         }
 
-        // 4. Default value (comes last in the type pipeline)
+        // 6. Default value (comes last in the type pipeline)
         if let Some(default) = &field.default {
             let default_str = format_json_value_impl(default, indent_level, self);
-            result.push_str(&format!("\n{}{} = {}", indent, " ".repeat(2), default_str));
+            result.push_str(&format!("\n{}= {}", annotation_indent, default_str));
         }
 
         Ok(result)
@@ -1286,7 +2006,11 @@ fn format_json_value_impl(
         serde_json::Value::Null => "null".to_string(),
         serde_json::Value::Bool(b) => b.to_string(),
         serde_json::Value::Number(n) => n.to_string(),
-        serde_json::Value::String(s) => format!("\"{}\"", s.replace('"', "\\\"")),
+        serde_json::Value::String(s) => {
+            // Escape backslashes first, then double quotes
+            let escaped = s.replace('\\', "\\\\").replace('"', "\\\"");
+            format!("\"{}\"", escaped)
+        }
         serde_json::Value::Array(arr) => {
             let items: Vec<String> = arr
                 .iter()
@@ -1330,10 +2054,22 @@ impl Codegen for NickelCodegen {
     fn generate(&mut self, ir: &IR) -> Result<String, CodegenError> {
         let mut output = String::new();
 
-        for module in &ir.modules {
+        // Deduplicate types before generation to handle cases like
+        // Deployment vs DeploymentList having the same name
+        let mut ir_deduped = ir.clone();
+        ir_deduped.deduplicate_types();
+
+        for module in &ir_deduped.modules {
+            // Skip empty modules - they would generate invalid Nickel output
+            if module.types.is_empty() && module.constants.is_empty() {
+                tracing::warn!("Skipping empty module: {}", module.name);
+                continue;
+            }
+
             // Clear imports for this module
             self.current_imports.clear();
             self.same_package_deps.clear();
+            self.cross_package_imports.clear();
 
             // Debug: Check if this module contains TopologySpreadConstraint
             let has_topology = module
@@ -1371,7 +2107,19 @@ impl Codegen for NickelCodegen {
                 writeln!(output).map_err(|e| CodegenError::Generation(e.to_string()))?;
             }
 
-            // Phase 3: Generate imports for same-package dependencies
+            // Phase 3: Generate cross-package imports first
+            if !self.cross_package_imports.is_empty() {
+                // Sort imports alphabetically for consistent, readable output
+                self.cross_package_imports.sort();
+
+                for import in &self.cross_package_imports {
+                    writeln!(output, "{}", import)
+                        .map_err(|e| CodegenError::Generation(e.to_string()))?;
+                }
+                writeln!(output).map_err(|e| CodegenError::Generation(e.to_string()))?;
+            }
+
+            // Phase 4: Generate imports for same-package dependencies
             if !self.same_package_deps.is_empty() {
                 let (current_group, current_version) = Self::parse_module_name(&module.name);
 
@@ -1487,20 +2235,48 @@ impl Codegen for NickelCodegen {
             }
 
             if is_single_type {
-                // Single type - export directly without wrapping in a record
                 let type_def = &module.types[0];
+                let type_str = self.type_to_nickel(&type_def.ty, module, 0)?;
 
-                // Add type documentation as a comment if present
+                // Check if this is a trivial type (String, Dyn, { .. }, or a simple contract)
+                let is_trivial_type = matches!(type_str.as_str(),
+                    "String" | "Number" | "Bool" | "Dyn" | "{ .. }" | "Null"
+                ) || type_str.starts_with("std.contract.from_predicate");
+
+                // Check if this is a contract module (module name ends with lowercase type name)
+                // Examples: k8s.io.v0.intorstring, k8s.io.v0.rawextension
+                let is_contract_module = module.name.to_lowercase().ends_with(&format!(".{}", type_def.name.to_lowercase()));
+
+                // Add documentation as header comment
                 if let Some(doc) = &type_def.documentation {
                     for line in doc.lines() {
                         writeln!(output, "# {}", line)
                             .map_err(|e| CodegenError::Generation(e.to_string()))?;
                     }
+                } else if is_trivial_type {
+                    // Generate default documentation for well-known trivial types
+                    let default_doc = match type_def.name.as_str() {
+                        "IntOrString" => Some("IntOrString is a type that can hold an integer or a string.\n# When used in JSON or YAML marshalling and unmarshalling, it produces or consumes the inner type."),
+                        "Quantity" => Some("Quantity is a fixed-point representation of a number.\n# It provides convenient marshaling/unmarshaling in JSON and YAML, in addition to String() and AsInt64() accessors.\n# Examples: \"100m\", \"1Gi\", \"500Mi\""),
+                        "RawExtension" => Some("RawExtension is used to hold extensions in external versions.\n# To use this, make a field which has RawExtension as its type in your external, versioned struct.\n# This accepts any JSON/YAML structure."),
+                        _ => None,
+                    };
+
+                    if let Some(doc) = default_doc {
+                        for line in doc.split('\n') {
+                            writeln!(output, "# {}", line.trim_start_matches("# "))
+                                .map_err(|e| CodegenError::Generation(e.to_string()))?;
+                        }
+                    }
                 }
 
-                // Generate just the type definition, no record wrapper
-                let type_str = self.type_to_nickel(&type_def.ty, module, 0)?;
-                writeln!(output, "{}", type_str)?;
+                if is_contract_module {
+                    // Contract module - output just the type for direct use as contract
+                    writeln!(output, "{}", type_str)?;
+                } else {
+                    // Regular single-type module - output with assignment
+                    writeln!(output, "{} = {}", type_def.name, type_str)?;
+                }
             } else {
                 // Multiple types or has constants - use record structure
                 writeln!(output, "{{")?;
@@ -1566,6 +2342,69 @@ impl Codegen for NickelCodegen {
 }
 
 impl NickelCodegen {
+    /// Generate a proper Nickel union contract for oneOf/anyOf types
+    ///
+    /// In Nickel, `A | B` means intersection (both contracts must pass), not union.
+    /// For union types, we need a predicate contract that accepts any of the types.
+    fn generate_union_contract(
+        &mut self,
+        types: &[Type],
+        module: &amalgam_core::ir::Module,
+        indent_level: usize,
+    ) -> Result<String, CodegenError> {
+        // For a single type, just return that type
+        if types.len() == 1 {
+            return self.type_to_nickel_impl(&types[0], module, indent_level);
+        }
+
+        // For empty union, use Dyn
+        if types.is_empty() {
+            return Ok("Dyn".to_string());
+        }
+
+        // Check for simple primitive unions that can use type predicates
+        let mut predicates: Vec<String> = Vec::new();
+        let mut has_complex_types = false;
+
+        for ty in types {
+            match ty {
+                Type::String => predicates.push("std.is_string value".to_string()),
+                Type::Integer | Type::Number => predicates.push("std.is_number value".to_string()),
+                Type::Bool => predicates.push("std.is_bool value".to_string()),
+                Type::Array(_) => predicates.push("std.is_array value".to_string()),
+                Type::Record { .. } | Type::Map { .. } => {
+                    predicates.push("std.is_record value".to_string())
+                }
+                Type::Null => predicates.push("value == null".to_string()),
+                _ => {
+                    // Complex type - we'll fall back to Dyn for safety
+                    has_complex_types = true;
+                }
+            }
+        }
+
+        // Remove duplicates
+        predicates.sort();
+        predicates.dedup();
+
+        if predicates.is_empty() || has_complex_types {
+            // For complex unions (records with different shapes, references, etc.)
+            // we use Dyn for now as Nickel doesn't have built-in union types
+            tracing::debug!(
+                "Complex union type detected, using Dyn. Types: {:?}",
+                types.iter().map(|t| format!("{:?}", t)).collect::<Vec<_>>()
+            );
+            return Ok("Dyn".to_string());
+        }
+
+        // Generate predicate contract
+        let predicate = predicates.join(" || ");
+        Ok(format!(
+            "std.contract.from_predicate (fun value => {})",
+            predicate
+        ))
+    }
+
     /// Generate a unique module alias from an import path using pattern matching
     fn generate_module_alias(path: &str) -> String {
         // Extract meaningful parts from the path
@@ -1642,12 +2481,24 @@ impl NickelCodegen {
         // Clear the type import map for this generation
         self.type_import_map = TypeImportMap::new();
 
+        // Deduplicate types before generation to handle cases like
+        // Deployment vs DeploymentList having the same name
+        let mut ir_deduped = ir.clone();
+        ir_deduped.deduplicate_types();
+
         let mut output = String::new();
 
-        for module in &ir.modules {
+        for module in &ir_deduped.modules {
+            // Skip empty modules - they would generate invalid Nickel output
+            if module.types.is_empty() && module.constants.is_empty() {
+                tracing::warn!("Skipping empty module: {}", module.name);
+                continue;
+            }
+
             // Clear imports for this module
             self.current_imports.clear();
             self.same_package_deps.clear();
+            self.cross_package_imports.clear();
 
             // First pass: collect ALL dependencies for ALL types in this module
             // This allows us to consolidate imports by module path
@@ -2125,9 +2976,11 @@ mod tests {
         let mut codegen = NickelCodegen::new_for_test();
         let module = create_test_module();
         let optional_type = Type::Optional(Box::new(Type::String));
+        // Optional types emit just the inner type in Nickel;
+        // the `| optional` annotation on fields handles the "can be absent" semantics
         assert_eq!(
             codegen.type_to_nickel(&optional_type, &module, 0).unwrap(),
-            "String | Null"
+            "String"
         );
     }
 

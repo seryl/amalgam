@@ -1,12 +1,121 @@
 //! Kubernetes CRD parser
 
-use crate::{k8s_authoritative::K8sTypePatterns, Parser, ParserError};
+use crate::{validation_extractor::ValidationExtractor, Parser, ParserError};
 use amalgam_core::{
     ir::{IRBuilder, IR},
     types::Type,
 };
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
+
+/// Common Kubernetes field type patterns for better type inference
+pub struct K8sTypePatterns {
+    patterns: HashMap<String, String>,
+}
+
+impl Default for K8sTypePatterns {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl K8sTypePatterns {
+    pub fn new() -> Self {
+        let mut patterns = HashMap::new();
+
+        // Add common field -> Go type mappings
+        patterns.insert(
+            "metadata".to_string(),
+            "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta".to_string(),
+        );
+        patterns.insert(
+            "spec.volumes".to_string(),
+            "[]k8s.io/api/core/v1.Volume".to_string(),
+        );
+        patterns.insert(
+            "spec.containers".to_string(),
+            "[]k8s.io/api/core/v1.Container".to_string(),
+        );
+        patterns.insert(
+            "spec.initContainers".to_string(),
+            "[]k8s.io/api/core/v1.Container".to_string(),
+        );
+        patterns.insert(
+            "spec.template.spec.volumes".to_string(),
+            "[]k8s.io/api/core/v1.Volume".to_string(),
+        );
+        patterns.insert(
+            "spec.template.spec.containers".to_string(),
+            "[]k8s.io/api/core/v1.Container".to_string(),
+        );
+        patterns.insert(
+            "spec.selector".to_string(),
+            "k8s.io/apimachinery/pkg/apis/meta/v1.LabelSelector".to_string(),
+        );
+        patterns.insert(
+            "spec.template.metadata".to_string(),
+            "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta".to_string(),
+        );
+
+        // Resource requirements
+        patterns.insert(
+            "resources".to_string(),
+            "k8s.io/api/core/v1.ResourceRequirements".to_string(),
+        );
+        patterns.insert(
+            "spec.resources".to_string(),
+            "k8s.io/api/core/v1.ResourceRequirements".to_string(),
+        );
+
+        // Environment variables
+        patterns.insert("env".to_string(), "[]k8s.io/api/core/v1.EnvVar".to_string());
+        patterns.insert(
+            "envFrom".to_string(),
+            "[]k8s.io/api/core/v1.EnvFromSource".to_string(),
+        );
+
+        // Volume mounts
+        patterns.insert(
+            "volumeMounts".to_string(),
+            "[]k8s.io/api/core/v1.VolumeMount".to_string(),
+        );
+
+        // Security and scheduling
+        patterns.insert(
+            "securityContext".to_string(),
+            "k8s.io/api/core/v1.SecurityContext".to_string(),
+        );
+        patterns.insert(
+            "affinity".to_string(),
+            "k8s.io/api/core/v1.Affinity".to_string(),
+        );
+        patterns.insert(
+            "tolerations".to_string(),
+            "[]k8s.io/api/core/v1.Toleration".to_string(),
+        );
+
+        Self { patterns }
+    }
+
+    /// Get the Go type for a field path
+    #[allow(dead_code)]
+    pub fn get_go_type(&self, field_path: &str) -> Option<&String> {
+        self.patterns.get(field_path)
+    }
+
+    /// Get Go type for a field with context
+    #[allow(dead_code)]
+    pub fn get_contextual_type(&self, field_name: &str, context: &[&str]) -> Option<&String> {
+        // Try full path first
+        let full_path = format!("{}.{}", context.join("."), field_name);
+        if let Some(go_type) = self.patterns.get(&full_path) {
+            return Some(go_type);
+        }
+
+        // Try just the field name
+        self.patterns.get(field_name)
+    }
+}
 
 /// Kubernetes CustomResourceDefinition (simplified)
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -357,6 +466,14 @@ impl CRDParser {
 
                     for (name, prop_schema) in props {
                         let ty = self.json_schema_to_type(prop_schema)?;
+                        // Extract validation rules from schema
+                        let validation_rules =
+                            ValidationExtractor::extract_validation_rules(prop_schema);
+                        let validation = if validation_rules.is_empty() {
+                            None
+                        } else {
+                            Some(validation_rules)
+                        };
                         fields.insert(
                             name.clone(),
                             amalgam_core::types::Field {
@@ -367,14 +484,39 @@ impl CRDParser {
                                     .and_then(|d| d.as_str())
                                     .map(String::from),
                                 default: prop_schema.get("default").cloned(),
+                                validation,
+                                contracts: Vec::new(),
                             },
                         );
                     }
                 }
 
+                // Check if this is a map type (object with additionalProperties defining value type)
+                // If there are no explicit properties and additionalProperties defines a schema,
+                // this is a map type (like labels: map[string]string)
+                if fields.is_empty() {
+                    if let Some(additional_props) = schema.get("additionalProperties") {
+                        // If additionalProperties is a schema (not just true/false),
+                        // create a Map type
+                        if additional_props.is_object() {
+                            let value_type = self.json_schema_to_type(additional_props)?;
+                            return Ok(Type::Map {
+                                key: Box::new(Type::String),
+                                value: Box::new(value_type),
+                            });
+                        } else if additional_props.as_bool() == Some(true) {
+                            // additionalProperties: true means any value type
+                            return Ok(Type::Map {
+                                key: Box::new(Type::String),
+                                value: Box::new(Type::Any),
+                            });
+                        }
+                    }
+                }
+
                 let open = schema
                     .get("additionalProperties")
-                    .and_then(|v| v.as_bool())
+                    .map(|v| !matches!(v, Value::Bool(false)))
                     .unwrap_or(false);
 
                 Ok(Type::Record { fields, open })

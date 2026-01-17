@@ -112,6 +112,33 @@ fn json_schema_to_type(schema: &Value) -> Result<Type, ParserError> {
     // Handle $ref
     if let Some(ref_str) = schema.get("$ref").and_then(|r| r.as_str()) {
         if let Some(type_name) = ref_str.strip_prefix("#/definitions/") {
+            // Handle special K8s types that should be coerced
+            // IntOrString - accepts both integers and strings
+            if type_name.ends_with(".IntOrString")
+                || type_name == "io.k8s.apimachinery.pkg.util.intstr.IntOrString"
+            {
+                return Ok(Type::Union {
+                    types: vec![Type::Integer, Type::String],
+                    coercion_hint: Some(amalgam_core::types::UnionCoercion::PreferString),
+                });
+            }
+            // Quantity - string representation of resource amounts
+            if type_name.ends_with(".Quantity")
+                || type_name == "io.k8s.apimachinery.pkg.api.resource.Quantity"
+            {
+                return Ok(Type::String);
+            }
+            // RawExtension - arbitrary JSON
+            if type_name.ends_with(".RawExtension")
+                || type_name == "io.k8s.apimachinery.pkg.runtime.RawExtension"
+            {
+                return Ok(Type::Any);
+            }
+            // Time types - RFC3339 timestamps
+            if type_name.ends_with(".Time") || type_name.ends_with(".MicroTime") {
+                return Ok(Type::String);
+            }
+            // Default to Reference for other types
             return Ok(Type::Reference {
                 name: type_name.to_string(),
                 module: None,
@@ -163,8 +190,33 @@ fn json_schema_to_type(schema: &Value) -> Result<Type, ParserError> {
                             default: field_schema
                                 .get("default")
                                 .and_then(|v| serde_json::from_value(v.clone()).ok()),
+                            validation: None,
+                            contracts: Vec::new(),
                         },
                     );
+                }
+            }
+
+            // Check if this is a map type (object with additionalProperties defining value type)
+            // If there are no explicit properties and additionalProperties defines a schema,
+            // this is a map type (like ConfigMap data: map[string]string)
+            if fields.is_empty() {
+                if let Some(additional_props) = schema.get("additionalProperties") {
+                    // If additionalProperties is a schema (not just true/false),
+                    // create a Map type
+                    if additional_props.is_object() {
+                        let value_type = json_schema_to_type(additional_props)?;
+                        return Ok(Type::Map {
+                            key: Box::new(Type::String),
+                            value: Box::new(value_type),
+                        });
+                    } else if additional_props.as_bool() == Some(true) {
+                        // additionalProperties: true means any value type
+                        return Ok(Type::Map {
+                            key: Box::new(Type::String),
+                            value: Box::new(Type::Any),
+                        });
+                    }
                 }
             }
 

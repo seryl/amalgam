@@ -209,10 +209,20 @@ fn test_intorstring_contract_can_merge_with_string() -> Result<(), Box<dyn std::
     // In a real scenario, we'd run `nickel eval` on this file
     // For now, we verify the generated structure is correct
     let generated_intorstring = fs::read_to_string(k8s_dir.join("intorstring.ncl"))?;
+
+    // The file should end with just "String" (with optional documentation comments before it)
+    let lines: Vec<&str> = generated_intorstring.trim().lines().collect();
+    let last_line = lines.last().unwrap_or(&"");
     assert_eq!(
-        generated_intorstring.trim(),
+        *last_line,
         "String",
-        "IntOrString should be exported as just 'String'"
+        "IntOrString should export 'String' as the type (last line)"
+    );
+
+    // Should not be wrapped in a record
+    assert!(
+        !generated_intorstring.contains("{ IntOrString"),
+        "IntOrString should not be wrapped in a record"
     );
     Ok(())
 }

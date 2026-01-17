@@ -1,0 +1,490 @@
+[
+  {
+    "name": "same_module_missing_type",
+    "description": "Reference to non-existent type in same module",
+    "ir": {
+      "modules": [
+        {
+          "name": "test.v1",
+          "imports": [],
+          "types": [
+            {
+              "name": "TestType",
+              "ty": {
+                "Record": {
+                  "fields": {
+                    "missing_field": {
+                      "ty": {
+                        "Reference": {
+                          "name": "NonExistentType",
+                          "module": null
+                        }
+                      },
+                      "required": true,
+                      "description": null,
+                      "default": null,
+                      "validation": null,
+                      "contracts": []
+                    }
+                  },
+                  "open": false
+                }
+              },
+              "documentation": null,
+              "annotations": {}
+            }
+          ],
+          "constants": [],
+          "metadata": {
+            "source_language": null,
+            "source_file": null,
+            "version": null,
+            "generated_at": null,
+            "custom": {}
+          }
+        }
+      ]
+    },
+    "expected_behavior": "FallbackToDyn",
+    "actual_result": {
+      "success": true,
+      "output": "TestType = {\n  missing_field\n    | Dyn\n}\n",
+      "error": null,
+      "contains_dyn": true,
+      "contains_import": false,
+      "reference_format": "Dyn"
+    }
+  },
+  {
+    "name": "missing_module_reference",
+    "description": "Reference to type in non-existent module",
+    "ir": {
+      "modules": [
+        {
+          "name": "test.v1",
+          "imports": [],
+          "types": [
+            {
+              "name": "TestType",
+              "ty": {
+                "Record": {
+                  "fields": {
+                    "external_field": {
+                      "ty": {
+                        "Reference": {
+                          "name": "ExternalType",
+                          "module": "non.existent.v1"
+                        }
+                      },
+                      "required": true,
+                      "description": null,
+                      "default": null,
+                      "validation": null,
+                      "contracts": []
+                    }
+                  },
+                  "open": false
+                }
+              },
+              "documentation": null,
+              "annotations": {}
+            }
+          ],
+          "constants": [],
+          "metadata": {
+            "source_language": null,
+            "source_file": null,
+            "version": null,
+            "generated_at": null,
+            "custom": {}
+          }
+        }
+      ]
+    },
+    "expected_behavior": "GenerateOptimisticImport",
+    "actual_result": {
+      "success": true,
+      "output": "let externalType = import \"../../non.existent/v1/ExternalType.ncl\" in\n\nTestType = {\n  external_field\n    | externalType\n}\n",
+      "error": null,
+      "contains_dyn": false,
+      "contains_import": true,
+      "reference_format": "import_variable"
+    }
+  },
+  {
+    "name": "circular_with_missing",
+    "description": "Circular reference where one module is missing",
+    "ir": {
+      "modules": [
+        {
+          "name": "a.v1",
+          "imports": [],
+          "types": [
+            {
+              "name": "TypeA",
+              "ty": {
+                "Record": {
+                  "fields": {
+                    "b_ref": {
+                      "ty": {
+                        "Reference": {
+                          "name": "TypeB",
+                          "module": "b.v1"
+                        }
+                      },
+                      "required": true,
+                      "description": null,
+                      "default": null,
+                      "validation": null,
+                      "contracts": []
+                    }
+                  },
+                  "open": false
+                }
+              },
+              "documentation": null,
+              "annotations": {}
+            }
+          ],
+          "constants": [],
+          "metadata": {
+            "source_language": null,
+            "source_file": null,
+            "version": null,
+            "generated_at": null,
+            "custom": {}
+          }
+        }
+      ]
+    },
+    "expected_behavior": "GenerateOptimisticImport",
+    "actual_result": {
+      "success": true,
+      "output": "let typeB = import \"../../b/v1/TypeB.ncl\" in\n\nTypeA = {\n  b_ref\n    | typeB\n}\n",
+      "error": null,
+      "contains_dyn": false,
+      "contains_import": true,
+      "reference_format": "import_variable"
+    }
+  },
+  {
+    "name": "invalid_module_name",
+    "description": "Reference with invalid module name format",
+    "ir": {
+      "modules": [
+        {
+          "name": "test.v1",
+          "imports": [],
+          "types": [
+            {
+              "name": "TestType",
+              "ty": {
+                "Record": {
+                  "fields": {
+                    "bad_ref": {
+                      "ty": {
+                        "Reference": {
+                          "name": "SomeType",
+                          "module": "not-a-valid-module!@#$"
+                        }
+                      },
+                      "required": true,
+                      "description": null,
+                      "default": null,
+                      "validation": null,
+                      "contracts": []
+                    }
+                  },
+                  "open": false
+                }
+              },
+              "documentation": null,
+              "annotations": {}
+            }
+          ],
+          "constants": [],
+          "metadata": {
+            "source_language": null,
+            "source_file": null,
+            "version": null,
+            "generated_at": null,
+            "custom": {}
+          }
+        }
+      ]
+    },
+    "expected_behavior": "FallbackToDyn",
+    "actual_result": {
+      "success": true,
+      "output": "TestType = {\n  bad_ref\n    | Dyn\n}\n",
+      "error": null,
+      "contains_dyn": true,
+      "contains_import": false,
+      "reference_format": "Dyn"
+    }
+  },
+  {
+    "name": "empty_module_name",
+    "description": "Reference with empty module name",
+    "ir": {
+      "modules": [
+        {
+          "name": "test.v1",
+          "imports": [],
+          "types": [
+            {
+              "name": "TestType",
+              "ty": {
+                "Record": {
+                  "fields": {
+                    "empty_module_ref": {
+                      "ty": {
+                        "Reference": {
+                          "name": "SomeType",
+                          "module": ""
+                        }
+                      },
+                      "required": true,
+                      "description": null,
+                      "default": null,
+                      "validation": null,
+                      "contracts": []
+                    }
+                  },
+                  "open": false
+                }
+              },
+              "documentation": null,
+              "annotations": {}
+            }
+          ],
+          "constants": [],
+          "metadata": {
+            "source_language": null,
+            "source_file": null,
+            "version": null,
+            "generated_at": null,
+            "custom": {}
+          }
+        }
+      ]
+    },
+    "expected_behavior": "FallbackToDyn",
+    "actual_result": {
+      "success": true,
+      "output": "TestType = {\n  empty_module_ref\n    | Dyn\n}\n",
+      "error": null,
+      "contains_dyn": true,
+      "contains_import": false,
+      "reference_format": "Dyn"
+    }
+  },
+  {
+    "name": "deeply_nested_missing",
+    "description": "Missing reference deeply nested in Optional/Array/Map",
+    "ir": {
+      "modules": [
+        {
+          "name": "test.v1",
+          "imports": [],
+          "types": [
+            {
+              "name": "TestType",
+              "ty": {
+                "Record": {
+                  "fields": {
+                    "nested": {
+                      "ty": {
+                        "Optional": {
+                          "Array": {
+                            "Map": {
+                              "key": "String",
+                              "value": {
+                                "Reference": {
+                                  "name": "MissingType",
+                                  "module": "missing.v1"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "required": false,
+                      "description": null,
+                      "default": null,
+                      "validation": null,
+                      "contracts": []
+                    }
+                  },
+                  "open": false
+                }
+              },
+              "documentation": null,
+              "annotations": {}
+            }
+          ],
+          "constants": [],
+          "metadata": {
+            "source_language": null,
+            "source_file": null,
+            "version": null,
+            "generated_at": null,
+            "custom": {}
+          }
+        }
+      ]
+    },
+    "expected_behavior": "GenerateOptimisticImport",
+    "actual_result": {
+      "success": true,
+      "output": "let missingType = import \"../../missing/v1/MissingType.ncl\" in\n\nTestType = {\n  nested\n    | Array { _ : missingType }\n    | optional\n}\n",
+      "error": null,
+      "contains_dyn": false,
+      "contains_import": true,
+      "reference_format": "import_variable"
+    }
+  },
+  {
+    "name": "empty_type_name",
+    "description": "Reference with empty type name",
+    "ir": {
+      "modules": [
+        {
+          "name": "test.v1",
+          "imports": [],
+          "types": [
+            {
+              "name": "TestType",
+              "ty": {
+                "Record": {
+                  "fields": {
+                    "empty_type_name": {
+                      "ty": {
+                        "Reference": {
+                          "name": "",
+                          "module": null
+                        }
+                      },
+                      "required": true,
+                      "description": null,
+                      "default": null,
+                      "validation": null,
+                      "contracts": []
+                    }
+                  },
+                  "open": false
+                }
+              },
+              "documentation": null,
+              "annotations": {}
+            }
+          ],
+          "constants": [],
+          "metadata": {
+            "source_language": null,
+            "source_file": null,
+            "version": null,
+            "generated_at": null,
+            "custom": {}
+          }
+        }
+      ]
+    },
+    "expected_behavior": "FallbackToDyn",
+    "actual_result": {
+      "success": true,
+      "output": "TestType = {\n  empty_type_name\n    | Dyn\n}\n",
+      "error": null,
+      "contains_dyn": true,
+      "contains_import": false,
+      "reference_format": "Dyn"
+    }
+  },
+  {
+    "name": "union_mixed_references",
+    "description": "Union with mix of valid and invalid references",
+    "ir": {
+      "modules": [
+        {
+          "name": "test.v1",
+          "imports": [],
+          "types": [
+            {
+              "name": "ValidType",
+              "ty": {
+                "Record": {
+                  "fields": {},
+                  "open": false
+                }
+              },
+              "documentation": null,
+              "annotations": {}
+            },
+            {
+              "name": "TestType",
+              "ty": {
+                "Record": {
+                  "fields": {
+                    "union_field": {
+                      "ty": {
+                        "Union": {
+                          "types": [
+                            "String",
+                            {
+                              "Reference": {
+                                "name": "ValidType",
+                                "module": null
+                              }
+                            },
+                            {
+                              "Reference": {
+                                "name": "MissingType",
+                                "module": null
+                              }
+                            },
+                            {
+                              "Reference": {
+                                "name": "ExternalMissing",
+                                "module": "missing.v1"
+                              }
+                            }
+                          ],
+                          "coercion_hint": null
+                        }
+                      },
+                      "required": true,
+                      "description": null,
+                      "default": null,
+                      "validation": null,
+                      "contracts": []
+                    }
+                  },
+                  "open": false
+                }
+              },
+              "documentation": null,
+              "annotations": {}
+            }
+          ],
+          "constants": [],
+          "metadata": {
+            "source_language": null,
+            "source_file": null,
+            "version": null,
+            "generated_at": null,
+            "custom": {}
+          }
+        }
+      ]
+    },
+    "expected_behavior": "Success",
+    "actual_result": {
+      "success": true,
+      "output": "# Module: test.v1\n\n{\n  ValidType = { .. },\n\n  TestType = {\n    union_field\n      | Dyn\n  }\n}\n",
+      "error": null,
+      "contains_dyn": true,
+      "contains_import": false,
+      "reference_format": "Dyn"
+    }
+  }
+]

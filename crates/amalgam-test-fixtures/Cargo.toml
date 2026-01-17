@@ -1,0 +1,12 @@
+[package]
+name = "amalgam-test-fixtures"
+version = "0.7.0"
+edition = "2021"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+tempfile = { workspace = true }
+
+[dev-dependencies]

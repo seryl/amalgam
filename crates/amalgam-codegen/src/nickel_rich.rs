@@ -92,7 +92,11 @@ impl RichNickelGenerator {
 
     /// Analyze IR to build package structure
     pub fn analyze(&mut self, ir: &IR) -> Result<(), CodegenError> {
-        for module in &ir.modules {
+        // First, deduplicate types to handle cases like CronJob vs CronJobList
+        let mut ir_deduped = ir.clone();
+        ir_deduped.deduplicate_types();
+
+        for module in &ir_deduped.modules {
             // Extract version from module name
             let version = extract_version(&module.name);
 
@@ -113,7 +117,7 @@ impl RichNickelGenerator {
 
         // Detect common patterns
         if self.config.generate_patterns {
-            self.patterns = detect_patterns(ir);
+            self.patterns = detect_patterns(&ir_deduped);
         }
 
         Ok(())
@@ -744,9 +748,11 @@ fn generate_type_definition(type_def: &TypeDefinition) -> String {
     if let Type::Record { fields, .. } = &type_def.ty {
         content.push_str("{\n");
         for (field_name, field) in fields {
+            // Escape reserved keywords and special field names
+            let escaped_name = escape_field_name(field_name);
             content.push_str(&format!(
                 "    {} | doc \"{}\" | default = {},\n",
-                field_name,
+                escaped_name,
                 field.description.as_deref().unwrap_or(""),
                 generate_default_value(&field.ty)
             ));
@@ -758,6 +764,48 @@ fn generate_type_definition(type_def: &TypeDefinition) -> String {
     }
 
     content
+}
+
+/// Escape field names that are reserved keywords or contain special characters
+///
+/// In Nickel, field names must be quoted if they:
+/// - Start with a digit
+/// - Contain hyphens, dots, or other non-identifier characters
+/// - Start with $ or other special characters
+/// - Are reserved keywords
+fn escape_field_name(name: &str) -> String {
+    // Check if the name needs quoting
+    let needs_quoting = name.starts_with('$')
+        || name.starts_with(|c: char| c.is_ascii_digit())
+        || name.contains('-')
+        || name.contains('.')
+        || name.contains(' ')
+        || name.contains('/')
+        || name.contains('@')
+        || is_reserved_keyword(name)
+        || !name.chars().all(|c| c.is_alphanumeric() || c == '_');
+
+    if needs_quoting {
+        format!("\"{}\"", name)
+    } else {
+        name.to_string()
+    }
+}
+
+/// Check if a field name is a Nickel reserved keyword or needs quoting
+///
+/// Uses the official KEYWORDS list from nickel-lang-parser plus additional
+/// field names that need quoting for safety.
+fn is_reserved_keyword(name: &str) -> bool {
+    use nickel_lang_parser::lexer::KEYWORDS as NICKEL_KEYWORDS;
+
+    // Check against official Nickel keywords from the parser crate
+    if NICKEL_KEYWORDS.contains(&name) {
+        return true;
+    }
+
+    // Additional field names that need quoting (common in JSON Schema)
+    matches!(name, "type" | "enum" | "const")
 }
 
 fn generate_default_value(field_type: &Type) -> String {

@@ -28,6 +28,8 @@ fn create_v1alpha3_types() -> HashMap<String, TypeDefinition> {
                             required: false,
                             description: Some("CEL expression for device selection".to_string()),
                             default: None,
+                            validation: None,
+                            contracts: Vec::new(),
                         },
                     );
                     fields
@@ -57,6 +59,8 @@ fn create_v1alpha3_types() -> HashMap<String, TypeDefinition> {
                             required: false,
                             description: Some("CEL selector".to_string()),
                             default: None,
+                            validation: None,
+                            contracts: Vec::new(),
                         },
                     );
                     fields
@@ -153,6 +157,8 @@ fn test_same_version_multiple_references() -> Result<(), Box<dyn std::error::Err
                             required: true,
                             description: None,
                             default: None,
+                            validation: None,
+                            contracts: Vec::new(),
                         },
                     );
                     fields.insert(
@@ -165,6 +171,8 @@ fn test_same_version_multiple_references() -> Result<(), Box<dyn std::error::Err
                             required: false,
                             description: None,
                             default: None,
+                            validation: None,
+                            contracts: Vec::new(),
                         },
                     );
                     fields

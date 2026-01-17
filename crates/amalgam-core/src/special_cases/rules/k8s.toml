@@ -32,17 +32,81 @@ to_pattern = "apimachinery.pkg.$1"
 priority = 5
 
 # Special import paths for commonly used types
+# These patterns allow data-driven import path resolution
+
+# Meta types from any api module should import from apimachinery
 [[import_overrides]]
-from_module = "api.core.v1"
+from_module = "api.*"
 target_type = "ObjectMeta"
-import_path = "../../apimachinery.pkg.apis/meta/v1.ncl"
-reason = "ObjectMeta is defined in meta/v1, not core/v1"
+import_path = "../../apimachinery.pkg.apis/meta/$version/mod.ncl"
+reason = "ObjectMeta is defined in apimachinery meta, not the consuming API module"
 
 [[import_overrides]]
-from_module = "api.apps.v1"
+from_module = "api.*"
+target_type = "ListMeta"
+import_path = "../../apimachinery.pkg.apis/meta/$version/mod.ncl"
+reason = "ListMeta is defined in apimachinery meta"
+
+[[import_overrides]]
+from_module = "api.*"
 target_type = "LabelSelector"
-import_path = "../../apimachinery.pkg.apis/meta/v1.ncl"
-reason = "LabelSelector is defined in meta/v1"
+import_path = "../../apimachinery.pkg.apis/meta/$version/mod.ncl"
+reason = "LabelSelector is defined in apimachinery meta"
+
+[[import_overrides]]
+from_module = "api.*"
+target_type = "Time"
+import_path = "../../apimachinery.pkg.apis/meta/$version/mod.ncl"
+reason = "Time is defined in apimachinery meta"
+
+[[import_overrides]]
+from_module = "api.*"
+target_type = "MicroTime"
+import_path = "../../apimachinery.pkg.apis/meta/$version/mod.ncl"
+reason = "MicroTime is defined in apimachinery meta"
+
+[[import_overrides]]
+from_module = "api.*"
+target_type = "Condition"
+import_path = "../../apimachinery.pkg.apis/meta/$version/mod.ncl"
+reason = "Condition is defined in apimachinery meta"
+
+[[import_overrides]]
+from_module = "api.*"
+target_type = "Status"
+import_path = "../../apimachinery.pkg.apis/meta/$version/mod.ncl"
+reason = "Status is defined in apimachinery meta"
+
+[[import_overrides]]
+from_module = "api.*"
+target_type = "DeleteOptions"
+import_path = "../../apimachinery.pkg.apis/meta/$version/mod.ncl"
+reason = "DeleteOptions is defined in apimachinery meta"
+
+[[import_overrides]]
+from_module = "api.*"
+target_type = "OwnerReference"
+import_path = "../../apimachinery.pkg.apis/meta/$version/mod.ncl"
+reason = "OwnerReference is defined in apimachinery meta"
+
+# Runtime types (IntOrString, Quantity, RawExtension) from any module
+[[import_overrides]]
+from_module = "*"
+target_type = "IntOrString"
+import_path = "../../apimachinery.pkg.apis/runtime/v0/mod.ncl"
+reason = "IntOrString is a runtime type in v0"
+
+[[import_overrides]]
+from_module = "*"
+target_type = "Quantity"
+import_path = "../../apimachinery.pkg.apis/runtime/v0/mod.ncl"
+reason = "Quantity is a runtime type in v0"
+
+[[import_overrides]]
+from_module = "*"
+target_type = "RawExtension"
+import_path = "../../apimachinery.pkg.apis/runtime/v0/mod.ncl"
+reason = "RawExtension is a runtime type in v0"
 
 # Type coercions for K8s union types
 [[type_coercions]]

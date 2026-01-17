@@ -163,12 +163,21 @@ impl ImportPathCalculator {
         &self,
         from_group: &str,
         _from_version: &str,
-        to_group: &str,
+        _to_group: &str,
         to_version: &str,
         to_type: &str,
     ) -> String {
         // Map the type to its module location in k8s.io structure
         // ALL k8s.io types are in consolidated module files, not individual type files
+
+        // Check if we're importing from a non-k8s module (like Crossplane CRDs)
+        // In that case, we need to include k8s_io/ in the path since it's a separate package
+        let is_cross_package = !from_group.starts_with("k8s.io")
+            && !from_group.starts_with("io.k8s.")
+            && !from_group.starts_with("apimachinery.");
+
+        // Prefix for cross-package k8s imports
+        let cross_pkg_prefix = if is_cross_package { "k8s_io/" } else { "" };
 
         // Determine which consolidated module contains this type
         // Note: type names might be lowercase in tests, so we need case-insensitive comparison
@@ -181,54 +190,25 @@ impl ImportPathCalculator {
             || type_lower == "managedfieldsentry"
         {
             // These are in apimachinery.pkg.apis/meta/v1/mod.ncl (consolidated module)
-            format!("../../apimachinery.pkg.apis/meta/{}/mod.ncl", to_version)
+            format!(
+                "../../{}apimachinery.pkg.apis/meta/{}/mod.ncl",
+                cross_pkg_prefix, to_version
+            )
         } else if type_lower == "intorstring" {
             // IntOrString is in v0/mod.ncl (unversioned types)
-            "../../v0/mod.ncl".to_string()
+            format!("../../{}v0/mod.ncl", cross_pkg_prefix)
         } else if type_lower == "rawextension" {
             // RawExtension is in v0/mod.ncl (unversioned types)
-            "../../v0/mod.ncl".to_string()
+            format!("../../{}v0/mod.ncl", cross_pkg_prefix)
         } else {
-            // For unknown types, fall back to individual file approach
-            // Only use consolidated modules for well-known types
-            let known_core_types = [
-                "pod",
-                "service",
-                "deployment",
-                "configmap",
-                "secret",
-                "namespace",
-                "node",
-                "persistentvolume",
-                "persistentvolumeclaim",
-                "serviceaccount",
-                "celdeviceselector",         // Used in tests
-                "typedlocalobjectreference", // Core API type used by networking and other APIs
-                "podtemplatespec",           // Core API type used by apps and batch APIs
-                "objectreference",           // Core API type used by batch and events APIs
-                "eventsource",               // Core API type used by events API
-                "topologyselectorterm",      // Core API type used by storage API
-                "persistentvolumespec",      // Core API type used by storage API
-                "toleration",                // Core API type used by node API
-                "nodeselector",              // Core API type used by resource APIs
-            ];
-
-            if known_core_types.contains(&type_lower.as_str()) {
-                // Known core types are in consolidated modules
-                // From api/networking to api/core it's just ../core/v1/mod.ncl
-                format!("../core/{}/mod.ncl", to_version)
+            // ALL k8s.io types go to consolidated module files (api/core/{version}.ncl)
+            // The k8s_io package uses consolidated modules, not individual type files
+            if is_cross_package {
+                // Cross-package: go through k8s_io package to api/core/{version}.ncl
+                format!("../../k8s_io/api/core/{}.ncl", to_version)
             } else {
-                // Unknown types use individual files
-                if from_group == to_group {
-                    // Same package, different version - relative to current level
-                    format!("../{}/{}.ncl", to_version, to_type)
-                } else {
-                    // Cross-package - calculate relative path to target
-                    let from_path = Self::group_to_path(from_group);
-                    let to_path = Self::group_to_path(to_group);
-                    let relative_path = Self::calculate_relative_path(&from_path, &to_path);
-                    format!("{}/{}/{}.ncl", relative_path, to_version, to_type)
-                }
+                // Within k8s_io: relative path to core module
+                format!("../core/{}.ncl", to_version)
             }
         };
 
@@ -344,9 +324,9 @@ mod tests {
     #[test]
     fn test_same_package_same_version() {
         let calc = test_calculator();
-        // k8s.io types always use consolidated modules, even for same version
+        // k8s.io types always use consolidated .ncl files (not /mod.ncl)
         let path = calc.calculate("k8s.io", "v1", "k8s.io", "v1", "Pod");
-        assert_eq!(path, "../core/v1/mod.ncl");
+        assert_eq!(path, "../core/v1.ncl");
 
         // Non-k8s.io types should use local import
         let path2 = calc.calculate("example.io", "v1", "example.io", "v1", "MyType");
@@ -364,7 +344,7 @@ mod tests {
     #[test]
     fn test_cross_package_import() {
         let calc = test_calculator();
-        // ObjectMeta is in apimachinery consolidated module
+        // Cross-package imports to k8s.io include k8s_io/ prefix
         let path = calc.calculate(
             "apiextensions.crossplane.io",
             "v1",
@@ -372,13 +352,14 @@ mod tests {
             "v1",
             "ObjectMeta",
         );
-        assert_eq!(path, "../../apimachinery.pkg.apis/meta/v1/mod.ncl");
+        assert_eq!(path, "../../k8s_io/apimachinery.pkg.apis/meta/v1/mod.ncl");
     }
 
     #[test]
     fn test_crossplane_to_k8s_path() {
         let calc = test_calculator();
         // ObjectMeta is in apimachinery consolidated module
+        // Cross-package imports include k8s_io/ prefix
         let path = calc.calculate(
             "ops.crossplane.io",
             "v1alpha1",
@@ -386,8 +367,8 @@ mod tests {
             "v1",
             "ObjectMeta",
         );
-        // ObjectMeta is in apimachinery.pkg.apis/meta/v1/mod.ncl
-        assert_eq!(path, "../../apimachinery.pkg.apis/meta/v1/mod.ncl");
+        // Cross-package: path goes through k8s_io package
+        assert_eq!(path, "../../k8s_io/apimachinery.pkg.apis/meta/v1/mod.ncl");
     }
 
     #[test]
@@ -396,16 +377,16 @@ mod tests {
 
         // k8s.io types always use consolidated modules, even for same version
         let (path, alias) = calc.calculate_with_alias("k8s.io", "v1", "k8s.io", "v1", "Pod");
-        assert_eq!(path, "../core/v1/mod.ncl");
+        assert_eq!(path, "../core/v1.ncl");
         assert_eq!(alias, "pod");
 
-        // Cross-version - ObjectMeta in apimachinery
+        // Cross-version - ObjectMeta in apimachinery (within k8s.io package)
         let (path, alias) =
             calc.calculate_with_alias("k8s.io", "v1beta1", "k8s.io", "v1", "ObjectMeta");
         assert_eq!(path, "../../apimachinery.pkg.apis/meta/v1/mod.ncl");
         assert_eq!(alias, "objectMeta");
 
-        // Cross-package - ObjectMeta in apimachinery
+        // Cross-package - ObjectMeta in apimachinery (from non-k8s package)
         let (path, alias) = calc.calculate_with_alias(
             "apiextensions.crossplane.io",
             "v1",
@@ -413,7 +394,7 @@ mod tests {
             "v1",
             "ObjectMeta",
         );
-        assert_eq!(path, "../../apimachinery.pkg.apis/meta/v1/mod.ncl");
+        assert_eq!(path, "../../k8s_io/apimachinery.pkg.apis/meta/v1/mod.ncl");
         assert_eq!(alias, "k8s_objectMeta");
     }
 
@@ -445,7 +426,7 @@ mod tests {
         let calc = test_calculator();
 
         // Test the specific case from deviceselector.ncl
-        // k8s.io types always use consolidated modules, even for same version
+        // k8s.io types use consolidated .ncl files (not /mod.ncl)
         let path = calc.calculate(
             "k8s.io",
             "v1alpha3",
@@ -453,7 +434,7 @@ mod tests {
             "v1alpha3",
             "celdeviceselector",
         );
-        assert_eq!(path, "../core/v1alpha3/mod.ncl");
+        assert_eq!(path, "../core/v1alpha3.ncl");
     }
 
     #[test]

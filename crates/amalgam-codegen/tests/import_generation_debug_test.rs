@@ -30,6 +30,8 @@ fn test_debug_import_generation() -> Result<(), Box<dyn std::error::Error>> {
                                 },
                                 required: false,
                                 default: None,
+                                validation: None,
+                                contracts: Vec::new(),
                                 description: Some("Reference to secret".to_string()),
                             },
                         )]
@@ -49,6 +51,8 @@ fn test_debug_import_generation() -> Result<(), Box<dyn std::error::Error>> {
                                 ty: Type::String,
                                 required: false,
                                 default: None,
+                                validation: None,
+                                contracts: Vec::new(),
                                 description: Some("Name of the secret".to_string()),
                             },
                         )]

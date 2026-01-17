@@ -24,6 +24,8 @@ fn test_pipeline_debug() -> Result<(), Box<dyn std::error::Error>> {
                                 },
                                 required: false,
                                 default: None,
+                                validation: None,
+                                contracts: Vec::new(),
                                 description: Some("PostStart handler".to_string()),
                             },
                         )]
@@ -43,6 +45,8 @@ fn test_pipeline_debug() -> Result<(), Box<dyn std::error::Error>> {
                                 ty: Type::String,
                                 required: false,
                                 default: None,
+                                validation: None,
+                                contracts: Vec::new(),
                                 description: Some("Exec command".to_string()),
                             },
                         )]

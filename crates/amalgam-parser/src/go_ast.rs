@@ -454,6 +454,8 @@ func isPointerType(expr ast.Expr) bool {
                     required: !field.is_optional && !field.is_pointer,
                     description: field.documentation.clone(),
                     default: None,
+                    validation: None,
+                    contracts: Vec::new(),
                 },
             );
         }

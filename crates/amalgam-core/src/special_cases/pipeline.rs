@@ -218,6 +218,8 @@ mod tests {
                 required: true,
                 description: None,
                 default: None,
+                validation: None,
+                contracts: Vec::new(),
             },
         );
 

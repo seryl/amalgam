@@ -137,6 +137,7 @@ fn create_ir_snapshot(ir: &IR) -> IRSnapshot {
                         Type::Union { .. } => "Union".to_string(),
                         Type::TaggedUnion { .. } => "TaggedUnion".to_string(),
                         Type::Contract { .. } => "Contract".to_string(),
+                        Type::Constrained { .. } => "Constrained".to_string(),
                     },
                     references: extract_references(&typ.ty),
                 })
@@ -390,6 +391,8 @@ mod tests {
                 required: false,
                 description: Some("Labels to match".to_string()),
                 default: None,
+                validation: None,
+                contracts: Vec::new(),
             },
         );
 
@@ -415,6 +418,8 @@ mod tests {
                 required: false,
                 description: Some("Label selector".to_string()),
                 default: None,
+                validation: None,
+                contracts: Vec::new(),
             },
         );
 

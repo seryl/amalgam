@@ -25,6 +25,8 @@ fn test_k8s_lifecycle_imports() -> Result<(), Box<dyn std::error::Error>> {
                         required: false,
                         description: Some("Exec specifies a command to execute".to_string()),
                         default: None,
+                        validation: None,
+                        contracts: Vec::new(),
                     },
                 );
                 fields.insert(
@@ -37,6 +39,8 @@ fn test_k8s_lifecycle_imports() -> Result<(), Box<dyn std::error::Error>> {
                         required: false,
                         description: Some("HTTPGet specifies an HTTP GET request".to_string()),
                         default: None,
+                        validation: None,
+                        contracts: Vec::new(),
                     },
                 );
                 fields
@@ -65,6 +69,8 @@ fn test_k8s_lifecycle_imports() -> Result<(), Box<dyn std::error::Error>> {
                             "PostStart is called after container creation".to_string(),
                         ),
                         default: None,
+                        validation: None,
+                        contracts: Vec::new(),
                     },
                 );
                 fields.insert(
@@ -79,6 +85,8 @@ fn test_k8s_lifecycle_imports() -> Result<(), Box<dyn std::error::Error>> {
                             "PreStop is called before container termination".to_string(),
                         ),
                         default: None,
+                        validation: None,
+                        contracts: Vec::new(),
                     },
                 );
                 fields
@@ -102,6 +110,8 @@ fn test_k8s_lifecycle_imports() -> Result<(), Box<dyn std::error::Error>> {
                         required: false,
                         description: Some("Command to execute".to_string()),
                         default: None,
+                        validation: None,
+                        contracts: Vec::new(),
                     },
                 );
                 fields
@@ -125,6 +135,8 @@ fn test_k8s_lifecycle_imports() -> Result<(), Box<dyn std::error::Error>> {
                         required: false,
                         description: Some("Path to request".to_string()),
                         default: None,
+                        validation: None,
+                        contracts: Vec::new(),
                     },
                 );
                 fields.insert(
@@ -137,6 +149,8 @@ fn test_k8s_lifecycle_imports() -> Result<(), Box<dyn std::error::Error>> {
                         required: true,
                         description: Some("Port to connect to".to_string()),
                         default: None,
+                        validation: None,
+                        contracts: Vec::new(),
                     },
                 );
                 fields
@@ -303,6 +317,8 @@ fn test_cross_module_import_generation() -> Result<(), Box<dyn std::error::Error
                         required: false,
                         description: None,
                         default: None,
+                        validation: None,
+                        contracts: Vec::new(),
                     },
                 );
                 fields

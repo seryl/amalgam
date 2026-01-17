@@ -112,7 +112,19 @@ impl TypeResolver {
             }
         }
 
-        // If no resolution found, return as-is
+        // If no resolution found, validate the reference is a valid Nickel identifier
+        // If it contains dots, slashes, or other special characters, it would be invalid
+        // Fall back to Dyn instead of generating broken code
+        if reference.contains('.') || reference.contains('/') || reference.contains(':') {
+            tracing::warn!(
+                "Cannot resolve type reference '{}' in module '{}', using Dyn fallback",
+                reference,
+                module.name
+            );
+            return "Dyn".to_string();
+        }
+
+        // Simple identifier - return as-is
         reference.to_string()
     }
 

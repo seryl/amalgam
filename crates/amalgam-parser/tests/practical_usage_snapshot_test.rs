@@ -9,8 +9,16 @@ use amalgam_parser::{
     Parser,
 };
 use insta::assert_snapshot;
+use regex::Regex;
 use std::process::Command;
 use tracing::{debug, info, instrument, warn};
+
+/// Sanitize output to remove dynamic temp file paths for stable snapshots
+fn sanitize_output(output: &str) -> String {
+    // Replace temp file paths like "test_snapshot_temp_12345_0.ncl" with a stable placeholder
+    let re = Regex::new(r"test_snapshot_temp_\d+_\d+\.ncl").unwrap();
+    re.replace_all(output, "test_snapshot_temp_XXXX_X.ncl").to_string()
+}
 
 /// Test helper to evaluate Nickel code and capture both success/failure and output
 #[instrument(skip(code), fields(code_len = code.len()))]
@@ -97,7 +105,7 @@ let v1 = import "examples/pkgs/k8s_io/api/core/v1.ncl" in
         .unwrap_or_else(|_| (false, "Failed to evaluate".to_string()));
 
     // Create a comprehensive snapshot that shows both success status and structure
-    let snapshot_content = format!("SUCCESS: {}\n\nOUTPUT:\n{}", success, output);
+    let snapshot_content = format!("SUCCESS: {}\n\nOUTPUT:\n{}", success, sanitize_output(&output));
 
     assert_snapshot!("k8s_empty_objects", snapshot_content);
 
@@ -122,7 +130,7 @@ let v2 = import "examples/pkgs/k8s_io/api/autoscaling/v2.ncl" in
     let (success, output) = evaluate_nickel_code(test_code, None)
         .unwrap_or_else(|_| (false, "Failed to evaluate".to_string()));
 
-    let snapshot_content = format!("SUCCESS: {}\n\nOUTPUT:\n{}", success, output);
+    let snapshot_content = format!("SUCCESS: {}\n\nOUTPUT:\n{}", success, sanitize_output(&output));
 
     assert_snapshot!("practical_k8s_usage", snapshot_content);
     // This test documents current behavior - imports are broken
@@ -146,7 +154,7 @@ let v1alpha2 = import "examples/pkgs/k8s_io/api/coordination/v1alpha2.ncl" in
     let (success, output) = evaluate_nickel_code(test_code, None)
         .unwrap_or_else(|_| (false, "Failed to evaluate".to_string()));
 
-    let snapshot_content = format!("SUCCESS: {}\n\nOUTPUT:\n{}", success, output);
+    let snapshot_content = format!("SUCCESS: {}\n\nOUTPUT:\n{}", success, sanitize_output(&output));
 
     assert_snapshot!("cross_package_imports", snapshot_content);
     // This test documents current behavior - imports are broken
@@ -170,7 +178,7 @@ let v1 = import "examples/pkgs/k8s_io/api/storage/v1.ncl" in
     let (success, output) = evaluate_nickel_code(test_code, None)
         .unwrap_or_else(|_| (false, "Failed to evaluate".to_string()));
 
-    let snapshot_content = format!("SUCCESS: {}\n\nOUTPUT:\n{}", success, output);
+    let snapshot_content = format!("SUCCESS: {}\n\nOUTPUT:\n{}", success, sanitize_output(&output));
 
     assert_snapshot!("package_structure", snapshot_content);
     // This test documents current behavior - imports are broken
@@ -194,7 +202,7 @@ let v1 = import "examples/pkgs/k8s_io/api/networking/v1.ncl" in
     let (success, output) = evaluate_nickel_code(test_code, None)
         .unwrap_or_else(|_| (false, "Failed to evaluate".to_string()));
 
-    let snapshot_content = format!("SUCCESS: {}\n\nOUTPUT:\n{}", success, output);
+    let snapshot_content = format!("SUCCESS: {}\n\nOUTPUT:\n{}", success, sanitize_output(&output));
 
     assert_snapshot!("edge_cases", snapshot_content);
     // Edge cases might not all succeed, but we want to snapshot the behavior

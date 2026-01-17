@@ -22,6 +22,8 @@ IR {
                                 required: false,
                                 description: None,
                                 default: None,
+                                validation: None,
+                                contracts: [],
                             },
                             "spec": Field {
                                 ty: Record {
@@ -31,6 +33,8 @@ IR {
                                             required: false,
                                             description: None,
                                             default: None,
+                                            validation: None,
+                                            contracts: [],
                                         },
                                     },
                                     open: false,
@@ -38,6 +42,8 @@ IR {
                                 required: false,
                                 description: None,
                                 default: None,
+                                validation: None,
+                                contracts: [],
                             },
                         },
                         open: false,

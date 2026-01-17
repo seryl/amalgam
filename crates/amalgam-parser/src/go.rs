@@ -110,6 +110,8 @@ impl GoParser {
                             required,
                             description: None,
                             default: None,
+                            validation: None,
+                            contracts: Vec::new(),
                         },
                     );
                 }
@@ -122,7 +124,12 @@ impl GoParser {
                 // For now, interfaces become contracts
                 Ok(Type::Contract {
                     base: Box::new(Type::Any),
-                    predicate: "interface".to_string(),
+                    rules: vec![amalgam_core::types::ContractRule {
+                        name: "interface".to_string(),
+                        expression: "std.is_record value".to_string(),
+                        description: Some("Go interface type".to_string()),
+                        error_message: None,
+                    }],
                 })
             }
             GoType::Alias(inner) => self.go_type_to_type(inner),

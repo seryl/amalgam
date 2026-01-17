@@ -134,19 +134,19 @@ fn test_import_path_calculator_walker_integration() -> Result<(), Box<dyn std::e
 fn test_import_calculator_direct_usage() -> Result<(), Box<dyn std::error::Error>> {
     let calc = ImportPathCalculator::new(Arc::new(ModuleRegistry::new()));
 
-    // Test same package, same version - k8s.io types use consolidated modules
+    // Test same package, same version - k8s.io types use consolidated modules (.ncl not /mod.ncl)
     let path = calc.calculate("k8s.io", "v1", "k8s.io", "v1", "Pod");
-    assert_eq!(path, "../core/v1/mod.ncl");
+    assert_eq!(path, "../core/v1.ncl");
 
-    // Test same package, different version - now uses consolidated modules
+    // Test same package, different version - uses consolidated modules
     let path = calc.calculate("k8s.io", "v1beta1", "k8s.io", "v1", "ObjectMeta");
     assert_eq!(path, "../../apimachinery.pkg.apis/meta/v1/mod.ncl");
 
-    // Test different packages - now uses consolidated modules
+    // Test different packages - cross-package imports include k8s_io/ prefix
     let path = calc.calculate("example.io", "v1", "k8s.io", "v1", "ObjectMeta");
-    assert_eq!(path, "../../apimachinery.pkg.apis/meta/v1/mod.ncl");
+    assert_eq!(path, "../../k8s_io/apimachinery.pkg.apis/meta/v1/mod.ncl");
 
-    // Test with crossplane - now uses consolidated modules
+    // Test with crossplane - cross-package imports include k8s_io/ prefix
     let path = calc.calculate(
         "apiextensions.crossplane.io",
         "v1",
@@ -154,8 +154,8 @@ fn test_import_calculator_direct_usage() -> Result<(), Box<dyn std::error::Error
         "v1",
         "ObjectMeta",
     );
-    // CrossPlane packages now reference k8s.io consolidated modules
-    assert_eq!(path, "../../apimachinery.pkg.apis/meta/v1/mod.ncl");
+    // CrossPlane packages now reference k8s.io consolidated modules via k8s_io/ prefix
+    assert_eq!(path, "../../k8s_io/apimachinery.pkg.apis/meta/v1/mod.ncl");
     Ok(())
 }
 
@@ -167,6 +167,7 @@ fn test_walker_import_generation_consistency() -> Result<(), Box<dyn std::error:
     let calc = ImportPathCalculator::new(Arc::new(ModuleRegistry::new()));
 
     // Simulate what each walker should generate - now using consolidated modules
+    // Core types use .ncl (not /mod.ncl), cross-package imports include k8s_io/ prefix
     let test_cases = vec![
         // From package, from version, to package, to version, type, expected path
         (
@@ -175,7 +176,7 @@ fn test_walker_import_generation_consistency() -> Result<(), Box<dyn std::error:
             "k8s.io",
             "v1alpha3",
             "CELDeviceSelector",
-            "../core/v1alpha3/mod.ncl", // k8s.io types use consolidated modules
+            "../core/v1alpha3.ncl", // k8s.io core types use .ncl format
         ),
         (
             "k8s.io",
@@ -199,7 +200,7 @@ fn test_walker_import_generation_consistency() -> Result<(), Box<dyn std::error:
             "k8s.io",
             "v1",
             "pod",
-            "../core/v1/mod.ncl", // Pod is in api/core/v1
+            "../../k8s_io/api/core/v1.ncl", // Cross-package: Pod in k8s_io/api/core/v1.ncl
         ),
     ];
 

@@ -10,6 +10,7 @@ pub use pipeline::{SpecialCasePipeline, WithSpecialCases};
 
 use crate::naming::to_camel_case as naming_to_camel_case;
 use crate::types::Type;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -226,7 +227,7 @@ impl SpecialCaseRegistry {
             .unwrap_or_else(|| module.to_string())
     }
 
-    /// Get import override if one exists
+    /// Get import override if one exists (exact match)
     pub fn get_import_override(
         &self,
         from_module: &str,
@@ -235,6 +236,74 @@ impl SpecialCaseRegistry {
         self.import_overrides
             .iter()
             .find(|o| o.from_module == from_module && o.target_type == target_type)
+    }
+
+    /// Resolve import path using pattern matching
+    ///
+    /// This is more flexible than get_import_override as it supports wildcards
+    /// in both from_module and target_type patterns.
+    ///
+    /// Example patterns:
+    /// - from_module: "api.*" matches "api.core.v1", "api.apps.v1", etc.
+    /// - target_type: "ObjectMeta" or "*" for any type
+    pub fn resolve_import_path(
+        &self,
+        from_module: &str,
+        target_type: &str,
+    ) -> Option<String> {
+        // First try exact match
+        if let Some(override_) = self.get_import_override(from_module, target_type) {
+            return Some(override_.import_path.clone());
+        }
+
+        // Then try pattern matching
+        for override_ in &self.import_overrides {
+            let module_matches = self.matches_pattern(&override_.from_module, from_module);
+            let type_matches = self.matches_pattern(&override_.target_type, target_type);
+
+            if module_matches && type_matches {
+                // Apply any substitution patterns in the import_path
+                let resolved = self.apply_path_substitutions(
+                    &override_.import_path,
+                    from_module,
+                    target_type,
+                );
+                return Some(resolved);
+            }
+        }
+
+        None
+    }
+
+    /// Apply substitutions to an import path template
+    ///
+    /// Supports placeholders like:
+    /// - $version - extracts version from module (e.g., "v1" from "api.core.v1")
+    /// - $type - the target type name
+    fn apply_path_substitutions(
+        &self,
+        template: &str,
+        from_module: &str,
+        target_type: &str,
+    ) -> String {
+        let mut result = template.to_string();
+
+        // Extract version from module (last segment that starts with 'v')
+        let version = from_module
+            .split('.')
+            .rev()
+            .find(|s| s.starts_with('v') && s.len() > 1 && s.chars().nth(1).map_or(false, |c| c.is_ascii_digit()))
+            .unwrap_or("v1");
+
+        result = result.replace("$version", version);
+        result = result.replace("$type", target_type);
+
+        result
+    }
+
+    /// Get all import overrides (for debugging/introspection)
+    pub fn import_overrides(&self) -> &[ImportOverride] {
+        &self.import_overrides
     }
 
     /// Check if a field should be renamed
@@ -260,11 +329,20 @@ impl SpecialCaseRegistry {
     // Helper methods
 
     fn matches_pattern(&self, pattern: &str, text: &str) -> bool {
-        // Simple wildcard matching (can be enhanced with regex)
+        // Handle special wildcard patterns
         if pattern == "*" {
             return true;
         }
 
+        // Check if pattern contains regex capture groups
+        if pattern.contains("(.*)") || pattern.contains("(.+)") {
+            // Convert the pattern to a proper regex and check for a match
+            if let Some(regex) = self.pattern_to_regex(pattern) {
+                return regex.is_match(text);
+            }
+        }
+
+        // Simple wildcard matching for patterns without capture groups
         if pattern.starts_with('*') && pattern.ends_with('*') {
             let middle = &pattern[1..pattern.len() - 1];
             return text.contains(middle);
@@ -279,6 +357,50 @@ impl SpecialCaseRegistry {
         }
 
         pattern == text
+    }
+
+    /// Convert a pattern string with capture groups to a Regex
+    fn pattern_to_regex(&self, pattern: &str) -> Option<Regex> {
+        // Escape regex special characters except for our capture groups
+        let mut regex_pattern = String::new();
+        regex_pattern.push('^');
+
+        let mut chars = pattern.chars().peekable();
+        while let Some(c) = chars.next() {
+            match c {
+                '(' => {
+                    // Check if this is a capture group pattern
+                    let rest: String = chars.clone().take(3).collect();
+                    if rest.starts_with(".*") || rest.starts_with(".+") {
+                        // It's a capture group, pass through
+                        regex_pattern.push('(');
+                        regex_pattern.push('.');
+                        chars.next(); // skip '.'
+                        if let Some(quantifier) = chars.next() {
+                            regex_pattern.push(quantifier);
+                        }
+                        if chars.peek() == Some(&')') {
+                            chars.next();
+                            regex_pattern.push(')');
+                        }
+                    } else {
+                        regex_pattern.push_str("\\(");
+                    }
+                }
+                '.' => regex_pattern.push_str("\\."),
+                '*' => regex_pattern.push_str(".*"),
+                '+' => regex_pattern.push_str("\\+"),
+                '?' => regex_pattern.push_str("\\?"),
+                '[' | ']' | '{' | '}' | '^' | '$' | '|' | '\\' => {
+                    regex_pattern.push('\\');
+                    regex_pattern.push(c);
+                }
+                _ => regex_pattern.push(c),
+            }
+        }
+
+        regex_pattern.push('$');
+        Regex::new(&regex_pattern).ok()
     }
 
     fn apply_transform_action(&self, text: &str, action: &TransformAction) -> String {
@@ -301,25 +423,43 @@ impl SpecialCaseRegistry {
     }
 
     fn apply_remapping(&self, module: &str, remapping: &ModuleRemapping) -> Option<String> {
-        // Simple pattern matching with capture groups
-        // In production, use regex for proper capture group support
+        // Check if the pattern contains capture groups
         if remapping.from_pattern.contains("(.*)") || remapping.from_pattern.contains("(.+)") {
-            // Simplified: just handle the k8s case for now
-            if module.starts_with("io.k8s.api.")
-                && remapping.from_pattern.starts_with("io.k8s.api.")
-            {
-                let rest = module.strip_prefix("io.k8s.api.")?;
-                return Some(format!("api.{}", rest));
+            // Build a regex from the pattern
+            if let Some(regex) = self.pattern_to_regex(&remapping.from_pattern) {
+                if let Some(captures) = regex.captures(module) {
+                    // Apply the to_pattern with capture group substitutions
+                    let mut result = remapping.to_pattern.clone();
+
+                    // Replace $1, $2, etc. with captured groups
+                    for (i, cap) in captures.iter().enumerate().skip(1) {
+                        if let Some(matched) = cap {
+                            let placeholder = format!("${}", i);
+                            result = result.replace(&placeholder, matched.as_str());
+                        }
+                    }
+
+                    return Some(result);
+                }
             }
-            if module.starts_with("io.k8s.apimachinery.pkg.apis.")
-                && remapping
-                    .from_pattern
-                    .starts_with("io.k8s.apimachinery.pkg.apis.")
-            {
-                let rest = module.strip_prefix("io.k8s.")?;
-                return Some(rest.to_string());
+            return None;
+        }
+
+        // For non-regex patterns, try simple prefix matching
+        if let Some(prefix) = remapping.from_pattern.strip_suffix('*') {
+            if module.starts_with(prefix) {
+                let rest = module.strip_prefix(prefix)?;
+                if let Some(to_prefix) = remapping.to_pattern.strip_suffix("$1") {
+                    return Some(format!("{}{}", to_prefix, rest));
+                }
             }
         }
+
+        // Exact match
+        if remapping.from_pattern == module {
+            return Some(remapping.to_pattern.clone());
+        }
+
         None
     }
 }
@@ -363,10 +503,123 @@ mod tests {
     fn test_field_rename() {
         let registry = SpecialCaseRegistry::default();
 
+        // $ref -> ref_field (JSON Schema reference fields)
         let result = registry.get_field_rename("SomeType", "$ref");
         assert_eq!(result, Some("ref_field".to_string()));
 
+        // "type" is no longer renamed - it should be quoted in Nickel output instead
         let result = registry.get_field_rename("AnyType", "type");
-        assert_eq!(result, Some("type_field".to_string()));
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn test_resolve_import_path_with_pattern() {
+        let registry = SpecialCaseRegistry::default();
+
+        // Test ObjectMeta from api.core.v1
+        let result = registry.resolve_import_path("api.core.v1", "ObjectMeta");
+        assert!(result.is_some());
+        let path = result.unwrap();
+        assert!(path.contains("apimachinery.pkg.apis/meta/v1/mod.ncl"));
+
+        // Test ObjectMeta from api.apps.v1
+        let result = registry.resolve_import_path("api.apps.v1", "ObjectMeta");
+        assert!(result.is_some());
+        let path = result.unwrap();
+        assert!(path.contains("apimachinery.pkg.apis/meta/v1/mod.ncl"));
+    }
+
+    #[test]
+    fn test_resolve_import_path_runtime_types() {
+        let registry = SpecialCaseRegistry::default();
+
+        // IntOrString should resolve from any module
+        let result = registry.resolve_import_path("api.core.v1", "IntOrString");
+        assert!(result.is_some());
+        let path = result.unwrap();
+        assert!(path.contains("runtime/v0/mod.ncl"));
+
+        // Quantity should also resolve
+        let result = registry.resolve_import_path("api.apps.v1", "Quantity");
+        assert!(result.is_some());
+        let path = result.unwrap();
+        assert!(path.contains("runtime/v0/mod.ncl"));
+    }
+
+    #[test]
+    fn test_resolve_import_path_version_substitution() {
+        let registry = SpecialCaseRegistry::default();
+
+        // v1 module should get v1 in path
+        let result = registry.resolve_import_path("api.core.v1", "LabelSelector");
+        assert!(result.is_some());
+        assert!(result.unwrap().contains("/v1/"));
+
+        // v1beta1 module should get v1beta1 in path (if pattern supports it)
+        // Note: currently we default to extracting version from the module
+    }
+
+    #[test]
+    fn test_import_overrides_accessible() {
+        let registry = SpecialCaseRegistry::default();
+
+        // Should have multiple import overrides loaded
+        assert!(!registry.import_overrides().is_empty());
+
+        // Should have ObjectMeta override
+        let has_object_meta = registry
+            .import_overrides()
+            .iter()
+            .any(|o| o.target_type == "ObjectMeta");
+        assert!(has_object_meta);
+    }
+
+    #[test]
+    fn test_pattern_to_regex() {
+        let registry = SpecialCaseRegistry::default();
+
+        // Test simple capture group pattern
+        let regex = registry.pattern_to_regex("io.k8s.api.(.*)");
+        assert!(regex.is_some());
+        let regex = regex.unwrap();
+        assert!(regex.is_match("io.k8s.api.core.v1"));
+        assert!(regex.is_match("io.k8s.api.apps.v1"));
+        assert!(!regex.is_match("io.k8s.apimachinery.pkg.apis.meta.v1"));
+    }
+
+    #[test]
+    fn test_apply_remapping_with_regex() {
+        let registry = SpecialCaseRegistry::default();
+
+        // Test that capture groups are correctly substituted
+        let result = registry.remap_module("io.k8s.api.core.v1");
+        assert_eq!(result, "api.core.v1");
+
+        let result = registry.remap_module("io.k8s.api.apps.v1");
+        assert_eq!(result, "api.apps.v1");
+
+        let result = registry.remap_module("io.k8s.api.batch.v1");
+        assert_eq!(result, "api.batch.v1");
+    }
+
+    #[test]
+    fn test_matches_pattern_with_wildcards() {
+        let registry = SpecialCaseRegistry::default();
+
+        // Test wildcard matching
+        assert!(registry.matches_pattern("*", "anything"));
+        assert!(registry.matches_pattern("api.*", "api.core.v1"));
+        assert!(registry.matches_pattern("*.v1", "api.core.v1"));
+        assert!(registry.matches_pattern("*core*", "api.core.v1"));
+    }
+
+    #[test]
+    fn test_matches_pattern_with_capture_groups() {
+        let registry = SpecialCaseRegistry::default();
+
+        // Test regex capture group matching
+        assert!(registry.matches_pattern("io.k8s.api.(.*)", "io.k8s.api.core.v1"));
+        assert!(registry.matches_pattern("io.k8s.api.(.*)", "io.k8s.api.apps.v1"));
+        assert!(!registry.matches_pattern("io.k8s.api.(.*)", "io.k8s.apimachinery.pkg"));
     }
 }

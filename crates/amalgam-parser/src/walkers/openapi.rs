@@ -47,12 +47,13 @@ impl OpenAPIWalker {
                     return (kind.to_string(), Some(module));
                 }
             } else if type_name.starts_with("io.k8s.apimachinery.pkg.apis.meta.") {
-                // io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta -> k8s.io.v1, ObjectMeta
+                // io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta -> apimachinery.pkg.apis.meta.v1, ObjectMeta
+                // These types get their own module so imports resolve correctly
                 let parts: Vec<&str> = type_name.split('.').collect();
                 if parts.len() >= 8 {
                     let version = parts[parts.len() - 2];
                     let kind = parts[parts.len() - 1];
-                    let module = format!("k8s.io.{}", version);
+                    let module = format!("apimachinery.pkg.apis.meta.{}", version);
                     return (kind.to_string(), Some(module));
                 }
             } else if type_name.starts_with("io.k8s.apimachinery.pkg.runtime.") {
@@ -122,6 +123,8 @@ impl OpenAPIWalker {
                                 required,
                                 description: schema.schema_data.description.clone(),
                                 default: None,
+                                validation: None,
+                                contracts: Vec::new(),
                             },
                         );
                     } else if let ReferenceOr::Reference { reference } = prop {
@@ -147,6 +150,8 @@ impl OpenAPIWalker {
                                 required: obj.required.contains(name),
                                 description: None,
                                 default: None,
+                                validation: None,
+                                contracts: Vec::new(),
                             },
                         );
                     }
@@ -264,8 +269,12 @@ impl OpenAPIWalker {
     }
 
     /// Merge allOf types intelligently
+    ///
+    /// This properly preserves validation rules and contracts when merging
+    /// fields from multiple schemas.
     #[instrument(skip(self, types), level = "trace")]
     fn merge_all_of_types(&self, types: Vec<Type>) -> Result<Type, WalkerError> {
+        use amalgam_core::types::Field;
         use std::collections::BTreeMap;
 
         if types.len() == 1 {
@@ -285,34 +294,18 @@ impl OpenAPIWalker {
 
         // If we have record types, merge their fields
         let merged_record = if !record_types.is_empty() {
-            let mut merged_fields: BTreeMap<String, amalgam_core::types::Field> = BTreeMap::new();
+            let mut merged_fields: BTreeMap<String, Field> = BTreeMap::new();
             let mut is_open = false;
 
             for record in record_types {
                 if let Type::Record { fields, open } = record {
                     is_open = is_open || open;
                     for (field_name, field) in fields {
-                        // If field already exists, we need to handle conflicts
+                        // If field already exists, merge them properly
                         if let Some(existing_field) = merged_fields.get(&field_name) {
-                            // For now, if there's a conflict, make it a union
-                            if existing_field.ty != field.ty {
-                                merged_fields.insert(
-                                    field_name,
-                                    amalgam_core::types::Field {
-                                        ty: Type::Union {
-                                            types: vec![existing_field.ty.clone(), field.ty],
-                                            coercion_hint: None,
-                                        },
-                                        required: existing_field.required && field.required,
-                                        default: field
-                                            .default
-                                            .or_else(|| existing_field.default.clone()),
-                                        description: field
-                                            .description
-                                            .or_else(|| existing_field.description.clone()),
-                                    },
-                                );
-                            }
+                            // Use the proper merge function that preserves validation
+                            let merged = Field::merge_for_allof(existing_field, &field);
+                            merged_fields.insert(field_name, merged);
                         } else {
                             merged_fields.insert(field_name, field);
                         }
@@ -413,9 +406,20 @@ impl SchemaWalker for OpenAPIWalker {
                     let mut refs = Vec::new();
                     let ty = self.schema_to_type(schema, &mut refs)?;
 
-                    let fqn = format!("{}.{}", self.base_module, name);
+                    // Use parse_k8s_reference to determine correct module and type name
+                    // This ensures types like ObjectMeta go to the correct module
+                    let (type_name, parsed_module) = self.parse_k8s_reference(name);
+
+                    let fqn = if let Some(module) = parsed_module {
+                        // Use the parsed module for k8s types
+                        format!("{}.{}", module, type_name)
+                    } else {
+                        // Fall back to base_module for non-k8s types
+                        format!("{}.{}", self.base_module, name)
+                    };
+
                     let type_def = TypeDefinition {
-                        name: name.clone(),
+                        name: type_name,
                         ty,
                         documentation: schema.schema_data.description.clone(),
                         annotations: Default::default(),

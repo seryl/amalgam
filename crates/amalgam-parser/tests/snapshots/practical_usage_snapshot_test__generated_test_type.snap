@@ -6,20 +6,21 @@ expression: type_content
 
 {
   spec
-     | {
+    | {
     image
-       | String
-       | optional,
+      | String
+      | optional,
     replicas
-       | Number
-       | optional
+      | Number
+      | std.contract.from_predicate (fun value => value >= 1 && value <= 100)
+      | optional
   }
-     | optional,
+    | optional,
   status
-     | {
+    | {
     ready
-       | Bool
-       | optional
+      | Bool
+      | optional
   }
-     | optional
+    | optional
 }

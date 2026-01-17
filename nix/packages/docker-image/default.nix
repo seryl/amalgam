@@ -49,21 +49,18 @@ let
     name = "nickel-packages";
     tag = "latest";
     
-    contents = [
-      runtimeEnv
-      nickel
-    ] ++ lib.optionals (generated-packages != null) [ generated-packages ];
-    
     copyToRoot = pkgs.buildEnv {
       name = "packages-root";
       paths = [
+        runtimeEnv
+        nickel
         (pkgs.runCommand "packages-dir" {} ''
           mkdir -p $out/packages
           ${lib.optionalString (generated-packages != null) ''
             cp -r ${generated-packages}/* $out/packages/
           ''}
         '')
-      ];
+      ] ++ lib.optionals (generated-packages != null) [ generated-packages ];
     };
     
     config = {
@@ -90,7 +87,19 @@ let
       amalgam
     ];
     
-    config = amalgamImage.config;
+    config = {
+      Cmd = [ "${amalgam}/bin/amalgam" ];
+      WorkingDir = "/workspace";
+      Env = [
+        "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+        "PATH=/bin:${amalgam}/bin"
+      ];
+      Labels = {
+        "org.opencontainers.image.source" = "https://github.com/seryl/amalgam";
+        "org.opencontainers.image.description" = "Amalgam compiler for generating Nickel types";
+        "org.opencontainers.image.licenses" = "Apache-2.0";
+      };
+    };
     
     # Maximum number of layers for better caching
     maxLayers = 100;
@@ -106,7 +115,19 @@ let
       amalgam
     ];
     
-    config = amalgamImage.config;
+    config = {
+      Cmd = [ "${amalgam}/bin/amalgam" ];
+      WorkingDir = "/workspace";
+      Env = [
+        "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+        "PATH=/bin:${amalgam}/bin"
+      ];
+      Labels = {
+        "org.opencontainers.image.source" = "https://github.com/seryl/amalgam";
+        "org.opencontainers.image.description" = "Amalgam compiler for generating Nickel types";
+        "org.opencontainers.image.licenses" = "Apache-2.0";
+      };
+    };
   };
 
   # Multi-platform image builder

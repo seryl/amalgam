@@ -58,8 +58,15 @@ impl CompilationUnit {
 
     /// Phase 1: Analyze all modules and build complete symbol table
     pub fn analyze_modules(&mut self, modules: Vec<Module>) -> Result<(), CoreError> {
+        // Deduplicate types within each module before analysis
+        // This handles cases like Deployment vs DeploymentList having the same name
+        let mut deduped_modules = modules;
+        for module in &mut deduped_modules {
+            module.deduplicate_types();
+        }
+
         // First pass: Register all modules and their types
-        for module in modules {
+        for module in deduped_modules {
             self.register_module(module)?;
         }
 

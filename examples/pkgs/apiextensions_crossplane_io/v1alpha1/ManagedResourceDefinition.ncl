@@ -1,100 +1,100 @@
-let v1Module = import "../../apimachinery.pkg.apis/meta/v1/mod.ncl" in
+let metav1 = import "../../k8s_io/apimachinery.pkg.apis/meta/v1/mod.ncl" in
 
 # Module: apiextensions.crossplane.io.v1alpha1
 
 {
   apiVersion
-     | String
-     | doc m%"
+    | String
+    | doc m%"
 APIVersion defines the versioned schema of this representation of an object.
 Servers should convert recognized schemas to the latest internal value, and
 may reject unrecognized values.
 More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
 "%
-     | optional,
+    | optional,
   kind
-     | String
-     | doc m%"
+    | String
+    | doc m%"
 Kind is a string value representing the REST resource this object represents.
 Servers may infer this from the endpoint the client submits requests to.
 Cannot be updated.
 In CamelCase.
 More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
 "%
-     | optional,
+    | optional,
   metadata
-     | v1Module.ObjectMeta
-     | optional,
+    | metav1.ObjectMeta
+    | optional,
   spec
-     | {
+    | {
     connectionDetails
-       | Array {
+      | Array {
       description
-         | String
-         | doc "Description of how the key is used.",
+        | String
+        | doc "Description of how the key is used.",
       name
-         | String
-         | doc "Name of the key."
+        | String
+        | doc "Name of the key."
     }
-       | doc "ConnectionDetails is an array of connection detail keys and descriptions."
-       | optional,
+      | doc "ConnectionDetails is an array of connection detail keys and descriptions."
+      | optional,
     conversion
-       | {
+      | {
       strategy
-         | String
-         | doc m%"
+        | String
+        | doc m%"
 strategy specifies how custom resources are converted between versions. Allowed values are:
 - `"None"`: The converter only change the apiVersion and would not touch any other field in the custom resource.
 - `"Webhook"`: API Server will call to an external webhook to do the conversion. Additional information
   is needed for this option. This requires spec.preserveUnknownFields to be false, and spec.conversion.webhook to be set.
 "%,
       webhook
-         | {
+        | {
         clientConfig
-           | {
+          | {
           caBundle
-             | String
-             | doc m%"
+            | String
+            | doc m%"
 caBundle is a PEM encoded CA bundle which will be used to validate the webhook's server certificate.
 If unspecified, system trust roots on the apiserver are used.
 "%
-             | optional,
+            | optional,
           service
-             | {
+            | {
             name
-               | String
-               | doc m%"
+              | String
+              | doc m%"
 name is the name of the service.
 Required
 "%,
             namespace
-               | String
-               | doc m%"
+              | String
+              | doc m%"
 namespace is the namespace of the service.
 Required
 "%,
             path
-               | String
-               | doc "path is an optional URL path at which the webhook will be contacted."
-               | optional,
+              | String
+              | doc "path is an optional URL path at which the webhook will be contacted."
+              | optional,
             port
-               | Number
-               | doc m%"
+              | Number
+              | doc m%"
 port is an optional service port at which the webhook will be contacted.
 `port` should be a valid port number (1-65535, inclusive).
 Defaults to 443 for backward compatibility.
 "%
-               | optional
+              | optional
           }
-             | doc m%"
+            | doc m%"
 service is a reference to the service for this webhook. Either
 service or url must be specified.
 If the webhook is running within the cluster, then you should use `service`.
 "%
-             | optional,
+            | optional,
           url
-             | String
-             | doc m%"
+            | String
+            | doc m%"
 url gives the location of the webhook, in standard URL form
 (`scheme://host:port/path`). Exactly one of `url` or `service`
 must be specified.
@@ -116,15 +116,15 @@ Attempting to use a user or basic auth e.g. "user:password@" is not
 allowed. Fragments ("#...") and query parameters ("?...") are not
 allowed, either.
 "%
-             | optional
+            | optional
         }
-           | doc m%"
+          | doc m%"
 clientConfig is the instructions for how to call the webhook if strategy is `Webhook`.
 "%
-           | optional,
+          | optional,
         conversionReviewVersions
-           | Array String
-           | doc m%"
+          | Array String
+          | doc m%"
 conversionReviewVersions is an ordered list of preferred `ConversionReview`
 versions the Webhook expects. The API server will use the first version in
 the list which it supports. If none of the versions specified in this list
@@ -133,176 +133,177 @@ If a persisted Webhook configuration specifies allowed versions and does not
 include any versions known to the API Server, calls to the webhook will fail.
 "%
       }
-         | doc m%"
+        | doc m%"
 webhook describes how to call the conversion webhook. Required when `strategy` is set to `"Webhook"`.
 "%
-         | optional
+        | optional
     }
-       | doc "Conversion defines conversion settings for the CRD."
-       | optional,
+      | doc "Conversion defines conversion settings for the CRD."
+      | optional,
     group
-       | String
-       | doc m%"
+      | String
+      | doc m%"
 Group is the API group of the defined custom resource.
 The custom resources are served under `/apis/<group>/...`.
 Must match the name of the CustomResourceDefinition (in the form `<names.plural>.<group>`).
 "%,
     names
-       | {
+      | {
       categories
-         | Array String
-         | doc m%"
+        | Array String
+        | doc m%"
 categories is a list of grouped resources this custom resource belongs to (e.g. 'all').
 This is published in API discovery documents, and used by clients to support invocations like
 `kubectl get all`.
 "%
-         | optional,
+        | optional,
       kind
-         | String
-         | doc m%"
+        | String
+        | doc m%"
 kind is the serialized kind of the resource. It is normally CamelCase and singular.
 Custom resource instances will use this value as the `kind` attribute in API calls.
 "%,
       listKind
-         | String
-         | doc m%"
+        | String
+        | doc m%"
 listKind is the serialized kind of the list for this resource. Defaults to "`kind`List".
 "%
-         | optional,
+        | optional,
       plural
-         | String
-         | doc m%"
+        | String
+        | doc m%"
 plural is the plural name of the resource to serve.
 The custom resources are served under `/apis/<group>/<version>/.../<plural>`.
 Must match the name of the CustomResourceDefinition (in the form `<names.plural>.<group>`).
 Must be all lowercase.
 "%,
       shortNames
-         | Array String
-         | doc m%"
+        | Array String
+        | doc m%"
 shortNames are short names for the resource, exposed in API discovery documents,
 and used by clients to support invocations like `kubectl get <shortname>`.
 It must be all lowercase.
 "%
-         | optional,
+        | optional,
       singular
-         | String
-         | doc m%"
+        | String
+        | doc m%"
 singular is the singular name of the resource. It must be all lowercase. Defaults to lowercased `kind`.
 "%
-         | optional
+        | optional
     }
-       | doc "Names specify the resource and kind names for the custom resource.",
+      | doc "Names specify the resource and kind names for the custom resource.",
     preserveUnknownFields
-       | Bool
-       | doc m%"
+      | Bool
+      | doc m%"
 PreserveUnknownFields indicates that object fields which are not specified
 in the OpenAPI schema should be preserved when persisting to storage.
 apiVersion, kind, metadata and known fields inside metadata are always preserved.
 This field is deprecated in favor of setting `x-preserve-unknown-fields` to true in `spec.versions[*].schema.openAPIV3Schema`.
 See https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/#field-pruning for details.
 "%
-       | optional,
+      | optional,
     scope
-       | String
-       | doc m%"
+      | String
+      | std.contract.from_predicate (fun value => std.array.elem value ["Namespaced", "Cluster"])
+      | doc m%"
 Scope indicates whether the defined custom resource is cluster- or namespace-scoped.
 Allowed values are `Cluster` and `Namespaced`.
 "%
-       = "Namespaced",
+      = "Namespaced",
     state
-       | String
-       | doc "State toggles whether the underlying CRD is created or not."
-       = "Inactive",
+      | String
+      | std.contract.from_predicate (fun value => std.array.elem value ["Active", "Inactive"])
+      | doc "State toggles whether the underlying CRD is created or not."
+      = "Inactive",
     versions
-       | Array {
+      | Array {
       additionalPrinterColumns
-         | Array {
+        | Array {
         description
-           | String
-           | doc "description is a human readable description of this column."
-           | optional,
+          | String
+          | doc "description is a human readable description of this column."
+          | optional,
         format
-           | String
-           | doc m%"
+          | String
+          | doc m%"
 format is an optional OpenAPI type definition for this column. The 'name' format is applied
 to the primary identifier column to assist in clients identifying column is the resource name.
 See https://github.com/OAI/OpenAPI-Specification/blob/master/versions/2.0.md#data-types for details.
 "%
-           | optional,
+          | optional,
         jsonPath
-           | String
-           | doc m%"
+          | String
+          | doc m%"
 jsonPath is a simple JSON path (i.e. with array notation) which is evaluated against
 each custom resource to produce the value for this column.
 "%,
         name
-           | String
-           | doc "name is a human readable name for the column.",
+          | String
+          | doc "name is a human readable name for the column.",
         "priority"
-           | Number
-           | doc m%"
+          | Number
+          | doc m%"
 priority is an integer defining the relative importance of this column compared to others. Lower
 numbers are considered higher priority. Columns that may be omitted in limited space scenarios
 should be given a priority greater than 0.
 "%
-           | optional,
-        type
-           | String
-           | doc m%"
+          | optional,
+        "type"
+          | String
+          | doc m%"
 type is an OpenAPI type definition for this column.
 See https://github.com/OAI/OpenAPI-Specification/blob/master/versions/2.0.md#data-types for details.
 "%
       }
-         | doc m%"
+        | doc m%"
 AdditionalPrinterColumns specifies additional columns returned in Table output.
 See https://kubernetes.io/docs/reference/using-api/api-concepts/#receiving-resources-as-tables for details.
 If no columns are specified, a single column displaying the age of the custom resource is used.
 "%
-         | optional,
+        | optional,
       deprecated
-         | Bool
-         | doc m%"
+        | Bool
+        | doc m%"
 Deprecated indicates this version of the custom resource API is deprecated.
 When set to true, API requests to this version receive a warning header in the server response.
 Defaults to false.
 "%
-         | optional,
+        | optional,
       deprecationWarning
-         | String
-         | doc m%"
+        | String
+        | doc m%"
 DeprecationWarning overrides the default warning returned to API clients.
 May only be set when `deprecated` is true.
 The default warning indicates this version is deprecated and recommends use
 of the newest served version of equal or greater stability, if one exists.
 "%
-         | optional,
+        | optional,
       name
-         | String
-         | doc m%"
+        | String
+        | doc m%"
 Name is the version name, e.g. “v1”, “v2beta1”, etc.
 The custom resources are served under this version at `/apis/<group>/<version>/...` if `served` is true.
 "%,
       schema
-         | {
+        | {
         openAPIV3Schema
-           | {
-        }
-           | doc m%"
+          | { .. }
+          | doc m%"
 OpenAPIV3Schema is the OpenAPI v3 schema to use for validation and
 pruning.
 "%
-           | optional
+          | optional
       }
-         | doc m%"
+        | doc m%"
 Schema describes the schema used for validation, pruning, and defaulting of this version of the custom resource.
 "%
-         | optional,
+        | optional,
       selectableFields
-         | Array {
+        | Array {
         jsonPath
-           | String
-           | doc m%"
+          | String
+          | doc m%"
 jsonPath is a simple JSON path which is evaluated against each custom resource to produce a
 field selector value.
 Only JSON paths without the array notation are allowed.
@@ -313,28 +314,28 @@ Must not point to metdata fields.
 Required.
 "%
       }
-         | doc m%"
+        | doc m%"
 SelectableFields specifies paths to fields that may be used as field selectors.
 A maximum of 8 selectable fields are allowed.
 See https://kubernetes.io/docs/concepts/overview/working-with-objects/field-selectors
 "%
-         | optional,
+        | optional,
       served
-         | Bool
-         | doc "Served is a flag enabling/disabling this version from being served via REST APIs",
+        | Bool
+        | doc "Served is a flag enabling/disabling this version from being served via REST APIs",
       storage
-         | Bool
-         | doc m%"
+        | Bool
+        | doc m%"
 Storage indicates this version should be used when persisting custom resources to storage.
 There must be exactly one version with storage=true.
 "%,
       subresources
-         | {
+        | {
         scale
-           | {
+          | {
           labelSelectorPath
-             | String
-             | doc m%"
+            | String
+            | doc m%"
 labelSelectorPath defines the JSON path inside of a custom resource that corresponds to Scale `status.selector`.
 Only JSON paths without the array notation are allowed.
 Must be a JSON Path under `.status` or `.spec`.
@@ -345,18 +346,18 @@ More info: https://kubernetes.io/docs/tasks/access-kubernetes-api/custom-resourc
 If there is no value under the given path in the custom resource, the `status.selector` value in the `/scale`
 subresource will default to the empty string.
 "%
-             | optional,
+            | optional,
           specReplicasPath
-             | String
-             | doc m%"
+            | String
+            | doc m%"
 specReplicasPath defines the JSON path inside of a custom resource that corresponds to Scale `spec.replicas`.
 Only JSON paths without the array notation are allowed.
 Must be a JSON Path under `.spec`.
 If there is no value under the given path in the custom resource, the `/scale` subresource will return an error on GET.
 "%,
           statusReplicasPath
-             | String
-             | doc m%"
+            | String
+            | doc m%"
 statusReplicasPath defines the JSON path inside of a custom resource that corresponds to Scale `status.replicas`.
 Only JSON paths without the array notation are allowed.
 Must be a JSON Path under `.status`.
@@ -364,27 +365,26 @@ If there is no value under the given path in the custom resource, the `status.re
 will default to 0.
 "%
         }
-           | doc m%"
+          | doc m%"
 scale indicates the custom resource should serve a `/scale` subresource that returns an `autoscaling/v1` Scale object.
 "%
-           | optional,
+          | optional,
         status
-           | {
-        }
-           | doc m%"
+          | { .. }
+          | doc m%"
 status indicates the custom resource should serve a `/status` subresource.
 When enabled:
 1. requests to the custom resource primary endpoint ignore changes to the `status` stanza of the object.
 2. requests to the custom resource `/status` subresource ignore changes to anything other than the `status` stanza of the object.
 "%
-           | optional
+          | optional
       }
-         | doc m%"
+        | doc m%"
 Subresources specify what subresources this version of the defined custom resource have.
 "%
-         | optional
+        | optional
     }
-       | doc m%"
+      | doc m%"
 Versions is the list of all API versions of the defined custom resource.
 Version names are used to compute the order in which served versions are listed in API discovery.
 If the version string is "kube-like", it will sort above non "kube-like" version strings, which are ordered
@@ -395,53 +395,54 @@ major version, then minor version. An example sorted list of versions:
 v10, v2, v1, v11beta2, v10beta3, v3beta1, v12alpha1, v11alpha2, foo1, foo10.
 "%
   }
-     | doc m%"
+    | doc m%"
 ManagedResourceDefinitionSpec specifies the desired state of the resource definition.
 "%
-     | optional,
+    | optional,
   status
-     | {
+    | {
     conditions
-       | Array {
+      | Array {
       lastTransitionTime
-         | String
-         | doc m%"
+        | String
+        | std.contract.from_predicate (fun value => std.string.is_match "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}" value)
+        | doc m%"
 LastTransitionTime is the last time this condition transitioned from one
 status to another.
 "%,
       message
-         | String
-         | doc m%"
+        | String
+        | doc m%"
 A Message containing details about this condition's last transition from
 one status to another, if any.
 "%
-         | optional,
+        | optional,
       observedGeneration
-         | Number
-         | doc m%"
+        | Number
+        | doc m%"
 ObservedGeneration represents the .metadata.generation that the condition was set based upon.
 For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
 with respect to the current state of the instance.
 "%
-         | optional,
+        | optional,
       reason
-         | String
-         | doc "A Reason for this condition's last transition from one status to another.",
+        | String
+        | doc "A Reason for this condition's last transition from one status to another.",
       status
-         | String
-         | doc "Status of this condition; is it currently True, False, or Unknown?",
-      type
-         | String
-         | doc m%"
+        | String
+        | doc "Status of this condition; is it currently True, False, or Unknown?",
+      "type"
+        | String
+        | doc m%"
 Type of this condition. At most one of each condition type may apply to
 a resource at any point in time.
 "%
     }
-       | doc "Conditions of the resource."
-       | optional
+      | doc "Conditions of the resource."
+      | optional
   }
-     | doc m%"
+    | doc m%"
 ManagedResourceDefinitionStatus shows the observed state of the resource definition.
 "%
-     | optional
+    | optional
 }

@@ -13,6 +13,11 @@ rustflags = []
 [target.aarch64-apple-darwin]
 rustflags = []
 
+# WASM target configuration
+[target.wasm32-unknown-unknown]
+# Enable getrandom wasm_js backend for WASM builds
+rustflags = ['--cfg', 'getrandom_backend="wasm_js"']
+
 # Alias commands for convenience
 [alias]
 b = "build"

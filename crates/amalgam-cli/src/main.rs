@@ -124,6 +124,10 @@ enum Commands {
         /// Dry run - show what would be generated without doing it
         #[arg(long)]
         dry_run: bool,
+
+        /// Enable debug output (writes generated.ncl debug file)
+        #[arg(long)]
+        debug: bool,
     },
 
     /// Execute a unified pipeline from configuration
@@ -318,9 +322,11 @@ async fn main() -> Result<()> {
             package_path,
             verbose: _,
         }) => validate::run_validation_with_package_path(&path, package_path.as_deref()),
-        Some(Commands::GenerateFromManifest { packages, dry_run }) => {
-            handle_manifest_generation(cli.manifest, packages, dry_run).await
-        }
+        Some(Commands::GenerateFromManifest {
+            packages,
+            dry_run,
+            debug,
+        }) => handle_manifest_generation(cli.manifest, packages, dry_run, debug).await,
         Some(Commands::Pipeline {
             config,
             export_diagnostics,
@@ -614,9 +620,11 @@ async fn handle_import(source: ImportSource) -> Result<()> {
             for module in &temp_ir.modules {
                 for type_def in &module.types {
                     // Extract version from module name
+                    // Module name format is: kind.version.group (e.g., "CompositeResourceDefinition.v1.apiextensions.crossplane.io")
                     let parts: Vec<&str> = module.name.split('.').collect();
-                    let version = if parts.len() > 1 {
-                        parts[parts.len() - 2]
+                    let version = if parts.len() >= 2 {
+                        // Version is at index 1 (second part)
+                        parts[1]
                     } else {
                         "v1"
                     };
@@ -754,11 +762,17 @@ async fn handle_manifest_generation(
     manifest_path: PathBuf,
     packages: Vec<String>,
     dry_run: bool,
+    debug: bool,
 ) -> Result<()> {
     use crate::manifest::Manifest;
 
     info!("Loading manifest from {:?}", manifest_path);
     let mut manifest = Manifest::from_file(&manifest_path)?;
+
+    // Override debug flag from CLI if specified
+    if debug {
+        manifest.config.debug = true;
+    }
 
     // Filter packages if specific ones were requested
     if !packages.is_empty() {

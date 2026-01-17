@@ -29,6 +29,8 @@ fn create_test_type_definitions() -> HashMap<String, TypeDefinition> {
                             required: true,
                             description: Some("Standard object metadata".to_string()),
                             default: None,
+                            validation: None,
+                            contracts: Vec::new(),
                         },
                     );
                     fields.insert(
@@ -41,6 +43,8 @@ fn create_test_type_definitions() -> HashMap<String, TypeDefinition> {
                             required: true,
                             description: Some("Pod specification".to_string()),
                             default: None,
+                            validation: None,
+                            contracts: Vec::new(),
                         },
                     );
                     fields
@@ -70,6 +74,8 @@ fn create_test_type_definitions() -> HashMap<String, TypeDefinition> {
                             required: true,
                             description: Some("List of containers".to_string()),
                             default: None,
+                            validation: None,
+                            contracts: Vec::new(),
                         },
                     );
                     fields.insert(
@@ -79,6 +85,8 @@ fn create_test_type_definitions() -> HashMap<String, TypeDefinition> {
                             required: false,
                             description: Some("Restart policy for containers".to_string()),
                             default: Some(serde_json::json!("Always")),
+                            validation: None,
+                            contracts: Vec::new(),
                         },
                     );
                     fields
@@ -105,6 +113,8 @@ fn create_test_type_definitions() -> HashMap<String, TypeDefinition> {
                             required: true,
                             description: Some("Container name".to_string()),
                             default: None,
+                            validation: None,
+                            contracts: Vec::new(),
                         },
                     );
                     fields.insert(
@@ -114,6 +124,8 @@ fn create_test_type_definitions() -> HashMap<String, TypeDefinition> {
                             required: true,
                             description: Some("Container image".to_string()),
                             default: None,
+                            validation: None,
+                            contracts: Vec::new(),
                         },
                     );
                     fields
@@ -140,6 +152,8 @@ fn create_test_type_definitions() -> HashMap<String, TypeDefinition> {
                             required: false,
                             description: Some("Name of the object".to_string()),
                             default: None,
+                            validation: None,
+                            contracts: Vec::new(),
                         },
                     );
                     fields.insert(
@@ -149,6 +163,8 @@ fn create_test_type_definitions() -> HashMap<String, TypeDefinition> {
                             required: false,
                             description: Some("Namespace of the object".to_string()),
                             default: None,
+                            validation: None,
+                            contracts: Vec::new(),
                         },
                     );
                     fields.insert(
@@ -161,6 +177,8 @@ fn create_test_type_definitions() -> HashMap<String, TypeDefinition> {
                             required: false,
                             description: Some("Labels for the object".to_string()),
                             default: None,
+                            validation: None,
+                            contracts: Vec::new(),
                         },
                     );
                     fields
@@ -283,6 +301,8 @@ fn test_cross_module_dependencies() -> Result<(), Box<dyn std::error::Error>> {
                             required: true,
                             description: Some("Legacy spec".to_string()),
                             default: None,
+                            validation: None,
+                            contracts: Vec::new(),
                         },
                     );
                     fields
@@ -359,6 +379,8 @@ fn test_complex_type_references() -> Result<(), Box<dyn std::error::Error>> {
                             required: true,
                             description: None,
                             default: None,
+                            validation: None,
+                            contracts: Vec::new(),
                         },
                     );
 
@@ -373,6 +395,8 @@ fn test_complex_type_references() -> Result<(), Box<dyn std::error::Error>> {
                             required: false,
                             description: None,
                             default: None,
+                            validation: None,
+                            contracts: Vec::new(),
                         },
                     );
 
@@ -387,6 +411,8 @@ fn test_complex_type_references() -> Result<(), Box<dyn std::error::Error>> {
                             required: true,
                             description: None,
                             default: None,
+                            validation: None,
+                            contracts: Vec::new(),
                         },
                     );
 
@@ -404,6 +430,8 @@ fn test_complex_type_references() -> Result<(), Box<dyn std::error::Error>> {
                             required: true,
                             description: None,
                             default: None,
+                            validation: None,
+                            contracts: Vec::new(),
                         },
                     );
 

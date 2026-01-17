@@ -2,42 +2,44 @@
 source: crates/amalgam-parser/tests/snapshot_test.rs
 expression: all_versions
 ---
-{
+Evolving = {
   spec
-     | {
+    | {
     field1
-       | String
-       | optional
+      | String
+      | optional
   }
-     | optional
+    | optional
 }
-{
+Evolving = {
   spec
-     | {
+    | {
     field1
-       | String
-       | optional,
+      | String
+      | optional,
     field2
-       | Number
-       | optional
+      | Number
+      | optional
   }
-     | optional
+    | optional
 }
-{
+let metav1 = import "../../k8s_io/apimachinery.pkg.apis/meta/v1/mod.ncl" in
+
+Evolving = {
   metadata
-     | v1Module.ObjectMeta
-     | optional,
+    | metav1.ObjectMeta
+    | optional,
   spec
-     | {
+    | {
     field1
-       | String
-       | optional,
+      | String
+      | optional,
     field2
-       | Number
-       | optional,
+      | Number
+      | optional,
     field3
-       | Bool
-       | optional
+      | Bool
+      | optional
   }
-     | optional
+    | optional
 }

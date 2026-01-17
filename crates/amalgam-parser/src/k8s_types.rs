@@ -3,7 +3,7 @@
 use crate::{imports::TypeReference, ParserError};
 use amalgam_core::{
     ir::{Module, TypeDefinition},
-    types::{Field, Type},
+    types::{Field, Type, ValidationRules},
 };
 use indicatif::{ProgressBar, ProgressStyle};
 use reqwest;
@@ -516,6 +516,8 @@ impl K8sTypesFetcher {
                                         .and_then(|d| d.as_str())
                                         .map(String::from),
                                     default: None,
+                                    validation: self.extract_validation_rules(field_schema),
+                                    contracts: Vec::new(),
                                 },
                             );
                         } else {
@@ -571,6 +573,8 @@ impl K8sTypesFetcher {
                                             required: required.contains(field_name),
                                             description: None,
                                             default: None,
+                                            validation: self.extract_validation_rules(field_schema),
+                                            contracts: Vec::new(),
                                         },
                                     );
                                     continue;
@@ -588,8 +592,33 @@ impl K8sTypesFetcher {
                                         .and_then(|d| d.as_str())
                                         .map(String::from),
                                     default: field_schema.get("default").cloned(),
+                                    validation: self.extract_validation_rules(field_schema),
+                                    contracts: Vec::new(),
                                 },
                             );
+                        }
+                    }
+                }
+
+                // Check if this is a map type (object with additionalProperties defining value type)
+                // If there are no explicit properties and additionalProperties defines a schema,
+                // this is a map type (like ConfigMap data: map[string]string)
+                if fields.is_empty() {
+                    if let Some(additional_props) = schema.get("additionalProperties") {
+                        // If additionalProperties is a schema (not just true/false),
+                        // create a Map type
+                        if additional_props.is_object() {
+                            let value_type = self.json_schema_to_type(additional_props)?;
+                            return Ok(Type::Map {
+                                key: Box::new(Type::String),
+                                value: Box::new(value_type),
+                            });
+                        } else if additional_props.as_bool() == Some(true) {
+                            // additionalProperties: true means any value type
+                            return Ok(Type::Map {
+                                key: Box::new(Type::String),
+                                value: Box::new(Type::Any),
+                            });
                         }
                     }
                 }
@@ -626,6 +655,75 @@ impl K8sTypesFetcher {
             }
         }
     }
+
+    /// Extract validation rules from a JSON schema
+    fn extract_validation_rules(&self, schema: &Value) -> Option<ValidationRules> {
+        let mut rules = ValidationRules::default();
+        let mut has_validation = false;
+
+        // Extract enum values
+        if let Some(enum_values) = schema.get("enum").and_then(|e| e.as_array()) {
+            let values: Vec<serde_json::Value> = enum_values.clone();
+            if !values.is_empty() {
+                rules.allowed_values = Some(values);
+                has_validation = true;
+            }
+        }
+
+        // Extract string constraints
+        if let Some(min) = schema.get("minLength").and_then(|v| v.as_u64()) {
+            rules.min_length = Some(min as usize);
+            has_validation = true;
+        }
+        if let Some(max) = schema.get("maxLength").and_then(|v| v.as_u64()) {
+            rules.max_length = Some(max as usize);
+            has_validation = true;
+        }
+        if let Some(pattern) = schema.get("pattern").and_then(|v| v.as_str()) {
+            rules.pattern = Some(pattern.to_string());
+            has_validation = true;
+        }
+
+        // Extract numeric constraints
+        if let Some(min) = schema.get("minimum").and_then(|v| v.as_f64()) {
+            rules.minimum = Some(min);
+            has_validation = true;
+        }
+        if let Some(max) = schema.get("maximum").and_then(|v| v.as_f64()) {
+            rules.maximum = Some(max);
+            has_validation = true;
+        }
+        if let Some(exclusive_min) = schema.get("exclusiveMinimum").and_then(|v| v.as_f64()) {
+            rules.exclusive_minimum = Some(exclusive_min);
+            has_validation = true;
+        }
+        if let Some(exclusive_max) = schema.get("exclusiveMaximum").and_then(|v| v.as_f64()) {
+            rules.exclusive_maximum = Some(exclusive_max);
+            has_validation = true;
+        }
+
+        // Extract array constraints
+        if let Some(min) = schema.get("minItems").and_then(|v| v.as_u64()) {
+            rules.min_items = Some(min as usize);
+            has_validation = true;
+        }
+        if let Some(max) = schema.get("maxItems").and_then(|v| v.as_u64()) {
+            rules.max_items = Some(max as usize);
+            has_validation = true;
+        }
+        if let Some(unique) = schema.get("uniqueItems").and_then(|v| v.as_bool()) {
+            if unique {
+                rules.unique_items = Some(true);
+                has_validation = true;
+            }
+        }
+
+        if has_validation {
+            Some(rules)
+        } else {
+            None
+        }
+    }
 }
 
 /// Generate a basic k8s.io package with common types
@@ -651,6 +749,8 @@ pub fn generate_k8s_package() -> Module {
                         required: false,
                         description: Some("Name must be unique within a namespace".to_string()),
                         default: None,
+                        validation: None,
+                        contracts: Vec::new(),
                     },
                 );
                 fields.insert(
@@ -663,6 +763,8 @@ pub fn generate_k8s_package() -> Module {
                                 .to_string(),
                         ),
                         default: None,
+                        validation: None,
+                        contracts: Vec::new(),
                     },
                 );
                 fields.insert(
@@ -678,6 +780,8 @@ pub fn generate_k8s_package() -> Module {
                                 .to_string(),
                         ),
                         default: None,
+                        validation: None,
+                        contracts: Vec::new(),
                     },
                 );
                 fields.insert(
@@ -692,6 +796,8 @@ pub fn generate_k8s_package() -> Module {
                             "Annotations is an unstructured key value map".to_string(),
                         ),
                         default: None,
+                        validation: None,
+                        contracts: Vec::new(),
                     },
                 );
                 fields.insert(
@@ -703,6 +809,8 @@ pub fn generate_k8s_package() -> Module {
                             "UID is the unique in time and space value for this object".to_string(),
                         ),
                         default: None,
+                        validation: None,
+                        contracts: Vec::new(),
                     },
                 );
                 fields.insert(
@@ -715,6 +823,8 @@ pub fn generate_k8s_package() -> Module {
                                 .to_string(),
                         ),
                         default: None,
+                        validation: None,
+                        contracts: Vec::new(),
                     },
                 );
                 fields

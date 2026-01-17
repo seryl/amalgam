@@ -1,0 +1,208 @@
+[
+  {
+    "test_name": "same_module_references",
+    "input_modules": [
+      {
+        "name": "test.v1",
+        "types": [
+          "Pod",
+          "PodSpec"
+        ],
+        "references": [
+          {
+            "from_type": "Pod",
+            "to_type": "PodSpec",
+            "to_module": null
+          }
+        ]
+      }
+    ],
+    "generated_output": "# Module: test.v1\n\n{\n  Pod = {\n    spec\n      | PodSpec\n  },\n\n  PodSpec = { .. }\n}\n",
+    "expected_patterns": [
+      "Pod =",
+      "PodSpec =",
+      "spec"
+    ],
+    "found_patterns": [
+      "Pod =",
+      "PodSpec =",
+      "spec"
+    ],
+    "missing_patterns": [],
+    "unexpected_patterns": [],
+    "error": null
+  },
+  {
+    "test_name": "cross_module_references",
+    "input_modules": [
+      {
+        "name": "apps.v1",
+        "types": [
+          "Deployment"
+        ],
+        "references": [
+          {
+            "from_type": "Deployment",
+            "to_type": "ObjectMeta",
+            "to_module": "core.v1"
+          }
+        ]
+      },
+      {
+        "name": "core.v1",
+        "types": [
+          "ObjectMeta"
+        ],
+        "references": []
+      }
+    ],
+    "generated_output": "let objectMeta = import \"../../core/v1/ObjectMeta.ncl\" in\n\nDeployment = {\n  metadata\n    | objectMeta\n}\nObjectMeta = { .. }\n",
+    "expected_patterns": [
+      "Deployment =",
+      "ObjectMeta =",
+      "metadata",
+      "import"
+    ],
+    "found_patterns": [
+      "Deployment =",
+      "ObjectMeta =",
+      "metadata",
+      "import"
+    ],
+    "missing_patterns": [],
+    "unexpected_patterns": [],
+    "error": null
+  },
+  {
+    "test_name": "missing_reference",
+    "input_modules": [
+      {
+        "name": "test.v1",
+        "types": [
+          "TypeWithMissing"
+        ],
+        "references": [
+          {
+            "from_type": "TypeWithMissing",
+            "to_type": "NonExistent",
+            "to_module": "missing.v1"
+          }
+        ]
+      }
+    ],
+    "generated_output": "let nonExistent = import \"../../missing/v1/NonExistent.ncl\" in\n\nTypeWithMissing = {\n  missing\n    | nonExistent\n}\n",
+    "expected_patterns": [
+      "TypeWithMissing",
+      "Dyn"
+    ],
+    "found_patterns": [
+      "TypeWithMissing"
+    ],
+    "missing_patterns": [
+      "Dyn"
+    ],
+    "unexpected_patterns": [],
+    "error": null
+  },
+  {
+    "test_name": "circular_references",
+    "input_modules": [
+      {
+        "name": "a.v1",
+        "types": [
+          "TypeA"
+        ],
+        "references": [
+          {
+            "from_type": "TypeA",
+            "to_type": "TypeB",
+            "to_module": "b.v1"
+          }
+        ]
+      },
+      {
+        "name": "b.v1",
+        "types": [
+          "TypeB"
+        ],
+        "references": [
+          {
+            "from_type": "TypeB",
+            "to_type": "TypeA",
+            "to_module": "a.v1"
+          }
+        ]
+      }
+    ],
+    "generated_output": "let typeB = import \"../../b/v1/TypeB.ncl\" in\n\nTypeA = {\n  b_ref\n    | typeB\n}\nlet typeA = import \"../../a/v1/TypeA.ncl\" in\n\nTypeB = {\n  a_ref\n    | typeA\n}\n",
+    "expected_patterns": [
+      "TypeA",
+      "TypeB"
+    ],
+    "found_patterns": [
+      "TypeA",
+      "TypeB"
+    ],
+    "missing_patterns": [],
+    "unexpected_patterns": [],
+    "error": null
+  },
+  {
+    "test_name": "nested_references",
+    "input_modules": [
+      {
+        "name": "test.v1",
+        "types": [
+          "ComplexType"
+        ],
+        "references": [
+          {
+            "from_type": "ComplexType",
+            "to_type": "Another",
+            "to_module": "another.v1"
+          },
+          {
+            "from_type": "ComplexType",
+            "to_type": "External",
+            "to_module": "other.v1"
+          }
+        ]
+      },
+      {
+        "name": "other.v1",
+        "types": [
+          "External"
+        ],
+        "references": []
+      },
+      {
+        "name": "another.v1",
+        "types": [
+          "Another"
+        ],
+        "references": []
+      }
+    ],
+    "generated_output": "let another = import \"../../another/v1/Another.ncl\" in\nlet external = import \"../../other/v1/External.ncl\" in\n\nComplexType = {\n  array_ref\n    | Array another,\n  optional_ref\n    | external\n    | optional\n}\nExternal = { .. }\nAnother = { .. }\n",
+    "expected_patterns": [
+      "ComplexType",
+      "External",
+      "Another",
+      "optional_ref",
+      "array_ref"
+    ],
+    "found_patterns": [
+      "ComplexType",
+      "External",
+      "Another",
+      "optional_ref",
+      "array_ref"
+    ],
+    "missing_patterns": [],
+    "unexpected_patterns": [
+      "Unexpected lowercase: external",
+      "Unexpected lowercase: another"
+    ],
+    "error": null
+  }
+]

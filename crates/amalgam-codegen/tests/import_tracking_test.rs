@@ -24,6 +24,8 @@ fn test_import_tracking_same_module_references() -> Result<(), Box<dyn std::erro
                                 },
                                 required: false,
                                 default: None,
+                                validation: None,
+                                contracts: Vec::new(),
                                 description: Some("PostStart handler".to_string()),
                             },
                         )]
@@ -43,6 +45,8 @@ fn test_import_tracking_same_module_references() -> Result<(), Box<dyn std::erro
                                 ty: Type::String,
                                 required: false,
                                 default: None,
+                                validation: None,
+                                contracts: Vec::new(),
                                 description: Some("Exec command".to_string()),
                             },
                         )]

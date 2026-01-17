@@ -1,6 +1,7 @@
 //! CRD walker that produces uniform IR
 
 use super::{DependencyGraph, SchemaWalker, TypeRegistry, WalkerError};
+use crate::validation_extractor::ValidationExtractor;
 use amalgam_core::{
     ir::{Import, Module, TypeDefinition, IR},
     types::{Field, Type},
@@ -65,9 +66,39 @@ impl CRDWalker {
         let type_str = schema.get("type").and_then(|v| v.as_str());
 
         match type_str {
-            Some("string") => Ok(Type::String),
-            Some("number") => Ok(Type::Number),
-            Some("integer") => Ok(Type::Integer),
+            Some("string") => {
+                if ValidationExtractor::has_validation_rules(schema) {
+                    let constraints = ValidationExtractor::extract_validation_rules(schema);
+                    Ok(Type::Constrained {
+                        base_type: Box::new(Type::String),
+                        constraints,
+                    })
+                } else {
+                    Ok(Type::String)
+                }
+            }
+            Some("number") => {
+                if ValidationExtractor::has_validation_rules(schema) {
+                    let constraints = ValidationExtractor::extract_validation_rules(schema);
+                    Ok(Type::Constrained {
+                        base_type: Box::new(Type::Number),
+                        constraints,
+                    })
+                } else {
+                    Ok(Type::Number)
+                }
+            }
+            Some("integer") => {
+                if ValidationExtractor::has_validation_rules(schema) {
+                    let constraints = ValidationExtractor::extract_validation_rules(schema);
+                    Ok(Type::Constrained {
+                        base_type: Box::new(Type::Integer),
+                        constraints,
+                    })
+                } else {
+                    Ok(Type::Integer)
+                }
+            }
             Some("boolean") => Ok(Type::Bool),
             Some("null") => Ok(Type::Null),
 
@@ -78,7 +109,18 @@ impl CRDWalker {
                 } else {
                     Type::Any
                 };
-                Ok(Type::Array(Box::new(item_type)))
+                let array_type = Type::Array(Box::new(item_type));
+
+                // Check for array-specific validation rules
+                if ValidationExtractor::has_validation_rules(schema) {
+                    let constraints = ValidationExtractor::extract_validation_rules(schema);
+                    Ok(Type::Constrained {
+                        base_type: Box::new(array_type),
+                        constraints,
+                    })
+                } else {
+                    Ok(array_type)
+                }
             }
 
             Some("object") => {
@@ -103,6 +145,16 @@ impl CRDWalker {
                             .and_then(|v| v.as_str())
                             .map(String::from);
 
+                        // Extract validation rules from the property schema
+                        let validation = if ValidationExtractor::has_validation_rules(prop_schema) {
+                            Some(ValidationExtractor::extract_validation_rules(prop_schema))
+                        } else {
+                            None
+                        };
+
+                        // Extract contract rules for complex constraints
+                        let contracts = ValidationExtractor::extract_contract_rules(prop_schema);
+
                         fields.insert(
                             name.clone(),
                             Field {
@@ -110,6 +162,8 @@ impl CRDWalker {
                                 required: is_required,
                                 description,
                                 default: None,
+                                validation,
+                                contracts,
                             },
                         );
                     }
@@ -214,6 +268,8 @@ impl CRDWalker {
                                         description: field
                                             .description
                                             .or_else(|| existing_field.description.clone()),
+                                        validation: None,
+                                        contracts: Vec::new(),
                                     },
                                 );
                             }

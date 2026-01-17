@@ -11,25 +11,8 @@ type_pattern = "*"
 from_field = "$schema"
 to_field = "schema_field"
 
-[[field_renames]]
-type_pattern = "*"
-from_field = "type"
-to_field = "type_field"
-
-[[field_renames]]
-type_pattern = "*"
-from_field = "enum"
-to_field = "enum_field"
-
-[[field_renames]]
-type_pattern = "*"
-from_field = "const"
-to_field = "const_field"
-
-[[field_renames]]
-type_pattern = "*"
-from_field = "default"
-to_field = "default_value"
+# Note: Fields like "type", "enum", "const", "default" are kept with their original names
+# and quoted by the Nickel codegen when needed (e.g., "type" | String)
 
 # Handle OpenAPI specific fields
 [[field_renames]]

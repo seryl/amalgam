@@ -32,6 +32,8 @@ fn create_test_ir_with_k8s_refs() -> IR {
                         required: true,
                         description: None,
                         default: None,
+                        validation: None,
+                        contracts: Vec::new(),
                     },
                 ),
                 (
@@ -41,6 +43,8 @@ fn create_test_ir_with_k8s_refs() -> IR {
                         required: true,
                         description: None,
                         default: None,
+                        validation: None,
+                        contracts: Vec::new(),
                     },
                 ),
             ]
@@ -67,6 +71,8 @@ fn create_test_ir_with_k8s_refs() -> IR {
                         required: false,
                         description: Some("PostStart hook".to_string()),
                         default: None,
+                        validation: None,
+                        contracts: Vec::new(),
                     },
                 ),
                 (
@@ -79,6 +85,8 @@ fn create_test_ir_with_k8s_refs() -> IR {
                         required: false,
                         description: Some("PreStop hook".to_string()),
                         default: None,
+                        validation: None,
+                        contracts: Vec::new(),
                     },
                 ),
             ]
@@ -105,6 +113,8 @@ fn create_test_ir_with_k8s_refs() -> IR {
                                 required: false,
                                 description: None,
                                 default: None,
+                                validation: None,
+                                contracts: Vec::new(),
                             },
                         )]
                         .into_iter()
@@ -114,6 +124,8 @@ fn create_test_ir_with_k8s_refs() -> IR {
                     required: false,
                     description: None,
                     default: None,
+                    validation: None,
+                    contracts: Vec::new(),
                 },
             )]
             .into_iter()
@@ -149,6 +161,8 @@ fn create_test_ir_with_k8s_refs() -> IR {
                         required: true,
                         description: Some("List of containers".to_string()),
                         default: None,
+                        validation: None,
+                        contracts: Vec::new(),
                     },
                 ),
                 (
@@ -161,6 +175,8 @@ fn create_test_ir_with_k8s_refs() -> IR {
                         required: false,
                         description: Some("Lifecycle configuration".to_string()),
                         default: None,
+                        validation: None,
+                        contracts: Vec::new(),
                     },
                 ),
             ]
@@ -252,6 +268,8 @@ fn test_same_module_import_resolution() -> Result<(), Box<dyn std::error::Error>
                     required: true,
                     description: None,
                     default: None,
+                    validation: None,
+                    contracts: Vec::new(),
                 },
             )]
             .into_iter()

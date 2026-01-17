@@ -48,6 +48,8 @@ fn test_crd_with_k8s_type_references() -> Result<(), Box<dyn std::error::Error>>
                             required: false,
                             description: None,
                             default: None,
+                            validation: None,
+                            contracts: Vec::new(),
                         },
                     ),
                     (
@@ -65,6 +67,8 @@ fn test_crd_with_k8s_type_references() -> Result<(), Box<dyn std::error::Error>>
                                             required: false,
                                             description: None,
                                             default: None,
+                                            validation: None,
+                                            contracts: Vec::new(),
                                         },
                                     ),
                                     (
@@ -78,6 +82,8 @@ fn test_crd_with_k8s_type_references() -> Result<(), Box<dyn std::error::Error>>
                                             required: false,
                                             description: None,
                                             default: None,
+                                            validation: None,
+                                            contracts: Vec::new(),
                                         },
                                     ),
                                 ]),
@@ -86,6 +92,8 @@ fn test_crd_with_k8s_type_references() -> Result<(), Box<dyn std::error::Error>>
                             required: true,
                             description: None,
                             default: None,
+                            validation: None,
+                            contracts: Vec::new(),
                         },
                     ),
                 ]),
@@ -165,6 +173,8 @@ fn test_crd_with_mixed_type_references() -> Result<(), Box<dyn std::error::Error
                                 required: true,
                                 description: None,
                                 default: None,
+                                validation: None,
+                                contracts: Vec::new(),
                             },
                         ),
                         (
@@ -174,6 +184,8 @@ fn test_crd_with_mixed_type_references() -> Result<(), Box<dyn std::error::Error
                                 required: true,
                                 description: None,
                                 default: None,
+                                validation: None,
+                                contracts: Vec::new(),
                             },
                         ),
                     ]),
@@ -198,6 +210,8 @@ fn test_crd_with_mixed_type_references() -> Result<(), Box<dyn std::error::Error
                                 required: false,
                                 description: None,
                                 default: None,
+                                validation: None,
+                                contracts: Vec::new(),
                             },
                         ),
                         (
@@ -210,6 +224,8 @@ fn test_crd_with_mixed_type_references() -> Result<(), Box<dyn std::error::Error
                                 required: true,
                                 description: None,
                                 default: None,
+                                validation: None,
+                                contracts: Vec::new(),
                             },
                         ),
                         (
@@ -223,6 +239,8 @@ fn test_crd_with_mixed_type_references() -> Result<(), Box<dyn std::error::Error
                                 required: false,
                                 description: None,
                                 default: None,
+                                validation: None,
+                                contracts: Vec::new(),
                             },
                         ),
                     ]),
@@ -304,6 +322,8 @@ fn test_crd_with_unresolvable_references() -> Result<(), Box<dyn std::error::Err
                             required: false,
                             description: None,
                             default: None,
+                            validation: None,
+                            contracts: Vec::new(),
                         },
                     ),
                     // This type is not imported, should remain as-is
@@ -317,6 +337,8 @@ fn test_crd_with_unresolvable_references() -> Result<(), Box<dyn std::error::Err
                             required: false,
                             description: None,
                             default: None,
+                            validation: None,
+                            contracts: Vec::new(),
                         },
                     ),
                 ]),
@@ -345,11 +367,12 @@ fn test_crd_with_unresolvable_references() -> Result<(), Box<dyn std::error::Err
     );
     assert_eq!(resolved, "meta");
 
-    // Non-imported type should be returned as-is
+    // Non-imported type with special characters should fall back to Dyn
+    // This prevents generating broken Nickel code for unresolved references
     let resolved = resolver.resolve("io.k8s.api.core.v1.PodSpec", &module, &context);
     assert_eq!(
-        resolved, "io.k8s.api.core.v1.PodSpec",
-        "Non-imported type should be returned unchanged"
+        resolved, "Dyn",
+        "Non-imported type with dots should fall back to Dyn"
     );
     Ok(())
 }
@@ -390,6 +413,8 @@ fn test_crd_with_versioned_imports() -> Result<(), Box<dyn std::error::Error>> {
                             required: false,
                             description: None,
                             default: None,
+                            validation: None,
+                            contracts: Vec::new(),
                         },
                     ),
                     // Reference to v1beta1 type (same version)
@@ -403,6 +428,8 @@ fn test_crd_with_versioned_imports() -> Result<(), Box<dyn std::error::Error>> {
                             required: false,
                             description: None,
                             default: None,
+                            validation: None,
+                            contracts: Vec::new(),
                         },
                     ),
                 ]),

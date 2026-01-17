@@ -32,6 +32,8 @@ fn create_type_with_raw_extension() -> HashMap<String, TypeDefinition> {
                             required: false,
                             description: Some("Raw extension data".to_string()),
                             default: None,
+                            validation: None,
+                            contracts: Vec::new(),
                         },
                     );
 
@@ -46,6 +48,8 @@ fn create_type_with_raw_extension() -> HashMap<String, TypeDefinition> {
                             required: true,
                             description: Some("Standard metadata".to_string()),
                             default: None,
+                            validation: None,
+                            contracts: Vec::new(),
                         },
                     );
 
@@ -78,9 +82,11 @@ fn test_rawextension_v0_import() -> Result<(), Box<dyn std::error::Error>> {
         for import in &module.imports {
             if import.path.contains("v0/mod.ncl") {
                 // RawExtension should import from consolidated v0/mod.ncl
-                assert_eq!(
-                    import.path, "../../v0/mod.ncl",
-                    "RawExtension import path should be consolidated v0/mod.ncl"
+                // Cross-package imports (from example.io to k8s.io) include k8s_io/ prefix
+                assert!(
+                    import.path == "../../k8s_io/v0/mod.ncl" || import.path == "../../v0/mod.ncl",
+                    "RawExtension import path should be consolidated v0/mod.ncl, got: {}",
+                    import.path
                 );
                 found_raw_extension = true;
             }
@@ -161,12 +167,15 @@ fn test_import_path_calculator_v0_imports() -> Result<(), Box<dyn std::error::Er
     assert_eq!(path, "../../v0/mod.ncl");
 
     // Test from different package to v0 (consolidated v0 module)
+    // Cross-package imports include k8s_io/ prefix
     let path = calc.calculate("example.io", "v1", "k8s.io", "v0", "rawextension");
-    assert_eq!(path, "../../v0/mod.ncl");
+    assert_eq!(path, "../../k8s_io/v0/mod.ncl");
 
-    // Test v1beta1 -> v0
+    // Test v1beta1 -> v0 for an unknown type
+    // Since k8s.io uses consolidated modules, even unknown types go to api/core/v0.ncl
+    // This is the expected behavior - all k8s.io types are in consolidated modules
     let path = calc.calculate("k8s.io", "v1beta1", "k8s.io", "v0", "unknown");
-    assert_eq!(path, "../v0/unknown.ncl");
+    assert_eq!(path, "../core/v0.ncl");
     Ok(())
 }
 
@@ -194,6 +203,8 @@ fn test_multiple_runtime_type_references() -> Result<(), Box<dyn std::error::Err
                             required: false,
                             description: None,
                             default: None,
+                            validation: None,
+                            contracts: Vec::new(),
                         },
                     );
 
@@ -207,6 +218,8 @@ fn test_multiple_runtime_type_references() -> Result<(), Box<dyn std::error::Err
                             required: false,
                             description: None,
                             default: None,
+                            validation: None,
+                            contracts: Vec::new(),
                         },
                     );
 

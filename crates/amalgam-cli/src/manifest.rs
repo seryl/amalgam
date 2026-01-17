@@ -539,6 +539,11 @@ pub struct ManifestConfig {
     /// When set, generates Path dependencies instead of Index dependencies
     #[serde(default)]
     pub local_package_prefix: Option<String>,
+
+    /// Enable debug output (writes additional files like generated.ncl)
+    /// This file concatenates all modules and is not valid Nickel syntax.
+    #[serde(default)]
+    pub debug: bool,
 }
 
 /// Simplified package source definition
@@ -921,13 +926,26 @@ impl Manifest {
         // Parse the generated string and split into individual files
         // The generated string contains module boundaries that we need to parse
 
-        // First, write the consolidated file for debugging
-        let output_file = output.join("generated.ncl");
-        fs::write(&output_file, generated)?;
-        info!(
-            "Generated consolidated Nickel code at: {}",
-            output_file.display()
-        );
+        // Only write the consolidated debug file when debug mode is enabled
+        // Note: This file is NOT valid Nickel syntax - it concatenates multiple modules
+        // for debugging purposes. The individual module files are the valid outputs.
+        if self.config.debug {
+            let output_file = output.join("generated.ncl");
+            let debug_header = r#"# =============================================================================
+# DEBUG FILE - NOT VALID NICKEL SYNTAX
+# =============================================================================
+# This file concatenates all generated modules for debugging purposes.
+# It is NOT meant to be imported or evaluated as Nickel code.
+# Use the individual module files (e.g., api/core/v1.ncl) instead.
+# =============================================================================
+
+"#;
+            fs::write(&output_file, format!("{}{}", debug_header, generated))?;
+            info!(
+                "Generated consolidated Nickel code at: {}",
+                output_file.display()
+            );
+        }
 
         // Split the generated content by module markers
         let modules = self.split_modules_by_marker(generated)?;
@@ -1010,60 +1028,19 @@ impl Manifest {
     fn map_module_to_file_path(&self, module_name: &str, output: &Path) -> Option<PathBuf> {
         // Handle different module name patterns
         match module_name {
-            // Core k8s.io modules with API groups
+            // Core k8s.io modules
             name if name.starts_with("k8s.io.") => {
-                let suffix = name.strip_prefix("k8s.io.").unwrap();
-                let parts: Vec<&str> = suffix.split('.').collect();
-
-                if parts.len() == 1 && parts[0].starts_with('v') {
-                    // Simple version like k8s.io.v1 -> api/core/v1.ncl
-                    Some(
-                        output
-                            .join("api")
-                            .join("core")
-                            .join(format!("{}.ncl", parts[0])),
-                    )
-                } else if parts.len() >= 2 {
-                    // API group with version like k8s.io.authentication.v1 -> api/authentication/v1.ncl
-                    let api_group = parts[0];
-                    let version = parts[parts.len() - 1];
-                    Some(
-                        output
-                            .join("api")
-                            .join(api_group)
-                            .join(format!("{}.ncl", version)),
-                    )
-                } else {
-                    // Fallback for unexpected patterns
-                    Some(output.join(format!("{}.ncl", suffix)))
-                }
-            }
-
-            // Apimachinery meta types with version (e.g., apimachinery.pkg.apis.meta.v1)
-            name if name.starts_with("apimachinery.pkg.apis.meta.") => {
-                let version = name.strip_prefix("apimachinery.pkg.apis.meta.").unwrap();
+                let version = name.strip_prefix("k8s.io.").unwrap();
+                // Map to api/core/{version}.ncl for main k8s API versions
                 Some(
                     output
-                        .join("apimachinery.pkg.apis")
-                        .join("meta")
-                        .join(version)
-                        .join("mod.ncl"),
+                        .join("api")
+                        .join("core")
+                        .join(format!("{}.ncl", version)),
                 )
             }
 
-            // Apimachinery runtime types with version
-            name if name.starts_with("apimachinery.pkg.apis.runtime.") => {
-                let version = name.strip_prefix("apimachinery.pkg.apis.runtime.").unwrap();
-                Some(
-                    output
-                        .join("apimachinery.pkg.apis")
-                        .join("runtime")
-                        .join(version)
-                        .join("mod.ncl"),
-                )
-            }
-
-            // Legacy apimachinery runtime types (backward compatibility)
+            // Apimachinery runtime types
             "apimachinery.pkg.runtime" => Some(output.join("apimachinery.pkg").join("runtime.ncl")),
 
             // Apimachinery utility types
@@ -1123,6 +1100,30 @@ impl Manifest {
             // Version module (special case)
             "k8s.io.version" => Some(output.join("version.ncl")),
 
+            // Apimachinery meta types (ObjectMeta, ListMeta, etc.)
+            name if name.starts_with("apimachinery.pkg.apis.meta.") => {
+                let version = name.strip_prefix("apimachinery.pkg.apis.meta.").unwrap();
+                Some(
+                    output
+                        .join("apimachinery.pkg.apis")
+                        .join("meta")
+                        .join(version)
+                        .join("mod.ncl"),
+                )
+            }
+
+            // Apimachinery runtime types (v0)
+            name if name.starts_with("apimachinery.pkg.apis.runtime.") => {
+                let version = name.strip_prefix("apimachinery.pkg.apis.runtime.").unwrap();
+                Some(
+                    output
+                        .join("apimachinery.pkg.apis")
+                        .join("runtime")
+                        .join(version)
+                        .join("mod.ncl"),
+                )
+            }
+
             // Fallback: create a direct mapping for unrecognized modules
             _ => {
                 warn!("Unrecognized module pattern: {}", module_name);
@@ -1144,93 +1145,152 @@ impl Manifest {
 
     /// Generate mod.ncl files for package hierarchy
     fn generate_mod_ncl_hierarchy(&self, output: &Path) -> Result<()> {
-        // Special handling for k8s_io package to ensure proper exports
-        if output.file_name() == Some(std::ffi::OsStr::new("k8s_io")) {
-            self.generate_k8s_root_mod(output)?;
-        } else {
-            // For other packages, generate root mod.ncl with version exports
-            self.generate_package_root_mod(output)?;
-        }
-
+        // Recursively generate mod.ncl for all subdirectories
+        self.generate_mod_ncl_recursive(output)?;
         Ok(())
     }
 
-    /// Generate the root mod.ncl for non-k8s packages with version exports
-    fn generate_package_root_mod(&self, output: &Path) -> Result<()> {
-        let mut exports = Vec::new();
+    /// Recursively generate mod.ncl files for directories
+    fn generate_mod_ncl_recursive(&self, dir: &Path) -> Result<()> {
+        // Generate mod.ncl for this directory
+        self.generate_package_mod(dir)?;
 
-        // Add comment header
-        let package_name = output
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("package");
-        exports.push(format!("# {} Package Module", package_name));
-        exports.push("# Auto-generated - do not edit manually".to_string());
-        exports.push(String::new());
-        exports.push("{".to_string());
-
-        // Find all version directories in the package
-        let mut versions = Vec::new();
-        if let Ok(entries) = fs::read_dir(output) {
+        // Recursively process subdirectories
+        if let Ok(entries) = fs::read_dir(dir) {
             for entry in entries.flatten() {
                 let path = entry.path();
                 if path.is_dir() {
-                    if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                        // Check if it's a version directory (starts with 'v')
-                        if name.starts_with('v') && name.len() > 1 {
-                            // Check if it has a mod.ncl file
-                            if path.join("mod.ncl").exists() {
-                                versions.push(name.to_string());
-                            }
+                    let name = entry.file_name();
+                    let name_str = name.to_string_lossy();
+
+                    // Skip hidden directories and special directories
+                    if !name_str.starts_with('.') && name_str != "target" {
+                        // Check if directory contains .ncl files or subdirectories
+                        if Self::contains_ncl_content(&path)? {
+                            self.generate_mod_ncl_recursive(&path)?;
                         }
                     }
                 }
             }
         }
 
-        // Sort versions for consistent output
-        versions.sort();
+        Ok(())
+    }
 
-        // Generate exports for each version
-        for version in &versions {
-            exports.push(format!("  {} = import \"./{}/mod.ncl\",", version, version));
+    /// Check if a directory contains .ncl files or subdirectories with .ncl files
+    fn contains_ncl_content(dir: &Path) -> Result<bool> {
+        if let Ok(entries) = fs::read_dir(dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                let name = entry.file_name();
+                let name_str = name.to_string_lossy();
+
+                // Skip special files
+                if name_str == "mod.ncl"
+                    || name_str == "Nickel-pkg.ncl"
+                    || name_str == "generated.ncl"
+                {
+                    continue;
+                }
+
+                if path.is_dir() {
+                    if Self::contains_ncl_content(&path)? {
+                        return Ok(true);
+                    }
+                } else if path.extension().and_then(|s| s.to_str()) == Some("ncl") {
+                    return Ok(true);
+                }
+            }
+        }
+        Ok(false)
+    }
+
+    /// Generate a mod.ncl file with proper exports for any package
+    fn generate_package_mod(&self, output: &Path) -> Result<()> {
+        // Special handling for k8s_io package
+        if output.file_name() == Some(std::ffi::OsStr::new("k8s_io")) {
+            return self.generate_k8s_root_mod(output);
         }
 
-        // Add version shortcuts for common patterns
-        if exports.len() > 4 {
-            // Has actual version exports
-            exports.push(String::new());
-            exports.push("  # Version shortcuts for convenience".to_string());
+        // For other packages, discover subdirectories and generate exports
+        let mut exports = Vec::new();
 
-            // Find the latest stable version (v1 preferred over v1beta1, v1alpha1)
-            let stable_versions = ["v1", "v2", "v3"];
-            for v in &stable_versions {
-                if versions.contains(&v.to_string()) {
-                    exports.push(format!("  latest = import \"./{}/mod.ncl\",", v));
-                    break;
+        // Add comment header
+        exports.push("# Package module".to_string());
+        exports.push("# Auto-generated - do not edit manually".to_string());
+        exports.push("".to_string());
+        exports.push("{".to_string());
+
+        // Scan for subdirectories and .ncl files
+        let mut entries = Vec::new();
+
+        if let Ok(dir_entries) = fs::read_dir(output) {
+            for entry in dir_entries.flatten() {
+                let path = entry.path();
+                let file_name = entry.file_name();
+                let name_str = file_name.to_string_lossy();
+
+                // Skip special files
+                if name_str == "mod.ncl"
+                    || name_str == "Nickel-pkg.ncl"
+                    || name_str == "generated.ncl"
+                {
+                    continue;
+                }
+
+                if path.is_dir() {
+                    // Check if the directory has a mod.ncl
+                    if path.join("mod.ncl").exists() {
+                        // Sanitize the name for Nickel identifier
+                        let sanitized = name_str.replace(['.', '-'], "_");
+                        entries.push((
+                            sanitized.clone(),
+                            format!("  {} = import \"./{}/mod.ncl\",", sanitized, name_str),
+                        ));
+                    }
+                } else if path.extension().and_then(|s| s.to_str()) == Some("ncl") {
+                    // Include .ncl files directly
+                    let stem = path
+                        .file_stem()
+                        .and_then(|s| s.to_str())
+                        .unwrap_or(&name_str);
+                    let sanitized = stem.replace(['.', '-'], "_");
+                    entries.push((
+                        sanitized.clone(),
+                        format!("  {} = import \"./{}\",", sanitized, name_str),
+                    ));
                 }
             }
         }
 
+        // Sort entries for consistent output
+        entries.sort_by(|a, b| a.0.cmp(&b.0));
+
+        // Add all exports
+        for (_, export) in entries {
+            exports.push(export);
+        }
+
+        // Close the export record
         exports.push("}".to_string());
 
-        // Write the mod.ncl file
         let mod_content = exports.join("\n");
         let mod_file = output.join("mod.ncl");
         fs::write(&mod_file, mod_content)?;
-        info!("Generated package root mod.ncl with version exports");
+        info!("Generated mod.ncl with exports for: {:?}", output);
 
         Ok(())
     }
 
     /// Generate the root mod.ncl for k8s_io package with proper exports
     fn generate_k8s_root_mod(&self, output: &Path) -> Result<()> {
-        let mut exports = vec![
-            "# Kubernetes API Package Module".to_string(),
-            "# Auto-generated - do not edit manually".to_string(),
-            "".to_string(),
-            "{".to_string(),
-        ];
+        let mut exports = Vec::new();
+
+        // Add comment header
+        exports.push("# Kubernetes API Package Module".to_string());
+        exports.push("# Auto-generated - do not edit manually".to_string());
+        exports.push("".to_string());
+        exports.push("{".to_string());
 
         // Export main API structure
         if output.join("api/mod.ncl").exists() {
@@ -1277,67 +1337,45 @@ impl Manifest {
         self.ensure_v0_types(output)?;
         exports.push("  v0 = import \"./v0.ncl\",".to_string());
 
-        // Dynamically find all versions across all API groups
-        let mut version_map: std::collections::HashMap<String, Vec<String>> =
-            std::collections::HashMap::new();
-
-        // Walk through api directory to find all version files
-        if let Ok(api_dir) = fs::read_dir(output.join("api")) {
-            for group_entry in api_dir.flatten() {
-                let group_path = group_entry.path();
-                if group_path.is_dir() {
-                    // Look for version files in this group
-                    if let Ok(entries) = fs::read_dir(&group_path) {
-                        for entry in entries.flatten() {
-                            if let Some(filename) = entry.file_name().to_str() {
-                                if filename.ends_with(".ncl") && filename.starts_with("v") {
-                                    let version = filename.trim_end_matches(".ncl");
-                                    let relative_path = format!(
-                                        "api/{}/{}",
-                                        group_path.file_name().unwrap().to_str().unwrap(),
-                                        filename
-                                    );
-                                    version_map
-                                        .entry(version.to_string())
-                                        .or_default()
-                                        .push(relative_path);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+        // v1 - Core API
+        if output.join("api/core/v1.ncl").exists() {
+            exports.push("  v1 = import \"./api/core/v1.ncl\",".to_string());
         }
 
-        // Sort versions in a logical order: v1, v2, v1alpha1, v1alpha2, v1beta1, etc.
-        let mut versions: Vec<String> = version_map.keys().cloned().collect();
-        versions.sort_by(|a, b| {
-            // Custom sort to put stable versions first, then alpha, then beta
-            let a_stable = !a.contains("alpha") && !a.contains("beta");
-            let b_stable = !b.contains("alpha") && !b.contains("beta");
+        // v2 - Autoscaling
+        if output.join("api/autoscaling/v2.ncl").exists() {
+            exports.push("  v2 = import \"./api/autoscaling/v2.ncl\",".to_string());
+        }
 
-            match (a_stable, b_stable) {
-                (true, false) => std::cmp::Ordering::Less,
-                (false, true) => std::cmp::Ordering::Greater,
-                _ => a.cmp(b),
-            }
-        });
+        // Alpha/Beta versions - check multiple locations
+        let version_locations = [
+            (
+                "v1alpha1",
+                vec![
+                    "api/apiserverinternal/v1alpha1.ncl",
+                    "api/certificates/v1alpha1.ncl",
+                ],
+            ),
+            ("v1alpha2", vec!["api/coordination/v1alpha2.ncl"]),
+            ("v1alpha3", vec!["api/resource/v1alpha3.ncl"]),
+            (
+                "v1beta1",
+                vec![
+                    "api/admissionregistration/v1beta1.ncl",
+                    "api/certificates/v1beta1.ncl",
+                    "api/coordination/v1beta1.ncl",
+                ],
+            ),
+            ("v1beta2", vec!["api/resource/v1beta2.ncl"]),
+        ];
 
-        // Export each version, using the first location found (prefer core for v1)
-        for version in &versions {
-            if let Some(locations) = version_map.get(version) {
-                let location = if version == "v1" {
-                    // Prefer core/v1 for the main v1 export
-                    locations
-                        .iter()
-                        .find(|l| l.contains("core/v1"))
-                        .or_else(|| locations.first())
-                        .unwrap()
-                } else {
-                    // Use first location for other versions
-                    &locations[0]
-                };
-                exports.push(format!("  {} = import \"./{}\",", version, location));
+        for (version, paths) in version_locations {
+            for path in paths {
+                let full_path = output.join(path);
+                if full_path.exists() {
+                    exports.push(format!("  {} = import \"./{}\",", version, path));
+                    break; // Use first found location for each version
+                }
             }
         }
 
@@ -1358,31 +1396,31 @@ impl Manifest {
 
         // Check if we need to create v0.ncl
         if !v0_path.exists() {
-            let v0_content = r#"# Unversioned runtime types for Kubernetes
+            let v0_content = "# Unversioned runtime types for Kubernetes
 # These types are used across multiple API versions
 
 {
   # IntOrString is a type that can hold either an integer or a string
   # In Nickel, we represent this as a String type with a contract
   IntOrString = String,
-  
+
   # RawExtension is used to hold arbitrary JSON data
   # It can contain any valid JSON/Nickel value
   RawExtension = {
     ..
   },
-  
+
   # Type contracts for validation
   contracts = {
     # Contract for IntOrString - accepts both numbers (as strings) and strings
     intOrString = fun value =>
       std.is_string value,
-    
+
     # Contract for RawExtension - accepts any record
     rawExtension = fun value =>
       std.is_record value || value == null,
   },
-}"#;
+}";
 
             fs::write(&v0_path, v0_content)?;
             info!("Created v0.ncl with unversioned runtime types");
@@ -1397,19 +1435,82 @@ impl Manifest {
         normalized: &NormalizedPackage,
         output_path: &Path,
     ) -> Result<()> {
-        // Generate Nickel-pkg.ncl using domain and name
+        // Detect dependencies by scanning generated files for k8s_io imports
+        let mut dependencies = Vec::new();
+        let package_name_lower = normalized.name.to_lowercase();
+
+        // Don't add k8s_io as dependency to k8s_io itself
+        if !package_name_lower.contains("k8s") {
+            // Check if any generated files import k8s_io
+            let mut has_k8s_dep = false;
+            if let Ok(entries) = fs::read_dir(output_path) {
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    if path.extension().is_some_and(|e| e == "ncl") {
+                        if let Ok(content) = fs::read_to_string(&path) {
+                            if content.contains("k8s_io/") || content.contains("k8s_io.") {
+                                has_k8s_dep = true;
+                                break;
+                            }
+                        }
+                    } else if path.is_dir() {
+                        // Check subdirectories too
+                        if let Ok(subentries) = fs::read_dir(&path) {
+                            for subentry in subentries.flatten() {
+                                if subentry.path().extension().is_some_and(|e| e == "ncl") {
+                                    if let Ok(content) = fs::read_to_string(subentry.path()) {
+                                        if content.contains("k8s_io/") || content.contains("k8s_io.") {
+                                            has_k8s_dep = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if has_k8s_dep {
+                        break;
+                    }
+                }
+            }
+
+            if has_k8s_dep {
+                dependencies.push(("k8s_io".to_string(), "'Path \"../k8s_io\"".to_string()));
+            }
+        }
+
+        // Build dependencies section
+        let deps_section = if dependencies.is_empty() {
+            String::new()
+        } else {
+            let mut deps = String::from("  dependencies = {\n");
+            for (name, value) in &dependencies {
+                deps.push_str(&format!("    {} = {},\n", name, value));
+            }
+            deps.push_str("  },\n");
+            deps
+        };
+
+        // Generate Nickel-pkg.ncl with all required fields
         let manifest_content = format!(
-            r#"{{
+            r#"# Nickel Package Manifest
+# Generated by Amalgam
+
+{{
   name = "{}",
   version = "0.1.0",
+  minimal_nickel_version = "1.9.0",
+  authors = ["amalgam"],
   description = {},
-}}"#,
+{}}} | std.package.Manifest
+"#,
             normalized.name,
             normalized
                 .description
                 .as_ref()
-                .map(|d| format!("\"{}\"", d))
-                .unwrap_or_else(|| "null".to_string()),
+                .map(|d| format!("\"{}\"", d.replace('"', "\\\"")))
+                .unwrap_or_else(|| "\"Auto-generated Nickel type definitions\"".to_string()),
+            deps_section,
         );
 
         let manifest_path = output_path.join("Nickel-pkg.ncl");
@@ -1456,105 +1557,40 @@ impl Manifest {
             module.apply_special_cases(&special_cases);
 
             // Normalize module names for k8s types
-            // Convert io.k8s.api.<group>.<version> -> k8s.io.<group>.<version>
-            // Convert io.k8s.api.core.v1 -> k8s.io.v1 (core is special - no group in output)
-            // Convert io.k8s.apimachinery.pkg.apis.meta.v1 -> k8s.io.v1 (meta goes to core)
-            info!("Checking module for normalization: {}", module.name);
+            // Convert io.k8s.apimachinery.pkg.apis.meta.v1 -> k8s.io.v1
+            // Convert io.k8s.api.core.v1 -> k8s.io.v1
+            // Also handle cases without io.k8s prefix (e.g., apimachinery.pkg.apis.meta.v1)
             if module.name.starts_with("io.k8s.") {
-                info!("Module {} starts with io.k8s.", module.name);
                 if module.name.starts_with("io.k8s.api.") {
-                    // Extract API group and version
-                    let api_part = module.name.strip_prefix("io.k8s.api.").unwrap_or("");
-                    let parts: Vec<&str> = api_part.split('.').collect();
-
-                    if parts.len() >= 2 {
-                        let api_group = parts[0];
-                        let version = parts[parts.len() - 1];
-
+                    // Extract version from the end
+                    if let Some(version_idx) = module.name.rfind('.') {
+                        let version = &module.name[version_idx + 1..];
                         if version.starts_with('v') {
-                            // Special case: core API group doesn't appear in module name
-                            if api_group == "core" {
-                                info!(
-                                    "Normalizing core module: {} -> k8s.io.{}",
-                                    module.name, version
-                                );
-                                module.name = format!("k8s.io.{}", version);
-                            } else {
-                                // Keep API group in module name
-                                info!(
-                                    "Normalizing API group module: {} -> k8s.io.{}.{}",
-                                    module.name, api_group, version
-                                );
-                                module.name = format!("k8s.io.{}.{}", api_group, version);
-                            }
+                            module.name = format!("k8s.io.{}", version);
                         }
                     }
                 } else if module.name.starts_with("io.k8s.apimachinery") {
-                    // Handle apimachinery types - preserve in apimachinery.pkg.apis structure
+                    // Handle apimachinery types - extract version if present
                     let parts: Vec<&str> = module.name.split('.').collect();
-                    // Look for version after "meta" or at the end
-                    if module.name.contains("meta") {
-                        if let Some(version) = parts.iter().find(|&&p| p.starts_with('v')) {
-                            // Meta types go to apimachinery.pkg.apis.meta.v1
-                            module.name = format!("apimachinery.pkg.apis.meta.{}", version);
-                        }
-                    } else if module.name.contains("runtime") || module.name.contains("util") {
-                        // Runtime/util types stay in apimachinery
-                        module.name = "apimachinery.pkg.apis.runtime.v0".to_string();
-                    } else if let Some(version) = parts.iter().find(|&&p| p.starts_with('v')) {
-                        // Other versioned apimachinery types
-                        module.name = format!("apimachinery.pkg.apis.meta.{}", version);
-                    }
-                }
-            } else if module.name.starts_with("apimachinery.") {
-                // Handle apimachinery modules without the io.k8s prefix
-                let parts: Vec<&str> = module.name.split('.').collect();
-                if module.name.contains("meta") {
                     if let Some(version) = parts.iter().find(|&&p| p.starts_with('v')) {
-                        module.name = format!("apimachinery.pkg.apis.meta.{}", version);
+                        module.name = format!("k8s.io.{}", version);
+                    } else if module.name.contains("runtime") || module.name.contains("util") {
+                        // Unversioned runtime/util types go to v0
+                        module.name = "k8s.io.v0".to_string();
                     }
-                } else if let Some(version) = parts.iter().find(|&&p| p.starts_with('v')) {
-                    module.name = format!("apimachinery.pkg.apis.meta.{}", version);
                 }
-            } else if module.name.starts_with("api.") {
-                // Handle k8s API modules without the io.k8s prefix
-                // Format is: api.<group>.<version>
-                let api_part = module.name.strip_prefix("api.").unwrap_or("");
-                let parts: Vec<&str> = api_part.split('.').collect();
-
-                if parts.len() >= 2 {
-                    let api_group = parts[0];
-                    let version = parts[parts.len() - 1];
-
-                    if version.starts_with('v') {
-                        // Special case: core API group doesn't appear in module name
-                        if api_group == "core" {
-                            info!(
-                                "Normalizing core module: {} -> k8s.io.{}",
-                                module.name, version
-                            );
-                            module.name = format!("k8s.io.{}", version);
-                        } else {
-                            // Keep API group in module name
-                            info!(
-                                "Normalizing API group module: {} -> k8s.io.{}.{}",
-                                module.name, api_group, version
-                            );
-                            module.name = format!("k8s.io.{}.{}", api_group, version);
-                        }
-                    }
+            } else if module.name.starts_with("apimachinery.pkg.apis.meta.") {
+                // Preserve apimachinery meta modules (ObjectMeta, ListMeta, etc.)
+                // These need their own module so imports resolve correctly
+                // Module name stays as-is: apimachinery.pkg.apis.meta.v1
+            } else if module.name.starts_with("apimachinery.") || module.name.starts_with("api.") {
+                // Handle other k8s modules without the io.k8s prefix
+                // These come from the TypeRegistry when parsing OpenAPI
+                let parts: Vec<&str> = module.name.split('.').collect();
+                if let Some(version) = parts.iter().find(|&&p| p.starts_with('v')) {
+                    module.name = format!("k8s.io.{}", version);
                 }
             }
-        }
-
-        // Debug: Check module names after normalization
-        info!("Processed modules after normalization:");
-        for module in &processed_modules {
-            info!(
-                "  Module: {} with {} types",
-                module.name,
-                module.types.len()
-            );
         }
 
         // Phase 1: Complete analysis using CompilationUnit

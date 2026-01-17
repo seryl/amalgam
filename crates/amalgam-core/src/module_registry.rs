@@ -291,6 +291,57 @@ impl ModuleRegistry {
         self.modules.get(module_name)
     }
 
+    /// Calculate the filesystem depth of a module based on how map_module_to_file_path
+    /// would lay out the file. This is critical for generating correct relative import paths.
+    ///
+    /// The depth is the number of directory levels from the package root to the file.
+    /// For example, api/core/v1.ncl has depth 2 (api, core directories).
+    fn calculate_module_filesystem_depth(module_name: &str) -> usize {
+        match module_name {
+            // Core k8s.io modules: api/core/{version}.ncl = 2 directory levels
+            name if name.starts_with("k8s.io.") => 2,
+
+            // Apimachinery runtime/util/api types
+            "apimachinery.pkg.runtime" => 1, // apimachinery.pkg/runtime.ncl
+            "apimachinery.pkg.util.intstr" => 2, // apimachinery.pkg/util/intstr.ncl
+            "apimachinery.pkg.api.resource" => 2, // apimachinery.pkg/api/resource.ncl
+
+            // APIExtensions server: apiextensions-apiserver.pkg.apis/{group}/{version}.ncl = 2 levels
+            name if name.starts_with("apiextensions-apiserver.pkg.apis.") => 2,
+
+            // Kube aggregator: kube-aggregator.pkg.apis/{group}/{version}.ncl = 2 levels
+            name if name.starts_with("kube-aggregator.pkg.apis.") => 2,
+
+            // Version module: version.ncl = 0 levels (at root)
+            "k8s.io.version" => 0,
+
+            // Apimachinery meta: apimachinery.pkg.apis/meta/{version}/mod.ncl = 3 levels
+            name if name.starts_with("apimachinery.pkg.apis.meta.") => 3,
+
+            // Apimachinery runtime versioned: apimachinery.pkg.apis/runtime/{version}/mod.ncl = 3 levels
+            name if name.starts_with("apimachinery.pkg.apis.runtime.") => 3,
+
+            // io.k8s.* patterns that use dots-to-slashes fallback: count directory levels
+            // The last dot-part is the filename (version), so depth = parts - 1
+            // e.g., io.k8s.kube-aggregator.pkg.apis.apiregistration.v1 has 7 parts = 6 directory levels
+            name if name.starts_with("io.k8s.") => name.split('.').count() - 1,
+
+            // Default CRD/package pattern: domain_name/version = 1 level
+            // e.g., example.io.v1 -> example_io/v1.ncl (1 directory level)
+            // e.g., apiextensions.crossplane.io.v1 -> apiextensions_crossplane_io/v1.ncl
+            _ => 1,
+        }
+    }
+
+    /// Generate the appropriate number of parent directory traversals for a given depth
+    fn generate_parent_path(depth: usize) -> String {
+        if depth == 0 {
+            ".".to_string()
+        } else {
+            vec![".."; depth].join("/")
+        }
+    }
+
     /// Calculate the import path from one module to another
     pub fn calculate_import_path(
         &self,
@@ -314,12 +365,25 @@ impl ModuleRegistry {
             return Some(format!("./{}.ncl", type_name));
         }
 
+        // Calculate the filesystem depth of the FROM module to generate correct relative paths
+        let from_depth = Self::calculate_module_filesystem_depth(from_module);
+        let parent_path = Self::generate_parent_path(from_depth);
+
         // Special handling for k8s.io consolidated modules
         // k8s.io uses consolidated module files (v1.ncl) instead of individual type files
         if to_info.domain == "k8s.io"
             || to_info.domain.starts_with("io.k8s.")
             || to_module.starts_with("io.k8s.")
         {
+            // Check if we're importing from a non-k8s package (like Crossplane CRDs)
+            // In that case, we need to include k8s_io/ in the path
+            let is_cross_package = !from_info.domain.starts_with("k8s.io")
+                && !from_info.domain.starts_with("io.k8s.")
+                && !from_module.starts_with("k8s.io")
+                && !from_module.starts_with("io.k8s.")
+                && !from_module.starts_with("apimachinery.");
+            let cross_pkg_prefix = if is_cross_package { "k8s_io/" } else { "" };
+
             // Map to consolidated module based on the module structure
             let type_lower = to_type.to_lowercase();
 
@@ -338,57 +402,71 @@ impl ModuleRegistry {
                 || type_lower == "statuscause"
             {
                 // These are in apimachinery.pkg.apis/meta/v1/mod.ncl (consolidated module)
-                // Use dots in the path for k8s.io packages
                 return Some(format!(
-                    "../../apimachinery.pkg.apis/meta/{}/mod.ncl",
-                    to_info.version
+                    "{}/{}apimachinery.pkg.apis/meta/{}/mod.ncl",
+                    parent_path, cross_pkg_prefix, to_info.version
                 ));
             } else if type_lower == "typedlocalobjectreference" {
-                // Core API types are in api/core/v1.ncl
-                return Some(format!("../core/{}/mod.ncl", to_info.version));
+                // Core API types are in api/core/v1.ncl (consolidated file, not directory)
+                return Some(format!(
+                    "{}/{}api/core/{}.ncl",
+                    parent_path, cross_pkg_prefix, to_info.version
+                ));
             } else if type_lower == "intorstring" || type_lower == "rawextension" {
                 // These are in the root v0/mod.ncl (unversioned types)
-                return Some("../../v0/mod.ncl".to_string());
+                return Some(format!("{}/{}v0/mod.ncl", parent_path, cross_pkg_prefix));
             } else {
                 // Regular API types are in consolidated version files
                 // Parse the module name to get the API group structure
                 if to_module == "k8s.io.v1" {
-                    // Core API group - types are in api/core/v1/mod.ncl
-                    return Some(format!("../core/{}/mod.ncl", to_info.version));
+                    // Core API group - types are in api/core/v1.ncl (consolidated file)
+                    return Some(format!(
+                        "{}/{}api/core/{}.ncl",
+                        parent_path, cross_pkg_prefix, to_info.version
+                    ));
                 } else if to_module.starts_with("k8s.io.") && to_module != "k8s.io.v1" {
                     // Other k8s.io API groups - extract the API group name
                     let parts: Vec<&str> = to_module.split('.').collect();
                     if parts.len() >= 3 {
                         let api_group = parts[2]; // e.g., "apps", "batch", "autoscaling", "networking"
-                        return Some(format!("../../api/{}/{}.ncl", api_group, to_info.version));
+                        return Some(format!(
+                            "{}/{}api/{}/{}.ncl",
+                            parent_path, cross_pkg_prefix, api_group, to_info.version
+                        ));
                     }
                 } else if to_module.starts_with("io.k8s.api.core") {
                     // Legacy core API group pattern - types are in api/core/v1.ncl
-                    return Some(format!("../../api/core/{}.ncl", to_info.version));
+                    return Some(format!(
+                        "{}/{}api/core/{}.ncl",
+                        parent_path, cross_pkg_prefix, to_info.version
+                    ));
                 } else if to_module.starts_with("io.k8s.api.") {
                     // Legacy k8s.io API groups - extract the API group name
                     let parts: Vec<&str> = to_module.split('.').collect();
                     if parts.len() >= 4 {
                         let api_group = parts[3]; // e.g., "apps", "batch", "autoscaling"
-                        return Some(format!("../../api/{}/{}.ncl", api_group, to_info.version));
+                        return Some(format!(
+                            "{}/{}api/{}/{}.ncl",
+                            parent_path, cross_pkg_prefix, api_group, to_info.version
+                        ));
                     }
                 } else if to_module.starts_with("io.k8s.apimachinery.pkg.apis.meta") {
                     // apimachinery types
                     return Some(format!(
-                        "../../apimachinery.pkg.apis/meta/{}.ncl",
-                        to_info.version
+                        "{}/{}apimachinery.pkg.apis/meta/{}.ncl",
+                        parent_path, cross_pkg_prefix, to_info.version
                     ));
                 } else if to_module.starts_with("io.k8s.kube-aggregator") {
-                    // kube-aggregator types
+                    // kube-aggregator types - go to flattened path
                     return Some(format!(
-                        "../../kube-aggregator.pkg.apis/apiregistration/{}.ncl",
-                        to_info.version
+                        "{}/{}kube-aggregator.pkg.apis/apiregistration/{}.ncl",
+                        parent_path, cross_pkg_prefix, to_info.version
                     ));
                 } else if to_module.starts_with("io.k8s.apiextensions-apiserver") {
-                    // apiextensions types
+                    // apiextensions types - go to flattened path
                     return Some(format!(
-                        "../../apiextensions-apiserver.pkg.apis/apiextensions/{}.ncl",
-                        to_info.version
+                        "{}/{}apiextensions-apiserver.pkg.apis/apiextensions/{}.ncl",
+                        parent_path, cross_pkg_prefix, to_info.version
                     ));
                 }
             }
@@ -937,17 +1015,63 @@ mod tests {
         );
 
         // Test same package, different version - k8s.io uses consolidated modules
+        // k8s.io.v1alpha3 -> api/core/v1alpha3.ncl (2 directory levels: api/core)
         // ObjectMeta is in apimachinery.pkg.apis/meta/v1/mod.ncl
+        // So path is: ../../apimachinery.pkg.apis/meta/v1/mod.ncl
         assert_eq!(
             registry.calculate_import_path("k8s.io.v1alpha3", "k8s.io.v1", "ObjectMeta"),
             Some("../../apimachinery.pkg.apis/meta/v1/mod.ncl".to_string())
         );
 
-        // Test different packages - k8s.io uses consolidated modules
-        // ObjectMeta is in apimachinery.pkg.apis/meta/v1/mod.ncl
+        // Test different packages - cross-package imports include k8s_io/ prefix
+        // example.io.v1 -> example_io/v1.ncl (1 directory level: example_io)
+        // ObjectMeta is in k8s_io/apimachinery.pkg.apis/meta/v1/mod.ncl
+        // So path is: ../k8s_io/apimachinery.pkg.apis/meta/v1/mod.ncl
         assert_eq!(
             registry.calculate_import_path("example.io.v1", "k8s.io.v1", "ObjectMeta"),
-            Some("../../apimachinery.pkg.apis/meta/v1/mod.ncl".to_string())
+            Some("../k8s_io/apimachinery.pkg.apis/meta/v1/mod.ncl".to_string())
+        );
+    }
+
+    #[test]
+    fn test_deeply_nested_module_depth_calculation() {
+        // Test that io.k8s.* modules have correct depth calculation
+        // The depth is the number of directory levels, which is module parts minus 1
+        // (since the last part is the version/filename, not a directory)
+        assert_eq!(
+            ModuleRegistry::calculate_module_filesystem_depth(
+                "io.k8s.kube-aggregator.pkg.apis.apiregistration.v1"
+            ),
+            6 // io/k8s/kube-aggregator/pkg/apis/apiregistration/ = 6 directory levels
+        );
+
+        assert_eq!(
+            ModuleRegistry::calculate_module_filesystem_depth(
+                "io.k8s.apiextensions-apiserver.pkg.apis.apiextensions.v1"
+            ),
+            6 // io/k8s/apiextensions-apiserver/pkg/apis/apiextensions/ = 6 directory levels
+        );
+
+        // k8s.io.v1 -> api/core/v1.ncl = 2 directory levels (api, core)
+        assert_eq!(
+            ModuleRegistry::calculate_module_filesystem_depth("k8s.io.v1"),
+            2
+        );
+
+        // Crossplane CRDs -> domain_name/v1.ncl = 1 directory level
+        assert_eq!(
+            ModuleRegistry::calculate_module_filesystem_depth(
+                "apiextensions.crossplane.io.v1"
+            ),
+            1
+        );
+
+        // apimachinery.pkg.apis.meta.v1 -> apimachinery.pkg.apis/meta/v1/mod.ncl = 3 levels
+        assert_eq!(
+            ModuleRegistry::calculate_module_filesystem_depth(
+                "apimachinery.pkg.apis.meta.v1"
+            ),
+            3
         );
     }
 

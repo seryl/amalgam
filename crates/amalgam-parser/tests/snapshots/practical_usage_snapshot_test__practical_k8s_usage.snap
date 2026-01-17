@@ -6,11 +6,11 @@ SUCCESS: false
 
 OUTPUT:
 STDERR:
-error: import of ../../v0/mod.ncl failed: could not find import (looked in [/Users/jtoft/src/ai/amalgam/examples/pkgs/k8s_io/api/autoscaling])
-  ┌─ /Users/jtoft/src/ai/amalgam/examples/pkgs/k8s_io/api/autoscaling/v2.ncl:3:16
+error: import of examples/pkgs/k8s_io/api/autoscaling/v2.ncl failed: could not find import (looked in [/Users/jtoft/src/ai/amalgam])
+  ┌─ /Users/jtoft/src/ai/amalgam/test_snapshot_temp_XXXX_X.ncl:3:10
   │
-3 │ let v0Module = import "../../v0/mod.ncl" in
-  │                ------------------------- imported here
+3 │ let v2 = import "examples/pkgs/k8s_io/api/autoscaling/v2.ncl" in
+  │          ---------------------------------------------------- imported here
 
 
 STDOUT:

@@ -212,19 +212,19 @@ mod tests {
             "ObjectMeta".to_string(),
         );
 
-        // ObjectMeta is in apimachinery.pkg.apis/meta/v1/mod.ncl consolidated module
+        // Cross-package imports to k8s.io include k8s_io/ prefix
         let path = type_ref.import_path("apiextensions.crossplane.io", "v1");
-        assert_eq!(path, "../../apimachinery.pkg.apis/meta/v1/mod.ncl");
+        assert_eq!(path, "../../k8s_io/apimachinery.pkg.apis/meta/v1/mod.ncl");
 
-        // Test with a simple group - same result for ObjectMeta
+        // Test with a simple group - cross-package import includes k8s_io/
         let path2 = type_ref.import_path("example.io", "v1");
-        assert_eq!(path2, "../../apimachinery.pkg.apis/meta/v1/mod.ncl");
+        assert_eq!(path2, "../../k8s_io/apimachinery.pkg.apis/meta/v1/mod.ncl");
 
-        // Test same-package cross-version - ObjectMeta still in apimachinery
+        // Test same-package cross-version - within k8s.io, no k8s_io/ prefix
         let path3 = type_ref.import_path("k8s.io", "v1beta1");
         assert_eq!(path3, "../../apimachinery.pkg.apis/meta/v1/mod.ncl");
 
-        // Test same-package same-version - ObjectMeta still in apimachinery
+        // Test same-package same-version - within k8s.io, no k8s_io/ prefix
         let path4 = type_ref.import_path("k8s.io", "v1");
         assert_eq!(path4, "../../apimachinery.pkg.apis/meta/v1/mod.ncl");
     }

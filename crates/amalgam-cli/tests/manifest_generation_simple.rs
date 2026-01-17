@@ -32,6 +32,7 @@ fn test_manifest_config_creation() -> Result<(), Box<dyn std::error::Error>> {
         base_package_id: "github:test/packages".to_string(),
         package_mode: true,
         local_package_prefix: None,
+        debug: false,
     };
 
     assert_eq!(config.base_package_id, "github:test/packages");

@@ -1,249 +1,249 @@
-let v1Module = import "../../apimachinery.pkg.apis/meta/v1/mod.ncl" in
+let metav1 = import "../../k8s_io/apimachinery.pkg.apis/meta/v1/mod.ncl" in
 
 # Module: pkg.crossplane.io.v1
 
 {
   apiVersion
-     | String
-     | doc m%"
+    | String
+    | doc m%"
 APIVersion defines the versioned schema of this representation of an object.
 Servers should convert recognized schemas to the latest internal value, and
 may reject unrecognized values.
 More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
 "%
-     | optional,
+    | optional,
   kind
-     | String
-     | doc m%"
+    | String
+    | doc m%"
 Kind is a string value representing the REST resource this object represents.
 Servers may infer this from the endpoint the client submits requests to.
 Cannot be updated.
 In CamelCase.
 More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
 "%
-     | optional,
+    | optional,
   metadata
-     | v1Module.ObjectMeta
-     | optional,
+    | metav1.ObjectMeta
+    | optional,
   spec
-     | {
+    | {
     commonLabels
-       | {
-    }
-       | doc m%"
+      | { _ : String }
+      | doc m%"
 Map of string keys and values that can be used to organize and categorize
 (scope and select) objects. May match selectors of replication controllers
 and services.
 More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
 "%
-       | optional,
+      | optional,
     desiredState
-       | String
-       | doc "DesiredState of the PackageRevision. Can be either Active or Inactive.",
+      | String
+      | doc "DesiredState of the PackageRevision. Can be either Active or Inactive.",
     ignoreCrossplaneConstraints
-       | Bool
-       | doc m%"
+      | Bool
+      | doc m%"
 IgnoreCrossplaneConstraints indicates to the package manager whether to
 honor Crossplane version constrains specified by the package.
 Default is false.
 "%
-       = false,
+      = false,
     image
-       | String
-       | doc "Package image used by install Pod to extract package contents.",
+      | String
+      | doc "Package image used by install Pod to extract package contents.",
     packagePullPolicy
-       | String
-       | doc m%"
+      | String
+      | doc m%"
 PackagePullPolicy defines the pull policy for the package. It is also
 applied to any images pulled for the package, such as a provider's
 controller image.
 Default is IfNotPresent.
 "%
-       = "IfNotPresent",
+      = "IfNotPresent",
     packagePullSecrets
-       | Array {
+      | Array {
       name
-         | String
-         | doc m%"
+        | String
+        | doc m%"
 Name of the referent.
 This field is effectively required, but due to backwards compatibility is
 allowed to be empty. Instances of this type with an empty value here are
 almost certainly wrong.
 More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
 "%
-         = ""
+        = ""
     }
-       | doc m%"
+      | doc m%"
 PackagePullSecrets are named secrets in the same namespace that can be
 used to fetch packages from private registries. They are also applied to
 any images pulled for the package, such as a provider's controller image.
 "%
-       | optional,
+      | optional,
     revision
-       | Number
-       | doc m%"
+      | Number
+      | doc m%"
 Revision number. Indicates when the revision will be garbage collected
 based on the parent's RevisionHistoryLimit.
 "%,
     runtimeConfigRef
-       | {
+      | {
       apiVersion
-         | String
-         | doc "API version of the referent."
-         = "pkg.crossplane.io/v1beta1",
+        | String
+        | doc "API version of the referent."
+        = "pkg.crossplane.io/v1beta1",
       kind
-         | String
-         | doc "Kind of the referent."
-         = "DeploymentRuntimeConfig",
+        | String
+        | doc "Kind of the referent."
+        = "DeploymentRuntimeConfig",
       name
-         | String
-         | doc "Name of the RuntimeConfig."
+        | String
+        | doc "Name of the RuntimeConfig."
     }
-       | doc m%"
+      | doc m%"
 RuntimeConfigRef references a RuntimeConfig resource that will be used
 to configure the package runtime.
 "%
-       = {
+      = {
       name = "default"
     },
     skipDependencyResolution
-       | Bool
-       | doc m%"
+      | Bool
+      | doc m%"
 SkipDependencyResolution indicates to the package manager whether to skip
 resolving dependencies for a package. Setting this value to true may have
 unintended consequences.
 Default is false.
 "%
-       = false,
+      = false,
     tlsClientSecretName
-       | String
-       | doc m%"
+      | String
+      | doc m%"
 TLSClientSecretName is the name of the TLS Secret that stores client
 certificates of the Provider.
 "%
-       | optional,
+      | optional,
     tlsServerSecretName
-       | String
-       | doc m%"
+      | String
+      | doc m%"
 TLSServerSecretName is the name of the TLS Secret that stores server
 certificates of the Provider.
 "%
-       | optional
+      | optional
   }
-     | doc "ProviderRevisionSpec specifies configuration for a ProviderRevision."
-     | optional,
+    | doc "ProviderRevisionSpec specifies configuration for a ProviderRevision."
+    | optional,
   status
-     | {
+    | {
     appliedImageConfigRefs
-       | Array {
+      | Array {
       name
-         | String
-         | doc "Name is the name of the image config.",
+        | String
+        | doc "Name is the name of the image config.",
       reason
-         | String
-         | doc "Reason indicates what the image config was used for."
+        | String
+        | doc "Reason indicates what the image config was used for."
     }
-       | doc m%"
+      | doc m%"
 AppliedImageConfigRefs records any image configs that were applied in
 reconciling this revision, and what they were used for.
 "%
-       | optional,
+      | optional,
     capabilities
-       | Array String
-       | doc m%"
+      | Array String
+      | doc m%"
 Capabilities of this package. Capabilities are opaque strings that
 may be meaningful to package consumers.
 "%
-       | optional,
+      | optional,
     conditions
-       | Array {
+      | Array {
       lastTransitionTime
-         | String
-         | doc m%"
+        | String
+        | std.contract.from_predicate (fun value => std.string.is_match "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}" value)
+        | doc m%"
 LastTransitionTime is the last time this condition transitioned from one
 status to another.
 "%,
       message
-         | String
-         | doc m%"
+        | String
+        | doc m%"
 A Message containing details about this condition's last transition from
 one status to another, if any.
 "%
-         | optional,
+        | optional,
       observedGeneration
-         | Number
-         | doc m%"
+        | Number
+        | doc m%"
 ObservedGeneration represents the .metadata.generation that the condition was set based upon.
 For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
 with respect to the current state of the instance.
 "%
-         | optional,
+        | optional,
       reason
-         | String
-         | doc "A Reason for this condition's last transition from one status to another.",
+        | String
+        | doc "A Reason for this condition's last transition from one status to another.",
       status
-         | String
-         | doc "Status of this condition; is it currently True, False, or Unknown?",
-      type
-         | String
-         | doc m%"
+        | String
+        | doc "Status of this condition; is it currently True, False, or Unknown?",
+      "type"
+        | String
+        | doc m%"
 Type of this condition. At most one of each condition type may apply to
 a resource at any point in time.
 "%
     }
-       | doc "Conditions of the resource."
-       | optional,
+      | doc "Conditions of the resource."
+      | optional,
     foundDependencies
-       | Number
-       | doc "Dependency information."
-       | optional,
+      | Number
+      | doc "Dependency information."
+      | optional,
     installedDependencies
-       | Number
-       | optional,
+      | Number
+      | optional,
     invalidDependencies
-       | Number
-       | optional,
+      | Number
+      | optional,
     objectRefs
-       | Array {
+      | Array {
       apiVersion
-         | String
-         | doc "APIVersion of the referenced object.",
+        | String
+        | doc "APIVersion of the referenced object.",
       kind
-         | String
-         | doc "Kind of the referenced object.",
+        | String
+        | doc "Kind of the referenced object.",
       name
-         | String
-         | doc "Name of the referenced object.",
+        | String
+        | doc "Name of the referenced object.",
       uid
-         | String
-         | doc "UID of the referenced object."
-         | optional
+        | String
+        | doc "UID of the referenced object."
+        | optional
     }
-       | doc "References to objects owned by PackageRevision."
-       | optional,
+      | doc "References to objects owned by PackageRevision."
+      | optional,
     resolvedImage
-       | String
-       | doc m%"
+      | String
+      | doc m%"
 ResolvedPackage is the name of the package that was installed. It may be
 different from spec.image if the package path was rewritten using an
 image config.
 "%
-       | optional,
+      | optional,
     tlsClientSecretName
-       | String
-       | doc m%"
+      | String
+      | doc m%"
 TLSClientSecretName is the name of the TLS Secret that stores client
 certificates of the Provider.
 "%
-       | optional,
+      | optional,
     tlsServerSecretName
-       | String
-       | doc m%"
+      | String
+      | doc m%"
 TLSServerSecretName is the name of the TLS Secret that stores server
 certificates of the Provider.
 "%
-       | optional
+      | optional
   }
-     | doc "ProviderRevisionStatus represents the observed state of a ProviderRevision."
-     | optional
+    | doc "ProviderRevisionStatus represents the observed state of a ProviderRevision."
+    | optional
 }

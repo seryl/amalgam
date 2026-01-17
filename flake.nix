@@ -11,13 +11,27 @@
 
     crane.url = "github:ipetkov/crane";
 
-    flake-utils.url = "github:numtide/flake-utils";
+    flake-parts.url = "github:hercules-ci/flake-parts";
   };
 
-  outputs = { self, nixpkgs, fenix, crane, flake-utils, ... }:
-    flake-utils.lib.eachDefaultSystem (system:
-      let
-        pkgs = import nixpkgs {
+  outputs = inputs @ {flake-parts, ...}:
+    flake-parts.lib.mkFlake {inherit inputs;} {
+      systems = ["x86_64-linux" "aarch64-linux" "aarch64-darwin" "x86_64-darwin"];
+
+      imports = [
+        inputs.flake-parts.flakeModules.easyOverlay
+      ];
+
+      perSystem = {
+        config,
+        self',
+        inputs',
+        lib,
+        system,
+        ...
+      }: let
+        # Override nixpkgs to allow unfree packages
+        pkgs = import inputs.nixpkgs {
           inherit system;
           config.allowUnfree = true;
         };
@@ -25,14 +39,14 @@
         # Build Nickel with package support by overriding the derivation
         nickel-with-packages = pkgs.nickel.overrideAttrs (oldAttrs: {
           # Add package-experimental to the build features
-          buildFeatures = (oldAttrs.buildFeatures or [ "default" ]) ++ [ "package-experimental" ];
+          buildFeatures = (oldAttrs.buildFeatures or ["default"]) ++ ["package-experimental"];
 
           # Update the pname to distinguish it
           pname = "nickel-with-packages";
         });
 
-        # Use latest stable Rust with all components
-        rustWithComponents = fenix.packages.${system}.stable.withComponents [
+        # Use latest stable Rust with all components and WASM target
+        rustWithComponents = inputs.fenix.packages.${system}.stable.withComponents [
           "cargo"
           "rustc"
           "rust-src"
@@ -40,9 +54,15 @@
           "clippy"
           "rust-analyzer"
         ];
+        
+        # Add WASM target to the toolchain
+        rustWithWasm = inputs.fenix.packages.${system}.combine [
+          rustWithComponents
+          inputs.fenix.packages.${system}.targets.wasm32-unknown-unknown.stable.rust-std
+        ];
 
-        # Crane lib configured with our toolchain
-        craneLib = (crane.mkLib pkgs).overrideToolchain rustWithComponents;
+        # Crane lib configured with our toolchain (with WASM support)
+        craneLib = (inputs.crane.mkLib pkgs).overrideToolchain rustWithWasm;
 
         # Smart publishing tool that handles everything
         publish = pkgs.writeShellScriptBin "publish" ''
@@ -78,7 +98,7 @@
           check_published() {
             local crate=$1
             local version=$2
-            ${rustWithComponents}/bin/cargo search "$crate" --limit 1 | grep -q "^$crate = \"$version\""
+            ${rustWithWasm}/bin/cargo search "$crate" --limit 1 | grep -q "^$crate = \"$version\""
           }
 
           # Function to update dependencies for publishing
@@ -134,11 +154,11 @@
               # Run tests unless skipped
               if [ "$SKIP_CHECKS" != "true" ]; then
                 echo "Running tests..."
-                ${rustWithComponents}/bin/cargo test --workspace || exit 1
+                ${rustWithWasm}/bin/cargo test --workspace || exit 1
                 echo "Running clippy..."
-                ${rustWithComponents}/bin/cargo clippy --workspace --all-targets || exit 1
+                ${rustWithWasm}/bin/cargo clippy --workspace --all-targets || exit 1
                 echo "Checking format..."
-                ${rustWithComponents}/bin/cargo fmt --check || exit 1
+                ${rustWithWasm}/bin/cargo fmt --check || exit 1
               fi
 
               # Check each crate
@@ -154,7 +174,7 @@
 
                 # Try packaging
                 prepare_for_publish "$crate_path"
-                (cd "$crate_path" && ${rustWithComponents}/bin/cargo package --list > /dev/null 2>&1)
+                (cd "$crate_path" && ${rustWithWasm}/bin/cargo package --list > /dev/null 2>&1)
                 if [ $? -eq 0 ]; then
                   echo -e "''${GREEN}✓ $crate_name can be packaged''${NC}"
                 else
@@ -172,7 +192,7 @@
                 echo -e "\n''${YELLOW}Dry-run for $crate_name...''${NC}"
 
                 prepare_for_publish "$crate_path"
-                (cd "$crate_path" && ${rustWithComponents}/bin/cargo publish --dry-run --allow-dirty)
+                (cd "$crate_path" && ${rustWithWasm}/bin/cargo publish --dry-run --allow-dirty)
                 restore_cargo_toml "$crate_path"
               done
               ;;
@@ -215,7 +235,7 @@
                 echo -e "\n''${GREEN}Publishing $crate_name...''${NC}"
                 prepare_for_publish "$crate_path"
 
-                if (cd "$crate_path" && ${rustWithComponents}/bin/cargo publish --allow-dirty); then
+                if (cd "$crate_path" && ${rustWithWasm}/bin/cargo publish --allow-dirty); then
                   restore_cargo_toml "$crate_path"
                   echo -e "''${GREEN}✓ $crate_name published!''${NC}"
 
@@ -263,14 +283,13 @@
 
         # Workspace dependency manager (Python-based for smart error handling)
         workspace-deps = pkgs.writeShellScriptBin "workspace-deps" ''
-          exec ${pkgs.python3.withPackages (ps: with ps; [ tomli ])}/bin/python3 ${./nix/packages/workspace-deps/workspace-deps.py} "$@"
+          exec ${pkgs.python3.withPackages (ps: with ps; [tomli])}/bin/python3 ${./nix/packages/workspace-deps/workspace-deps.py} "$@"
         '';
 
         # Version bump tool (Python-based for reliability)
         version-bump = pkgs.writeShellScriptBin "version-bump" ''
-          exec ${pkgs.python3.withPackages (ps: with ps; [ tomli ])}/bin/python3 ${./nix/packages/version-bump/version-bump.py} "$@"
+          exec ${pkgs.python3.withPackages (ps: with ps; [tomli])}/bin/python3 ${./nix/packages/version-bump/version-bump.py} "$@"
         '';
-
 
         # Release helper that validates everything before version bump
         release = pkgs.writeShellScriptBin "release" ''
@@ -297,7 +316,7 @@
 
           # Step 2: Check snapshot tests
           echo -e "''${YELLOW}Step 2: Checking snapshot tests...''${NC}"
-          if ! ${rustWithComponents}/bin/cargo insta test; then
+          if ! ${rustWithWasm}/bin/cargo insta test; then
             echo -e "''${RED}✗ Snapshot tests failed! Review with 'cargo insta review'.''${NC}"
             exit 1
           fi
@@ -322,7 +341,7 @@
 
           # Step 5: Update Cargo.lock
           echo -e "''${YELLOW}Step 5: Updating Cargo.lock...''${NC}"
-          ${rustWithComponents}/bin/cargo update
+          ${rustWithWasm}/bin/cargo update
           echo -e "''${GREEN}✓ Cargo.lock updated''${NC}"
           echo ""
 
@@ -371,19 +390,19 @@
           workspace-deps local > /dev/null 2>&1
 
           echo "1. Running cargo check..."
-          ${rustWithComponents}/bin/cargo check --workspace --all-targets
+          ${rustWithWasm}/bin/cargo check --workspace --all-targets
 
           echo ""
           echo "2. Running tests..."
-          ${rustWithComponents}/bin/cargo test --workspace
+          ${rustWithWasm}/bin/cargo test --workspace
 
           echo ""
           echo "3. Running clippy..."
-          ${rustWithComponents}/bin/cargo clippy --workspace --all-targets -- --deny warnings
+          ${rustWithWasm}/bin/cargo clippy --workspace --all-targets -- --deny warnings
 
           echo ""
           echo "4. Checking formatting..."
-          ${rustWithComponents}/bin/cargo fmt --check
+          ${rustWithWasm}/bin/cargo fmt --check
 
           echo ""
           echo "✓ All CI checks passed!"
@@ -400,11 +419,11 @@
           workspace-deps local > /dev/null 2>&1
 
           echo "1. Formatting code..."
-          ${rustWithComponents}/bin/cargo fmt --all
+          ${rustWithWasm}/bin/cargo fmt --all
 
           echo ""
           echo "2. Applying clippy fixes..."
-          ${rustWithComponents}/bin/cargo clippy --workspace --all-targets --fix --allow-dirty --allow-staged
+          ${rustWithWasm}/bin/cargo clippy --workspace --all-targets --fix --allow-dirty --allow-staged
 
           echo ""
           echo "3. Checking if everything is fixed..."
@@ -426,23 +445,63 @@
             exit 1
           fi
 
+          # Parse --debug flag
+          DEBUG_FLAG=""
+          for arg in "$@"; do
+            if [ "$arg" = "--debug" ]; then
+              DEBUG_FLAG="--debug"
+              echo "🐛 Debug mode enabled - will output generated.ncl files"
+            fi
+          done
+
           echo "🧠 Smart manifest-based regeneration with content tracking..."
-          ${rustWithComponents}/bin/cargo run --release --bin amalgam -- generate-from-manifest
+          ${rustWithWasm}/bin/cargo run --release --bin amalgam -- generate-from-manifest $DEBUG_FLAG
 
           echo ""
           echo "✅ Smart regeneration complete!"
         '';
 
+        # Build WASM package
+        build-wasm = pkgs.writeShellScriptBin "build-wasm" ''
+          set -euo pipefail
+          
+          echo "🔧 Building Amalgam WASM bindings..."
+          echo ""
+          
+          cd crates/amalgam-wasm
+          
+          # Build for different targets
+          echo "📦 Building for bundler target (webpack/rollup)..."
+          ${pkgs.wasm-pack}/bin/wasm-pack build --target bundler --out-dir pkg-bundler
+          
+          echo "📦 Building for web target (direct browser use)..."
+          ${pkgs.wasm-pack}/bin/wasm-pack build --target web --out-dir pkg-web
+          
+          echo "📦 Building for nodejs target..."
+          ${pkgs.wasm-pack}/bin/wasm-pack build --target nodejs --out-dir pkg-node
+          
+          echo ""
+          echo "✅ WASM build complete!"
+          echo ""
+          echo "Packages created:"
+          echo "  • pkg-bundler/ - For webpack/rollup bundlers"
+          echo "  • pkg-web/     - For direct browser usage"  
+          echo "  • pkg-node/    - For Node.js applications"
+        '';
+        
         # Custom source filter that includes test fixtures
         src = pkgs.lib.cleanSourceWith {
           src = ./.;
           filter = path: type:
-            # Include standard cargo files
-            (craneLib.filterCargoSources path type) ||
+          # Include standard cargo files
+            (craneLib.filterCargoSources path type)
+            ||
             # Include test fixture files
-            (builtins.match ".*/tests/fixtures/.*\\.yaml$" path != null) ||
+            (builtins.match ".*/tests/fixtures/.*\\.yaml$" path != null)
+            ||
             # Include test snapshot files
-            (builtins.match ".*/tests/snapshots/.*\\.snap$" path != null) ||
+            (builtins.match ".*/tests/snapshots/.*\\.snap$" path != null)
+            ||
             # Include any other test resources
             (builtins.match ".*/tests/.*\\.(toml|json|yaml|ncl)$" path != null);
         };
@@ -452,20 +511,24 @@
           inherit src;
 
           # Build-time dependencies
-          buildInputs = with pkgs; [
-            openssl
-            pkg-config
-          ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [];
+          buildInputs = with pkgs;
+            [
+              openssl
+              pkg-config
+            ]
+            ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [];
         };
 
         # Build the actual crate
         amalgam = craneLib.buildPackage {
           inherit cargoArtifacts src;
 
-          buildInputs = with pkgs; [
-            openssl
-            pkg-config
-          ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [];
+          buildInputs = with pkgs;
+            [
+              openssl
+              pkg-config
+            ]
+            ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [];
         };
 
         # Docker/OCI image builders
@@ -473,11 +536,10 @@
           inherit pkgs amalgam;
           lib = pkgs.lib;
           nickel = nickel-with-packages;
-          generated-packages = null;  # Will be populated by CI
+          generated-packages = null; # Will be populated by CI
         };
 
-      in
-      {
+        # Packages
         packages = {
           default = amalgam;
           amalgam = amalgam;
@@ -495,71 +557,73 @@
 
         # Apps
         apps = {
-          default = flake-utils.lib.mkApp {
-            drv = amalgam;
-            name = "amalgam";
+          default = {
+            type = "app";
+            program = "${amalgam}/bin/amalgam";
           };
         };
 
         # Development shell
-        devShells.default = pkgs.mkShell {
-          buildInputs = [
-            # Rust toolchain from fenix
-            rustWithComponents
+        devShell = pkgs.mkShell {
+          buildInputs =
+            [
+              # Rust toolchain from fenix (with WASM support)
+              rustWithWasm
 
-            # Smart commands
-            ci
-            fix
-            release
-            publish
-            workspace-deps
-            version-bump
-            regenerate-examples
-          ] ++ (with pkgs; [
-            # Build dependencies
-            openssl
-            pkg-config
+              # Smart commands
+              ci
+              fix
+              release
+              publish
+              workspace-deps
+              version-bump
+              regenerate-examples
+              build-wasm
+            ]
+            ++ (with pkgs; [
+              # Build dependencies
+              openssl
+              pkg-config
 
-            # Development tools
-            claude-code
-            cargo-watch
-            cargo-edit
-            cargo-expand
-            cargo-outdated
-            cargo-audit
-            cargo-license
-            cargo-tarpaulin  # code coverage
-            cargo-criterion  # benchmarking
-            cargo-insta      # snapshot testing
+              # Development tools
+              cargo-watch
+              cargo-edit
+              cargo-expand
+              cargo-outdated
+              cargo-audit
+              cargo-license
+              cargo-tarpaulin # code coverage
+              cargo-criterion # benchmarking
+              cargo-insta # snapshot testing
 
-            # For WASM builds
-            wasm-pack
-            wasm-bindgen-cli
-            binaryen  # WASM optimizer (includes wasm-opt)
-            wasmtime  # WASM runtime for testing
+              # For WASM builds
+              wasm-pack
+              wasm-bindgen-cli
+              binaryen # WASM optimizer (includes wasm-opt)
+              wasmtime # WASM runtime for testing
 
-            # Python for complex scripts
-            python3
-            python311Packages.rich
-            python311Packages.click
-            python311Packages.toml
+              # Python for complex scripts
+              python3
+              python311Packages.rich
+              python311Packages.click
+              python311Packages.toml
 
-            # General dev tools
-            tokei      # code statistics
+              # General dev tools
+              tokei # code statistics
 
-            # For working with schemas
-            jq
-            yq
-            toml2json
+              # For working with schemas
+              jq
+              yq
+              toml2json
 
-            # For Kubernetes integration
-            kubectl
-            kind
+              # For Kubernetes integration
+              kubectl
+              kind
 
-            # For publishing Nickel packages (experimental)
-            nickel-with-packages
-
-          ]) ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [];
+              # For publishing Nickel packages (experimental)
+              nickel-with-packages
+            ])
+            ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [];
 
           shellHook = ''
             echo "🦀 Amalgam Development Environment"
@@ -571,6 +635,7 @@
             echo "  ci                   - Run complete test suite (tests, clippy, fmt)"
             echo "  fix                  - Auto-fix formatting and clippy issues"
             echo "  regenerate-examples  - Rebuild and regenerate example CRDs"
+            echo "  regenerate-examples --debug  - Also output generated.ncl debug files"
             echo "  release patch        - Bump version and create release"
             echo "  publish              - Publish to crates.io"
             echo ""
@@ -593,7 +658,7 @@
           '';
 
           # Environment variables
-          RUST_SRC_PATH = "${rustWithComponents}/lib/rustlib/src/rust/library";
+          RUST_SRC_PATH = "${rustWithWasm}/lib/rustlib/src/rust/library";
           RUST_BACKTRACE = "1";
           RUST_LOG = "debug";
         };
@@ -615,5 +680,9 @@
             inherit cargoArtifacts src;
           };
         };
-      });
+      in {
+        inherit packages apps checks;
+        devShells = {default = devShell;};
+      };
+    };
 }

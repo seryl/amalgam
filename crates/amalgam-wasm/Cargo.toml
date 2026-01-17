@@ -1,0 +1,44 @@
+[package]
+name = "amalgam-wasm"
+version.workspace = true
+edition = "2021"
+license = "Apache-2.0"
+description = "WebAssembly bindings for the Amalgam schema compiler"
+homepage = "https://github.com/seryl/amalgam"
+repository = "https://github.com/seryl/amalgam"
+documentation = "https://docs.rs/amalgam-wasm"
+readme = "README.md"
+keywords = ["wasm", "nickel", "configuration", "webassembly", "bindgen"]
+categories = ["wasm", "config", "development-tools"]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+amalgam-core = { workspace = true }
+# Don't use workspace for parser - we need to disable default features for WASM
+amalgam-parser = { path = "../amalgam-parser", default-features = false }
+amalgam-codegen = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+openapiv3 = { workspace = true }
+wasm-bindgen = "0.2.105"
+wasm-bindgen-futures = "0.4"
+serde-wasm-bindgen = "0.6"
+console_error_panic_hook = { version = "0.1", optional = true }
+wee_alloc = { version = "0.4", optional = true }
+
+# UUID with js feature for WASM randomness
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+uuid = { version = "1.0", features = ["v7", "serde", "js"] }
+getrandom = { version = "0.3", features = ["wasm_js"] }
+
+[dev-dependencies]
+wasm-bindgen-test = "0.3"
+
+[features]
+default = ["console_error_panic_hook"]
+
+[package.metadata.wasm-pack]
+"wasm-pack-plugin" = "0.1"

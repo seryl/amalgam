@@ -21,6 +21,7 @@ thiserror.workspace = true
 anyhow.workspace = true
 tracing.workspace = true
 chrono = "0.4"
+nickel-lang-parser = "0.1.1"  # For accessing KEYWORDS constant
 
 [dev-dependencies]
 proptest.workspace = true
@@ -28,3 +29,4 @@ walkdir = "2.3"
 tracing-chrome = "0.7"
 tracing-forest = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tempfile = "3"

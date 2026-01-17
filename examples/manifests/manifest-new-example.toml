@@ -1,0 +1,78 @@
+# New Simplified Amalgam Manifest Format
+# 
+# Everything is inferred automatically from sources!
+# Just point to your schemas and let Amalgam figure out the rest.
+
+[config]
+# Output directory for generated packages
+output_base = "examples/pkgs"
+
+# Enable package mode (generates Nickel-pkg.ncl files)
+package_mode = true
+
+# Base package ID for dependencies
+base_package_id = "github:seryl/nickel-pkgs/pkgs"
+
+# ============================================================================
+# PACKAGES - Just specify sources!
+# ============================================================================
+
+[[packages]]
+# Kubernetes OpenAPI - domain inferred as k8s.io from definitions
+source = "https://raw.githubusercontent.com/kubernetes/kubernetes/v1.33.4/api/openapi-spec/swagger.json"
+# Everything else is automatic:
+# - Type: detected as OpenAPI from content
+# - Domain: extracted as k8s.io from definition keys
+# - Output: k8s_io/ (from domain)
+# - Structure: determined by parsing
+
+[[packages]]
+# CrossPlane CRDs - domain inferred from spec.group
+source = "https://github.com/crossplane/crossplane/tree/v2.0.2/cluster/crds"
+# Everything else is automatic:
+# - Type: detected as CRDs from YAML content
+# - Domain: extracted as crossplane.io from CRD spec.group
+# - Output: crossplane_io/ (from domain)
+
+[[packages]]
+# Cert Manager - multiple CRD files forming one package
+source = [
+  "https://raw.githubusercontent.com/cert-manager/cert-manager/v1.12.0/deploy/crds/crd-certificates.yaml",
+  "https://raw.githubusercontent.com/cert-manager/cert-manager/v1.12.0/deploy/crds/crd-issuers.yaml",
+  "https://raw.githubusercontent.com/cert-manager/cert-manager/v1.12.0/deploy/crds/crd-clusterissuers.yaml",
+]
+# All CRDs have same domain (cert-manager.io) so they merge into one package
+
+[[packages]]
+# Local OpenAPI file
+source = "file:///path/to/local/openapi.json"
+
+[[packages]]
+# Example with domain override (rarely needed)
+source = "https://example.com/api/schema.json"
+domain = "example.com"  # Only if it can't be inferred
+
+[[packages]]
+# Disabled package example
+source = "https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v0.68.0/jsonnet/prometheus-operator/crds.yaml"
+enabled = false  # Skip this one
+
+# ============================================================================
+# COMPARISON WITH OLD FORMAT
+# ============================================================================
+# 
+# OLD (verbose and redundant):
+# [[packages]]
+# name = "k8s-io"
+# type = "k8s-core"
+# version = "v1.33.4"
+# output = "k8s_io"
+# description = "Kubernetes core types"
+# keywords = ["kubernetes", "k8s"]
+# directory_structure = "versioned"
+# dependencies = {}
+#
+# NEW (minimal and intelligent):
+# [[packages]]
+# source = "https://.../swagger.json"
+# # That's it! Everything else is inferred!

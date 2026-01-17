@@ -11,6 +11,11 @@ readme = "README.md"
 keywords = ["parser", "kubernetes", "openapi", "crd", "golang"]
 categories = ["parser-implementations", "development-tools"]
 
+[features]
+default = ["native"]
+# Native platform features (not WASM compatible)
+native = ["dep:reqwest", "dep:tempfile", "dep:tokio", "dep:indicatif", "dep:futures", "dep:atty"]
+
 [dependencies]
 amalgam-core.workspace = true
 amalgam-codegen.workspace = true
@@ -25,14 +30,16 @@ proc-macro2.workspace = true
 thiserror.workspace = true
 anyhow.workspace = true
 tracing.workspace = true
-reqwest.workspace = true
-tempfile = "3.0"
-tokio.workspace = true
-indicatif = "0.17"
-futures = "0.3"
-atty = "0.2"
 toml = "0.8"
 sha2 = "0.10"
+
+# Optional native-only dependencies
+reqwest = { workspace = true, optional = true }
+tempfile = { version = "3.0", optional = true }
+tokio = { workspace = true, optional = true }
+indicatif = { version = "0.17", optional = true }
+futures = { version = "0.3", optional = true }
+atty = { version = "0.2", optional = true }
 
 [dev-dependencies]
 proptest.workspace = true

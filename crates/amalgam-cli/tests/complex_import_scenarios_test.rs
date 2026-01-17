@@ -52,6 +52,8 @@ fn test_type_with_multiple_same_module_deps() -> Result<(), Box<dyn std::error::
             required: true,
             description: None,
             default: None,
+            validation: None,
+            contracts: Vec::new(),
         },
     );
 
@@ -65,6 +67,8 @@ fn test_type_with_multiple_same_module_deps() -> Result<(), Box<dyn std::error::
             required: false,
             description: None,
             default: None,
+            validation: None,
+            contracts: Vec::new(),
         },
     );
 
@@ -78,6 +82,8 @@ fn test_type_with_multiple_same_module_deps() -> Result<(), Box<dyn std::error::
             required: false,
             description: None,
             default: None,
+            validation: None,
+            contracts: Vec::new(),
         },
     );
 
@@ -162,6 +168,8 @@ fn test_cross_version_import_chain() -> Result<(), Box<dyn std::error::Error>> {
             required: true,
             description: None,
             default: None,
+            validation: None,
+            contracts: Vec::new(),
         },
     );
 
@@ -186,6 +194,8 @@ fn test_cross_version_import_chain() -> Result<(), Box<dyn std::error::Error>> {
             required: true,
             description: None,
             default: None,
+            validation: None,
+            contracts: Vec::new(),
         },
     );
 
@@ -262,6 +272,8 @@ fn test_circular_dependency_handling() -> Result<(), Box<dyn std::error::Error>>
             required: false,
             description: None,
             default: None,
+            validation: None,
+            contracts: Vec::new(),
         },
     );
 
@@ -286,6 +298,8 @@ fn test_circular_dependency_handling() -> Result<(), Box<dyn std::error::Error>>
             required: false,
             description: None,
             default: None,
+            validation: None,
+            contracts: Vec::new(),
         },
     );
 
@@ -352,6 +366,8 @@ fn test_nested_unions_and_arrays() -> Result<(), Box<dyn std::error::Error>> {
                                 required: true,
                                 description: None,
                                 default: None,
+                                validation: None,
+                                contracts: Vec::new(),
                             },
                         );
                         fields
@@ -365,10 +381,41 @@ fn test_nested_unions_and_arrays() -> Result<(), Box<dyn std::error::Error>> {
         annotations: BTreeMap::new(),
     };
 
+    // Add the referenced types to the module
+    let container_type = TypeDefinition {
+        name: "Container".to_string(),
+        ty: Type::Record {
+            fields: BTreeMap::new(),
+            open: false,
+        },
+        documentation: None,
+        annotations: BTreeMap::new(),
+    };
+    
+    let volume_type = TypeDefinition {
+        name: "Volume".to_string(),
+        ty: Type::Record {
+            fields: BTreeMap::new(),
+            open: false,
+        },
+        documentation: None,
+        annotations: BTreeMap::new(),
+    };
+    
+    let pod_type = TypeDefinition {
+        name: "Pod".to_string(),
+        ty: Type::Record {
+            fields: BTreeMap::new(),
+            open: false,
+        },
+        documentation: None,
+        annotations: BTreeMap::new(),
+    };
+
     let module = Module {
         name: "k8s.io.v1".to_string(),
         imports: vec![],
-        types: vec![nested_type],
+        types: vec![container_type, volume_type, pod_type, nested_type],
         constants: vec![],
         metadata: Default::default(),
     };
@@ -384,18 +431,18 @@ fn test_nested_unions_and_arrays() -> Result<(), Box<dyn std::error::Error>> {
     // Debug: Print the actual output
     eprintln!("Generated Nickel output:\n{}", output);
 
-    // The type should contain references to container, volume, and pod (now using camelCase)
+    // The type should contain references to Container, Volume, and Pod (using proper case)
     assert!(
-        output.contains("Array container") || output.contains("container"),
-        "Should reference container (imported type)"
+        output.contains("Array Container") || output.contains("Container"),
+        "Should reference Container (imported type)"
     );
     assert!(
-        output.contains("volume"),
-        "Should reference volume (imported type)"
+        output.contains("Volume"),
+        "Should reference Volume (imported type)"
     );
     assert!(
-        output.contains("pod"),
-        "Should reference pod (imported type)"
+        output.contains("Pod"),
+        "Should reference Pod (imported type)"
     );
     Ok(())
 }
@@ -416,6 +463,8 @@ fn test_cross_package_imports() -> Result<(), Box<dyn std::error::Error>> {
             required: true,
             description: Some("Standard k8s metadata".to_string()),
             default: None,
+            validation: None,
+            contracts: Vec::new(),
         },
     );
 
@@ -429,6 +478,8 @@ fn test_cross_package_imports() -> Result<(), Box<dyn std::error::Error>> {
             required: true,
             description: None,
             default: None,
+            validation: None,
+            contracts: Vec::new(),
         },
     );
 
@@ -499,6 +550,8 @@ fn test_runtime_types_v0_import() -> Result<(), Box<dyn std::error::Error>> {
             required: false,
             description: Some("Runtime extension field".to_string()),
             default: None,
+            validation: None,
+            contracts: Vec::new(),
         },
     );
 
@@ -564,6 +617,8 @@ fn test_optional_and_array_references() -> Result<(), Box<dyn std::error::Error>
             required: false,
             description: None,
             default: None,
+            validation: None,
+            contracts: Vec::new(),
         },
     );
 
@@ -577,6 +632,8 @@ fn test_optional_and_array_references() -> Result<(), Box<dyn std::error::Error>
             required: true,
             description: None,
             default: None,
+            validation: None,
+            contracts: Vec::new(),
         },
     );
 
@@ -590,10 +647,31 @@ fn test_optional_and_array_references() -> Result<(), Box<dyn std::error::Error>
         annotations: BTreeMap::new(),
     };
 
+    // Add the referenced types
+    let container_type = TypeDefinition {
+        name: "Container".to_string(),
+        ty: Type::Record {
+            fields: BTreeMap::new(),
+            open: false,
+        },
+        documentation: None,
+        annotations: BTreeMap::new(),
+    };
+    
+    let volume_type = TypeDefinition {
+        name: "Volume".to_string(),
+        ty: Type::Record {
+            fields: BTreeMap::new(),
+            open: false,
+        },
+        documentation: None,
+        annotations: BTreeMap::new(),
+    };
+
     let module = Module {
         name: "test.v1".to_string(),
         imports: vec![],
-        types: vec![test_type],
+        types: vec![container_type, volume_type, test_type],
         constants: vec![],
         metadata: Default::default(),
     };
@@ -608,24 +686,26 @@ fn test_optional_and_array_references() -> Result<(), Box<dyn std::error::Error>
     // Debug: Print the actual output
     eprintln!("Generated Nickel output:\n{}", output);
 
-    // The type should reference container and volume (now using camelCase)
+    // The type should reference Container and Volume (using proper case)
     assert!(
-        output.contains("container"),
-        "Should reference container (imported type)"
+        output.contains("Container"),
+        "Should reference Container (imported type)"
     );
     assert!(
-        output.contains("volume"),
-        "Should reference volume (imported type)"
+        output.contains("Volume"),
+        "Should reference Volume (imported type)"
     );
 
-    // Check for array and optional handling (now using camelCase)
+    // Check for array and optional handling (using proper case)
     assert!(
-        output.contains("Array volume"),
-        "Should have Array of volume"
+        output.contains("Array Volume"),
+        "Should have Array of Volume"
     );
+    // Optional fields now use `| TypeName | optional` (Nickel's proper optional field syntax)
+    // rather than the invalid `| TypeName | Null` syntax
     assert!(
-        output.contains("container | Null") || output.contains("optional | container"),
-        "Should have optional container"
+        output.contains("Container") && output.contains("optional"),
+        "Should have optional container field"
     );
     Ok(())
 }

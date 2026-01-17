@@ -73,6 +73,11 @@ impl GoCodegen {
                 // Contracts become interfaces in Go
                 Ok("interface{}".to_string())
             }
+
+            Type::Constrained { base_type, .. } => {
+                // For Go, ignore constraints and use the base type
+                self.type_to_go(base_type)
+            }
         }
     }
 

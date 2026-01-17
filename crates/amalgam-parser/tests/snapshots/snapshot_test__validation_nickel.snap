@@ -2,18 +2,23 @@
 source: crates/amalgam-parser/tests/snapshot_test.rs
 expression: generated
 ---
-{
+let metav1 = import "../../k8s_io/apimachinery.pkg.apis/meta/v1/mod.ncl" in
+
+Validated = {
   metadata
-     | v1Module.ObjectMeta
-     | optional,
+    | metav1.ObjectMeta
+    | optional,
   spec
-     | {
+    | {
     image
-       | String,
+      | String
+      | std.contract.from_predicate (fun value => std.string.is_match "^[a-z0-9\\.\\-\\/\\:]+$" value),
     port
-       | Number
-       = 8080,
+      | Number
+      | std.contract.from_predicate (fun value => value >= 1 && value <= 65535)
+      = 8080,
     replicas
-       | Number
+      | Number
+      | std.contract.from_predicate (fun value => value >= 1 && value <= 100)
   }
 }

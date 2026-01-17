@@ -2,21 +2,26 @@
 source: crates/amalgam-parser/tests/snapshot_test.rs
 expression: content
 ---
-{
+let io.k8s.api.core.v1.ResourceRequirements = import "../../k8s_io/api/core/v1.ncl" in
+let io.k8s.api.core.v1.Volume = import "../../k8s_io/api/core/v1.ncl" in
+let io.k8s.apimachinery.pkg.apis.meta.v1.LabelSelector = import "../../k8s_io/api/core/v1.ncl" in
+let metav1 = import "../../k8s_io/apimachinery.pkg.apis/meta/v1/mod.ncl" in
+
+MultiRef = {
   metadata
-     | v1Module.ObjectMeta
-     | optional,
+    | metav1.ObjectMeta
+    | optional,
   spec
-     | {
+    | {
     resources
-       | io.k8s.api.core.v1.ResourceRequirements
-       | optional,
+      | io.k8s.api.core.v1.ResourceRequirements
+      | optional,
     selector
-       | io.k8s.apimachinery.pkg.apis.meta.v1.LabelSelector
-       | optional,
+      | io.k8s.apimachinery.pkg.apis.meta.v1.LabelSelector
+      | optional,
     volumes
-       | Array io.k8s.api.core.v1.Volume
-       | optional
+      | Array io.k8s.api.core.v1.Volume
+      | optional
   }
-     | optional
+    | optional
 }
