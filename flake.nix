@@ -529,6 +529,19 @@
               pkg-config
             ]
             ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [];
+
+          nativeBuildInputs = with pkgs; [
+            openssl
+            pkg-config
+            # CA certificates for HTTPS requests in tests
+            cacert
+          ];
+
+          # Ensure OpenSSL is available at runtime for tests that make network requests
+          preCheck = ''
+            export LD_LIBRARY_PATH="${pkgs.openssl.out}/lib:$LD_LIBRARY_PATH"
+            export SSL_CERT_FILE="${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+          '';
         };
 
         # Docker/OCI image builders
