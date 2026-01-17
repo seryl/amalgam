@@ -17,7 +17,7 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 amalgam-core = { workspace = true }
 # Don't use workspace for parser - we need to disable default features for WASM
-amalgam-parser = { path = "../amalgam-parser", default-features = false }
+amalgam-parser = { version = "0.8.0", path = "../amalgam-parser" }
 amalgam-codegen = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

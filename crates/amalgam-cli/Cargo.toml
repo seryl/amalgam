@@ -23,8 +23,8 @@ path = "src/main.rs"
 amalgam-core.workspace = true
 amalgam-parser.workspace = true
 amalgam-codegen.workspace = true
-amalgam-registry = { path = "../amalgam-registry" }
-amalgam-daemon = { path = "../amalgam-daemon" }
+amalgam-registry = { version = "0.8.0", path = "../amalgam-registry" }
+amalgam-daemon = { version = "0.8.0", path = "../amalgam-daemon" }
 clap.workspace = true
 tokio.workspace = true
 anyhow.workspace = true

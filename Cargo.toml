@@ -88,7 +88,7 @@ atty = "0.2"
 uuid = { version = "1.0", features = ["v7", "serde"] }
 
 # Internal workspace dependencies
-amalgam-core = { version = "0.7.0", path = "crates/amalgam-core" }
-amalgam-parser = { version = "0.7.0", path = "crates/amalgam-parser", default-features = true }
-amalgam-codegen = { version = "0.7.0", path = "crates/amalgam-codegen" }
-amalgam-daemon = { version = "0.7.0", path = "crates/amalgam-daemon" }
+amalgam-core = { version = "0.8.0", path = "crates/amalgam-core" }
+amalgam-parser = { version = "0.8.0", path = "crates/amalgam-parser" }
+amalgam-codegen = { version = "0.8.0", path = "crates/amalgam-codegen" }
+amalgam-daemon = { version = "0.8.0", path = "crates/amalgam-daemon" }
