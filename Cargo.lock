@@ -185,7 +185,7 @@ dependencies = [
 
 [[package]]
 name = "amalgam-registry"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "amalgam-core",
  "anyhow",
@@ -205,7 +205,7 @@ dependencies = [
 
 [[package]]
 name = "amalgam-test-fixtures"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "serde",
  "serde_json",
