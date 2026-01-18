@@ -5,8 +5,17 @@ use std::fs;
 use tempfile::tempdir;
 use tracing_subscriber::prelude::*;
 
+/// Skip test if running in a sandboxed environment (e.g., Nix build)
+fn skip_if_no_network() -> bool {
+    std::env::var("AMALGAM_SKIP_NETWORK_TESTS").is_ok()
+}
+
 #[tokio::test]
 async fn trace_k8s_imports() -> Result<(), Box<dyn std::error::Error>> {
+    if skip_if_no_network() {
+        eprintln!("Skipping test: AMALGAM_SKIP_NETWORK_TESTS is set");
+        return Ok(());
+    }
     // Use tracing-forest for better async/tokio visualization
     let forest_layer = tracing_forest::ForestLayer::default();
 

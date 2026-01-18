@@ -7,8 +7,17 @@ use std::fs;
 use std::process::Command;
 use tempfile::tempdir;
 
+/// Skip test if running in a sandboxed environment (e.g., Nix build)
+fn skip_if_no_network() -> bool {
+    std::env::var("AMALGAM_SKIP_NETWORK_TESTS").is_ok()
+}
+
 #[test]
 fn test_url_import_uses_unified_pipeline() -> Result<(), Box<dyn std::error::Error>> {
+    if skip_if_no_network() {
+        eprintln!("Skipping test: AMALGAM_SKIP_NETWORK_TESTS is set");
+        return Ok(());
+    }
     let temp_dir = tempdir()?;
     let output_dir = temp_dir.path();
 
@@ -141,6 +150,10 @@ spec:
 
 #[test]
 fn test_url_import_generates_cross_module_imports() -> Result<(), Box<dyn std::error::Error>> {
+    if skip_if_no_network() {
+        eprintln!("Skipping test: AMALGAM_SKIP_NETWORK_TESTS is set");
+        return Ok(());
+    }
     // This test verifies that URL imports properly generate cross-module imports
     // when CRDs have dependencies between versions
 

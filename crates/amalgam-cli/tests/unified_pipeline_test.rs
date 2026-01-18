@@ -4,6 +4,11 @@
 //! and produce consistent output with proper cross-module imports.
 
 use amalgam::handle_k8s_core_import;
+
+/// Skip test if running in a sandboxed environment (e.g., Nix build)
+fn skip_if_no_network() -> bool {
+    std::env::var("AMALGAM_SKIP_NETWORK_TESTS").is_ok()
+}
 use amalgam_parser::package::NamespacedPackage;
 use amalgam_parser::walkers::{crd::CRDWalker, openapi::OpenAPIWalker, SchemaWalker};
 use std::fs;
@@ -157,6 +162,10 @@ fn test_namespaced_package_uses_walker_pipeline() -> Result<(), Box<dyn std::err
 
 #[tokio::test]
 async fn test_k8s_core_import_uses_unified_pipeline() -> Result<(), Box<dyn std::error::Error>> {
+    if skip_if_no_network() {
+        eprintln!("Skipping test: AMALGAM_SKIP_NETWORK_TESTS is set");
+        return Ok(());
+    }
     // Test that k8s-core import uses the unified walker pipeline
     let temp_dir = tempdir()?;
     let output_dir = temp_dir.path();
