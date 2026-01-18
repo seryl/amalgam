@@ -503,7 +503,10 @@
             (builtins.match ".*/tests/snapshots/.*\\.snap$" path != null)
             ||
             # Include any other test resources
-            (builtins.match ".*/tests/.*\\.(toml|json|yaml|ncl)$" path != null);
+            (builtins.match ".*/tests/.*\\.(toml|json|yaml|ncl)$" path != null)
+            ||
+            # Include examples fixtures for integration tests
+            (builtins.match ".*/examples/fixtures/.*" path != null);
         };
 
         # Build dependencies only
