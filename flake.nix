@@ -546,6 +546,8 @@
           preCheck = ''
             export LD_LIBRARY_PATH="${pkgs.openssl.out}/lib:$LD_LIBRARY_PATH"
             export SSL_CERT_FILE="${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+            # Skip network-dependent tests in the Nix sandbox
+            export AMALGAM_SKIP_NETWORK_TESTS=1
           '';
         };
 
