@@ -506,7 +506,10 @@
             (builtins.match ".*/tests/.*\\.(toml|json|yaml|ncl)$" path != null)
             ||
             # Include examples fixtures for integration tests
-            (builtins.match ".*/examples/fixtures/.*" path != null);
+            (builtins.match ".*/examples/fixtures/.*" path != null)
+            ||
+            # Include generated example packages for comprehensive tests
+            (builtins.match ".*/examples/pkgs/.*\\.ncl$" path != null);
         };
 
         # Build dependencies only
