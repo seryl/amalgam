@@ -538,6 +538,8 @@
             pkg-config
             # CA certificates for HTTPS requests in tests
             cacert
+            # Nickel is required for integration tests that run nickel commands
+            nickel
           ];
 
           # Ensure OpenSSL is available at runtime for tests that make network requests
