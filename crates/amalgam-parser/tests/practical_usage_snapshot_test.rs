@@ -13,6 +13,11 @@ use regex::Regex;
 use std::process::Command;
 use tracing::{debug, info, instrument, warn};
 
+/// Skip test if running in a sandboxed environment (e.g., Nix build)
+fn skip_if_sandboxed() -> bool {
+    std::env::var("AMALGAM_SKIP_NETWORK_TESTS").is_ok()
+}
+
 /// Sanitize output to remove dynamic temp file paths for stable snapshots
 fn sanitize_output(output: &str) -> String {
     // Replace temp file paths like "test_snapshot_temp_12345_0.ncl" with a stable placeholder
@@ -89,6 +94,9 @@ fn evaluate_nickel_code(
 /// Test that basic k8s types can be instantiated with empty records
 #[test]
 fn test_k8s_empty_objects_snapshot() -> Result<(), Box<dyn std::error::Error>> {
+    if skip_if_sandboxed() {
+        return Ok(());
+    }
     // Test a specific module directly for deterministic behavior
     // We import core/v1 as it's the most commonly used module
     let test_code = r#"
@@ -116,6 +124,9 @@ let v1 = import "examples/pkgs/k8s_io/api/core/v1.ncl" in
 /// Test practical usage patterns that users would actually write
 #[test]
 fn test_practical_k8s_usage_patterns() -> Result<(), Box<dyn std::error::Error>> {
+    if skip_if_sandboxed() {
+        return Ok(());
+    }
     // Test a specific module directly for deterministic behavior
     let test_code = r#"
 # Test importing autoscaling v2 module for deterministic behavior
@@ -140,6 +151,9 @@ let v2 = import "examples/pkgs/k8s_io/api/autoscaling/v2.ncl" in
 /// Test cross-package imports between k8s and crossplane
 #[test]
 fn test_cross_package_imports_snapshot() -> Result<(), Box<dyn std::error::Error>> {
+    if skip_if_sandboxed() {
+        return Ok(());
+    }
     // Test a specific module directly for deterministic behavior
     let test_code = r#"
 # Test importing a specific coordination module for deterministic behavior
@@ -164,6 +178,9 @@ let v1alpha2 = import "examples/pkgs/k8s_io/api/coordination/v1alpha2.ncl" in
 /// Test package structure and type availability
 #[test]
 fn test_package_structure_snapshot() -> Result<(), Box<dyn std::error::Error>> {
+    if skip_if_sandboxed() {
+        return Ok(());
+    }
     // Test a specific module directly for deterministic behavior
     let test_code = r#"
 # Test importing a specific storage module for deterministic behavior
@@ -188,6 +205,9 @@ let v1 = import "examples/pkgs/k8s_io/api/storage/v1.ncl" in
 /// Test edge cases and error scenarios
 #[test]
 fn test_edge_cases_snapshot() -> Result<(), Box<dyn std::error::Error>> {
+    if skip_if_sandboxed() {
+        return Ok(());
+    }
     // Test a specific module directly for deterministic behavior
     let test_code = r#"
 # Test importing a specific networking module for deterministic behavior
