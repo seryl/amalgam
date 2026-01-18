@@ -2,6 +2,9 @@ use amalgam_parser::swagger::parse_swagger_json;
 
 #[tokio::test]
 async fn test_swagger_has_authentication_modules() -> Result<(), Box<dyn std::error::Error>> {
+    if std::env::var("AMALGAM_SKIP_NETWORK_TESTS").is_ok() {
+        return Ok(());
+    }
     // Fetch the swagger JSON
     let url = "https://raw.githubusercontent.com/kubernetes/kubernetes/v1.33.4/api/openapi-spec/swagger.json";
     let content = reqwest::get(url).await?.text().await?;
