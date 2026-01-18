@@ -4,7 +4,7 @@ use std::fs;
 use std::path::PathBuf;
 use tracing::{info, warn};
 
-use amalgam_codegen::{go::GoCodegen, nickel::NickelCodegen, Codegen};
+use amalgam_codegen::{go::GoCodegen, nickel::NickelCodegen, rust::RustCodegen, Codegen};
 use amalgam_parser::{
     crd::{CRDParser, CRD},
     openapi::OpenAPIParser,
@@ -70,9 +70,36 @@ enum Commands {
         #[arg(short, long)]
         output: PathBuf,
 
-        /// Target language
+        /// Target language (nickel, go, rust)
         #[arg(short, long, default_value = "nickel")]
         target: String,
+    },
+
+    /// Generate Rust types from CRDs or OpenAPI specs
+    GenerateRust {
+        /// Input file (CRD YAML/JSON or OpenAPI spec)
+        #[arg(short, long)]
+        input: PathBuf,
+
+        /// Output file path for generated Rust code
+        #[arg(short, long)]
+        output: PathBuf,
+
+        /// Generate Merge trait implementations
+        #[arg(long, default_value = "true")]
+        merge: bool,
+
+        /// Generate Validate trait implementations
+        #[arg(long, default_value = "true")]
+        validate: bool,
+
+        /// Generate builder methods (with_*)
+        #[arg(long, default_value = "true")]
+        builders: bool,
+
+        /// Runtime crate name for imports (default: amalgam_runtime)
+        #[arg(long, default_value = "amalgam_runtime")]
+        runtime_crate: String,
     },
 
     /// Convert from one format to another
@@ -306,6 +333,14 @@ async fn main() -> Result<()> {
             output,
             target,
         }) => handle_generate(input, output, &target),
+        Some(Commands::GenerateRust {
+            input,
+            output,
+            merge,
+            validate,
+            builders,
+            runtime_crate,
+        }) => handle_generate_rust(input, output, merge, validate, builders, runtime_crate),
         Some(Commands::Convert {
             input,
             from,
@@ -843,14 +878,90 @@ fn handle_generate(input: PathBuf, output: PathBuf, target: &str) -> Result<()> 
             let mut codegen = GoCodegen::new();
             codegen.generate(&ir)?
         }
+        "rust" => {
+            let mut codegen = RustCodegen::new();
+            codegen.generate(&ir)?
+        }
         _ => {
-            anyhow::bail!("Unsupported target language: {}", target);
+            anyhow::bail!("Unsupported target language: {}. Supported: nickel, go, rust", target);
         }
     };
 
     fs::write(&output, code).with_context(|| format!("Failed to write output: {:?}", output))?;
 
     info!("Generated code written to {:?}", output);
+    Ok(())
+}
+
+/// Handle the generate-rust command for generating Rust types from CRDs or OpenAPI specs
+fn handle_generate_rust(
+    input: PathBuf,
+    output: PathBuf,
+    generate_merge: bool,
+    generate_validate: bool,
+    generate_builders: bool,
+    runtime_crate: String,
+) -> Result<()> {
+    use amalgam_codegen::rust::RustCodegenConfig;
+
+    info!("Generating Rust types from {:?}", input);
+
+    let content = fs::read_to_string(&input)
+        .with_context(|| format!("Failed to read input file: {:?}", input))?;
+
+    // Detect input type and parse to IR
+    let ir = if content.contains("kind: CustomResourceDefinition")
+        || content.contains("kind: \"CustomResourceDefinition\"")
+    {
+        // CRD input
+        info!("Detected CRD input");
+        let crd: CRD = if input.extension().is_some_and(|ext| ext == "json") {
+            serde_json::from_str(&content)?
+        } else {
+            serde_yaml::from_str(&content)?
+        };
+        CRDParser::new().parse(crd)?
+    } else if content.contains("\"openapi\"") || content.contains("\"swagger\"") {
+        // OpenAPI input
+        info!("Detected OpenAPI input");
+        let spec: openapiv3::OpenAPI = if input.extension().is_some_and(|ext| ext == "json") {
+            serde_json::from_str(&content)?
+        } else {
+            serde_yaml::from_str(&content)?
+        };
+        OpenAPIParser::new().parse(spec)?
+    } else if content.trim_start().starts_with('{') {
+        // Assume it's IR JSON
+        info!("Detected IR JSON input");
+        serde_json::from_str(&content)?
+    } else {
+        anyhow::bail!("Could not detect input type. Expected CRD YAML, OpenAPI spec, or IR JSON.");
+    };
+
+    // Configure Rust codegen
+    let config = RustCodegenConfig {
+        generate_merge,
+        generate_validate,
+        generate_builders,
+        generate_default: true,
+        include_docs: true,
+        box_recursive_types: true,
+        runtime_crate,
+    };
+
+    let mut codegen = RustCodegen::new().with_config(config);
+    let code = codegen.generate(&ir)?;
+
+    // Write output
+    fs::write(&output, &code)
+        .with_context(|| format!("Failed to write output: {:?}", output))?;
+
+    info!("Generated Rust types written to {:?}", output);
+    info!(
+        "Options: merge={}, validate={}, builders={}",
+        generate_merge, generate_validate, generate_builders
+    );
+
     Ok(())
 }
 
