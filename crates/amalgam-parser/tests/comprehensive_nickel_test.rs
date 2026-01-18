@@ -2,10 +2,19 @@
 //!
 //! These tests verify that generated packages work in comprehensive real-world scenarios
 //! by evaluating complex Nickel configurations that use multiple features.
+//!
+//! NOTE: These tests use insta snapshots and require the examples/pkgs/ directory to be
+//! generated with the same version. They are skipped in sandboxed CI environments.
 
 use insta::assert_snapshot;
 use std::process::Command;
 use tracing::{debug, info, warn};
+
+/// Skip test if running in a sandboxed environment (e.g., Nix build)
+/// These snapshot tests require consistent examples/pkgs/ content
+fn skip_if_sandboxed() -> bool {
+    std::env::var("AMALGAM_SKIP_NETWORK_TESTS").is_ok()
+}
 
 /// Test helper to evaluate Nickel code and capture both success/failure and output
 fn evaluate_nickel_code(code: &str) -> Result<(bool, String), Box<dyn std::error::Error>> {
@@ -152,6 +161,10 @@ fn test_objectmeta_file_structure() -> Result<(), Box<dyn std::error::Error>> {
 /// Test comprehensive package usage including cross-version references
 #[test]
 fn test_comprehensive_package_usage() -> Result<(), Box<dyn std::error::Error>> {
+    if skip_if_sandboxed() {
+        eprintln!("Skipping test: AMALGAM_SKIP_NETWORK_TESTS is set");
+        return Ok(());
+    }
     // Test a specific module to ensure deterministic behavior
     let test_code = r#"
 # Comprehensive test - import a specific module for deterministic testing
@@ -197,6 +210,10 @@ let v1alpha2 = import "examples/pkgs/k8s_io/api/coordination/v1alpha2.ncl" in
 /// Test safe type operations that should always work
 #[test]
 fn test_safe_type_operations() -> Result<(), Box<dyn std::error::Error>> {
+    if skip_if_sandboxed() {
+        eprintln!("Skipping test: AMALGAM_SKIP_NETWORK_TESTS is set");
+        return Ok(());
+    }
     // Test a specific module directly to ensure deterministic behavior
     let test_code = r#"
 # Test importing a specific module that we know will fail consistently
@@ -244,6 +261,10 @@ let v1 = import "examples/pkgs/k8s_io/api/core/v1.ncl" in
 /// Test import debugging scenarios
 #[test]
 fn test_import_debugging() -> Result<(), Box<dyn std::error::Error>> {
+    if skip_if_sandboxed() {
+        eprintln!("Skipping test: AMALGAM_SKIP_NETWORK_TESTS is set");
+        return Ok(());
+    }
     let test_code = r#"
 # Debug test to validate import patterns work correctly
 {
